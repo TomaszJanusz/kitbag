@@ -39,6 +39,7 @@
 - Keep one focused change per PR; include tests for meaningful behavior changes.
 - Explain the outcome, rationale, checks and anything not verified in the PR.
 - Squash is the only allowed merge policy.
+- See [repository governance](docs/governance.md) for policy and maintainer setup.
 - Before pushing workflow changes, run `actionlint` and `zizmor` when installed.
 - Before committing files that might hold secrets, run `gitleaks git --staged`.
 
