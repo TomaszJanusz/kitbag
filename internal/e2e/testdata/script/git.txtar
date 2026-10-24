@@ -6,9 +6,10 @@ exec git -C checkout branch --show-current
 stdout '^main$'
 ! exists config/.git
 
-# Commits have a fixed identity and date and are never signed.
-exec git -C checkout log -1 --date=iso-strict '--format=%an <%ae>|%cn <%ce>|%ad|%s|%G?'
-stdout '^KitBag Test <test@kitbag.invalid>\|KitBag Test <test@kitbag.invalid>\|2026-01-01T00:00:00\+00:00\|Seed config\|N$'
+# Commits have a fixed identity and date (2026-01-01T00:00:00Z as a Unix time,
+# whose format does not vary between Git versions) and are never signed.
+exec git -C checkout log -1 '--format=%an <%ae>|%cn <%ce>|%at|%ct|%s|%G?'
+stdout '^KitBag Test <test@kitbag.invalid>\|KitBag Test <test@kitbag.invalid>\|1767225600\|1767225600\|Seed config\|N$'
 
 # Without a seed directory the remote is empty.
 gitremote empty.git
