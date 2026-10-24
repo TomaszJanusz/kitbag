@@ -29,5 +29,17 @@ func openTerminal(t *testing.T) *os.File {
 	if !ok {
 		t.Fatalf("stat of %s has no device", master.Name())
 	}
-	return openFile(t, fmt.Sprintf("/dev/ttys%03d", sysunix.Minor(uint64(st.Rdev)))) //nolint:gosec // G115: device numbers are non-negative.
+	name := fmt.Sprintf("/dev/ttys%03d", sysunix.Minor(uint64(st.Rdev))) //nolint:gosec // G115: device numbers are non-negative.
+	// Fail rather than skip: the master exists, so a missing slave means the
+	// naming assumption is wrong and the positive check would go unverified.
+	slave, err := os.OpenFile(name, os.O_RDWR|syscall.O_NOCTTY, 0) //nolint:gosec // G304: pseudo-terminal device path.
+	if err != nil {
+		t.Fatalf("open pseudo-terminal slave: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := slave.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return slave
 }
