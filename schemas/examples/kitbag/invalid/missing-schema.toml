@@ -1,0 +1,4 @@
+# expect: missing property 'schema'
+
+[instructions]
+source = "AGENTS.md"

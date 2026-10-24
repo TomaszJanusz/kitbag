@@ -1,0 +1,5 @@
+# expect: oneOf
+schema = 1
+
+[mcp.servers.empty]
+args = ["--help"]

@@ -1,0 +1,19 @@
+# ~/.config/kitbag/config.toml on runner02: follows agent-config and syncs
+# every 15 minutes with system Git.
+schema = 1
+host = "runner02"
+
+[repo]
+url = "git@github.com:TomaszJanusz/agent-config.git"
+branch = "main"
+
+[git]
+backend = "system"
+
+[sync]
+poll_interval = "15m"
+mode = "link"
+
+[ui]
+color = "auto"
+notifications = false

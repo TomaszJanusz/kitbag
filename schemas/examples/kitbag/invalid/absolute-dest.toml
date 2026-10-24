@@ -1,0 +1,6 @@
+# expect: does not match pattern
+schema = 1
+
+[[files]]
+src = "agent-browser/config.json"
+dest = "/etc/agent-browser/config.json"

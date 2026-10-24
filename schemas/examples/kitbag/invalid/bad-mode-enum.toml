@@ -1,0 +1,3 @@
+# expect: value must be one of
+schema = 1
+mode = "symlink"

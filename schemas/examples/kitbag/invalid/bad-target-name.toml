@@ -1,0 +1,5 @@
+# expect: invalid propertyName 'Claude Main'
+schema = 1
+
+[targets."Claude Main"]
+agent = "claude"

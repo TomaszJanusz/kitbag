@@ -1,0 +1,4 @@
+# expect: toml:
+schema = 1
+[instructions
+source = "AGENTS.md"

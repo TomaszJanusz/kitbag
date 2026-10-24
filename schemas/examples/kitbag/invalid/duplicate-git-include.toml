@@ -1,0 +1,5 @@
+# expect: items at 0 and 1 are equal
+schema = 1
+
+[git]
+include = ["git/agent.gitconfig", "git/agent.gitconfig"]

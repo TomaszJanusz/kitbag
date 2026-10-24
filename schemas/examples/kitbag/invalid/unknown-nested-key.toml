@@ -1,0 +1,6 @@
+# expect: additional properties 'settings_file' not allowed
+schema = 1
+
+[targets.claude]
+agent = "claude"
+settings_file = "claude/settings.json"

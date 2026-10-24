@@ -1,0 +1,5 @@
+# expect: missing property 'source'
+schema = 1
+
+[instructions]
+hosts = "hosts/{host}.md"

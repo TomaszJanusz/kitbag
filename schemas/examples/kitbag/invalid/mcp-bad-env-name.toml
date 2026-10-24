@@ -1,0 +1,6 @@
+# expect: invalid propertyName 'LINEAR API KEY'
+schema = 1
+
+[mcp.servers.linear]
+command = "npx"
+env = { "LINEAR API KEY" = "x" }

@@ -1,0 +1,5 @@
+# expect: additional properties 'skill_dirs' not allowed
+schema = 1
+
+[skill_dirs]
+dirs = ["skills"]

@@ -1,0 +1,5 @@
+# expect: additional properties 'provenance' not allowed
+schema = 1
+
+[provenance]
+file = "kitbag-provenance.toml"

@@ -1,0 +1,8 @@
+# expect: got number, want string
+schema = 1
+
+[repo]
+url = "git@github.com:TomaszJanusz/agent-config.git"
+
+[sync]
+poll_interval = 900

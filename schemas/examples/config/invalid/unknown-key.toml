@@ -1,0 +1,8 @@
+# expect: additional properties 'poll_seconds' not allowed
+schema = 1
+
+[repo]
+url = "git@github.com:TomaszJanusz/agent-config.git"
+
+[sync]
+poll_seconds = 900

@@ -1,0 +1,6 @@
+# expect: does not match pattern
+schema = 1
+
+[[files]]
+src = "../outside/config.json"
+dest = "~/.agent-browser/config.json"

@@ -79,6 +79,18 @@ linters:
             - $gostd
             - github.com/TomaszJanusz/kitbag/
             - golang.org/x/sys/
+            # Schema-gate test dependencies; the schema-check rule confines them.
+            - github.com/BurntSushi/toml$
+            - github.com/santhosh-tekuri/jsonschema/v6$
+        schema-check:
+          # The JSON Schema gate is the only consumer of these libraries until
+          # KIT-12 decides the parser's dependencies; production code stays free.
+          files: ["$all", "!**/internal/schemacheck/*_test.go"]
+          deny:
+            - pkg: github.com/BurntSushi/toml
+              desc: TOML decoding is a test-only dependency of internal/schemacheck.
+            - pkg: github.com/santhosh-tekuri/jsonschema/v6
+              desc: JSON Schema validation is a test-only dependency of internal/schemacheck.
         outside-platform:
           # Negated file globs restrict OS primitives everywhere except platform.
           files: ["$all", "!**/internal/platform/*.go", "!**/internal/platform/**/*.go"]

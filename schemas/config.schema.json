@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kitbag.sh/schemas/config.schema.json",
+  "title": "KitBag machine configuration (config.toml)",
+  "description": "Schema version 1 of the machine-local tool configuration, normally ~/.config/kitbag/config.toml. It describes this machine only: which repository to follow, how to reach Git, how often to poll, the materialization default and UI preferences. Nothing in it is shared through the repository. See docs/manifest.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "repo"],
+  "properties": {
+    "schema": {
+      "description": "Configuration schema version. A tool that knows version N reads N and N-1 and rejects everything else.",
+      "type": "integer",
+      "const": 1
+    },
+    "host": {
+      "description": "Name used to select hosts.<name> in the manifest and the {host} template. Default: the machine's short host name.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+    },
+    "repo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url"],
+      "properties": {
+        "url": {
+          "description": "Clone URL of the configuration repository (https://, ssh:// or git@host:path). Credentials never belong here.",
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\s]+$"
+        },
+        "branch": {
+          "description": "Branch to follow. Default: the remote's default branch.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9/_.-]{0,254}$"
+        },
+        "path": {
+          "description": "Working copy location. Default: the platform data directory, for example ~/.local/share/kitbag/repos/<name>.",
+          "type": "string",
+          "maxLength": 4096,
+          "pattern": "^~/([^./\\\\][^/\\\\]*|\\.[^./\\\\][^/\\\\]*|\\.\\.[^/\\\\]+)(/([^./\\\\][^/\\\\]*|\\.[^./\\\\][^/\\\\]*|\\.\\.[^/\\\\]+))*$"
+        }
+      }
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "backend": {
+          "description": "auto prefers system Git 2.30+ and falls back to embedded go-git; system and embedded force one backend and fail when it is unavailable.",
+          "type": "string",
+          "enum": ["auto", "system", "embedded"]
+        }
+      }
+    },
+    "sync": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "poll_interval": {
+          "description": "How often the daemon fetches, as a duration such as 60s, 15m or 1h30m. Default: 60s.",
+          "type": "string",
+          "pattern": "^([0-9]+(ms|s|m|h))+$"
+        },
+        "mode": {
+          "description": "Machine default materialization mode where the manifest leaves it unset. Default: link on macOS and Linux, copy on Windows.",
+          "type": "string",
+          "enum": ["link", "copy"]
+        }
+      }
+    },
+    "ui": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "theme": {
+          "type": "string",
+          "enum": ["auto", "dark", "light"]
+        },
+        "color": {
+          "description": "Terminal color output. Default: auto.",
+          "type": "string",
+          "enum": ["auto", "always", "never"]
+        },
+        "notifications": {
+          "description": "Show a system notification after changes are applied. Default: true.",
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

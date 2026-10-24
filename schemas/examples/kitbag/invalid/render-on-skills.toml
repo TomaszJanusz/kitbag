@@ -1,0 +1,6 @@
+# expect: additional properties 'render' not allowed
+schema = 1
+
+[targets.claude]
+agent = "claude"
+primitives = { skills = { render = "import" } }

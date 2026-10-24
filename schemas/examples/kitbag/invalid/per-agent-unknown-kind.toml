@@ -1,0 +1,5 @@
+# expect: invalid propertyName 'aider'
+schema = 1
+
+[commands]
+per_agent = { aider = "aider/commands" }

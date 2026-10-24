@@ -1,0 +1,463 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kitbag.sh/schemas/kitbag.schema.json",
+  "title": "KitBag manifest (kitbag.toml)",
+  "description": "Schema version 1 of the manifest a configuration repository commits as kitbag.toml. The manifest declares intent only: which repository files become which agent primitives, on which hosts and instances. Resolved pins live in the separately versioned provenance contract; destination paths, applied hashes and ownership live in machine-local state. See docs/manifest.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema"],
+  "properties": {
+    "schema": {
+      "description": "Manifest schema version. A tool that knows version N reads N and N-1 and rejects everything else.",
+      "type": "integer",
+      "const": 1
+    },
+    "min_tool_version": {
+      "description": "Lowest kitbag release allowed to apply this manifest (semantic version). An older tool stops before planning.",
+      "$ref": "#/$defs/semver"
+    },
+    "mode": {
+      "description": "Manifest-wide materialization mode. Unset leaves the choice to the machine (config.toml, --mode, platform default).",
+      "$ref": "#/$defs/mode"
+    },
+    "instructions": { "$ref": "#/$defs/instructions" },
+    "skills": { "$ref": "#/$defs/skills" },
+    "commands": {
+      "description": "Reusable prompt or slash-command files, kept in each agent's native format.",
+      "$ref": "#/$defs/collection"
+    },
+    "agents": {
+      "description": "Subagent definition files, kept in each agent's native format.",
+      "$ref": "#/$defs/collection"
+    },
+    "hooks": {
+      "description": "Hook definition and script files. Hooks that live inside an agent's settings file are part of the target's settings fragment instead.",
+      "$ref": "#/$defs/collection"
+    },
+    "rules": {
+      "description": "Rule or memory files, kept in each agent's native format.",
+      "$ref": "#/$defs/collection"
+    },
+    "mcp": { "$ref": "#/$defs/mcp" },
+    "files": {
+      "description": "Arbitrary repository files placed at home-relative destinations.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/file" }
+    },
+    "git": { "$ref": "#/$defs/git" },
+    "targets": {
+      "description": "Agents that receive the primitives, keyed by a target name of your choice.",
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "$ref": "#/$defs/name" },
+      "additionalProperties": { "$ref": "#/$defs/target" }
+    },
+    "hosts": {
+      "description": "Per-host overrides, keyed by the host name from config.toml (default: the machine's short host name).",
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "$ref": "#/$defs/hostName" },
+      "additionalProperties": { "$ref": "#/$defs/host" }
+    },
+    "publish": { "$ref": "#/$defs/publish" }
+  },
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
+    },
+    "mode": {
+      "description": "link creates symlinks to the working copy; copy writes files and tracks drift. copy always wins over link when any applicable layer requests it.",
+      "type": "string",
+      "enum": ["link", "copy"]
+    },
+    "agentKind": {
+      "description": "Agent adapter kind. copilot is the ~/.copilot home contract shared by Copilot CLI and the VS Code Copilot harness; other surfaces use generic with explicit roots.",
+      "type": "string",
+      "enum": ["claude", "codex", "cursor", "gemini", "opencode", "copilot", "windsurf", "generic"]
+    },
+    "primitiveName": {
+      "type": "string",
+      "enum": ["instructions", "skills", "commands", "agents", "hooks", "rules", "mcp"]
+    },
+    "name": {
+      "description": "Identifier for targets, instances, servers and imports: lowercase letters, digits, '_', '.', '-'; must start with a letter or digit.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_.-]{0,63}$"
+    },
+    "hostName": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+    },
+    "envName": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+    },
+    "gitRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9/_.-]{0,254}$"
+    },
+    "repoPath": {
+      "description": "Path relative to the repository root using '/'; no leading '/', '~' or '$', no '.' or '..' segments, no backslashes, no trailing '/'.",
+      "type": "string",
+      "maxLength": 4096,
+      "pattern": "^([^./\\\\~$][^/\\\\]*|\\.[^./\\\\][^/\\\\]*|\\.\\.[^/\\\\]+)(/([^./\\\\][^/\\\\]*|\\.[^./\\\\][^/\\\\]*|\\.\\.[^/\\\\]+))*$"
+    },
+    "homePath": {
+      "description": "Destination path that starts with '~/' (the user's home directory on the applying machine); no '.' or '..' segments, no backslashes, no trailing '/'. Absolute paths are not allowed.",
+      "type": "string",
+      "maxLength": 4096,
+      "pattern": "^~/([^./\\\\][^/\\\\]*|\\.[^./\\\\][^/\\\\]*|\\.\\.[^/\\\\]+)(/([^./\\\\][^/\\\\]*|\\.[^./\\\\][^/\\\\]*|\\.\\.[^/\\\\]+))*$"
+    },
+    "hostTemplate": {
+      "description": "Repository path template containing the literal placeholder {host}.",
+      "allOf": [
+        { "$ref": "#/$defs/repoPath" },
+        { "pattern": "\\{host\\}" }
+      ]
+    },
+    "perAgentFiles": {
+      "description": "Repository paths keyed by agent kind.",
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "$ref": "#/$defs/agentKind" },
+      "additionalProperties": { "$ref": "#/$defs/repoPath" }
+    },
+    "collection": {
+      "description": "A set of files for one primitive: a shared directory applied wherever the format is native, plus per-agent directories that win on name collisions.",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "dir": {
+          "description": "Shared source directory. Each entry is applied to every enabled target whose adapter declares the entry's format native; otherwise the plan reports it as unsupported.",
+          "$ref": "#/$defs/repoPath"
+        },
+        "per_agent": {
+          "description": "Source directories for one agent kind only. Entries are added to that kind's set and replace same-name entries from dir.",
+          "$ref": "#/$defs/perAgentFiles"
+        }
+      }
+    },
+    "instructions": {
+      "description": "Always-loaded global instructions: one shared source, optional per-host additions and optional per-agent replacement files.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source"],
+      "properties": {
+        "source": {
+          "description": "The shared instructions file (Markdown).",
+          "$ref": "#/$defs/repoPath"
+        },
+        "hosts": {
+          "description": "Template of the per-host additions file, for example hosts/{host}.md. A missing file for the current host is reported and skipped.",
+          "$ref": "#/$defs/hostTemplate"
+        },
+        "per_agent": {
+          "description": "Replacement for source for one agent kind (the dotagents pattern). Host additions still apply.",
+          "$ref": "#/$defs/perAgentFiles"
+        }
+      }
+    },
+    "skills": {
+      "description": "Skill directories (each child directory holding SKILL.md is one skill) and import intent.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dirs"],
+      "properties": {
+        "dirs": {
+          "description": "Directories whose child directories are skills. Skill names must be unique across all of them.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/repoPath" }
+        },
+        "interchange": {
+          "description": "A skills CLI skills-lock.json (version 1) that kitbag may read and export as an explicitly bounded subset. It is not kitbag's provenance record and never sufficient for frozen installation.",
+          "$ref": "#/$defs/repoPath"
+        },
+        "imports": {
+          "description": "Where vendored skills come from (intent only). Resolved commits and hashes belong to the provenance contract, never here.",
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/name" },
+          "additionalProperties": { "$ref": "#/$defs/skillImport" }
+        }
+      }
+    },
+    "skillImport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source"],
+      "properties": {
+        "source": {
+          "description": "Source repository: GitHub shorthand owner/repo, an https:// or ssh:// URL, or git@host:path. No whitespace.",
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\s]+$"
+        },
+        "path": {
+          "description": "Directory of the skill inside the source repository. Default: the repository root.",
+          "$ref": "#/$defs/repoPath"
+        },
+        "ref": {
+          "description": "Requested selector (branch or tag). It is intent; the resolved commit is recorded by the provenance contract.",
+          "$ref": "#/$defs/gitRef"
+        },
+        "dir": {
+          "description": "Which entry of skills.dirs holds the vendored copy. Default: the first entry.",
+          "$ref": "#/$defs/repoPath"
+        }
+      }
+    },
+    "mcp": {
+      "description": "MCP servers defined once and rendered into each supporting agent's native format.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["servers"],
+      "properties": {
+        "policy": {
+          "description": "merge keeps servers the manifest does not mention and overwrites same-name servers; replace makes the native server set equal to the manifest. Removal of kitbag-owned servers is driven by local state. Default: merge.",
+          "type": "string",
+          "enum": ["merge", "replace"]
+        },
+        "servers": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/name" },
+          "additionalProperties": { "$ref": "#/$defs/mcpServer" }
+        }
+      }
+    },
+    "mcpServer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "transport": {
+          "description": "stdio (default when command is set), http or sse (require url).",
+          "type": "string",
+          "enum": ["stdio", "http", "sse"]
+        },
+        "command": { "type": "string", "minLength": 1 },
+        "args": { "type": "array", "items": { "type": "string" } },
+        "env": {
+          "description": "Literal environment variables. Secrets are not allowed here; name them in secret_env instead.",
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/envName" },
+          "additionalProperties": { "type": "string" }
+        },
+        "url": { "type": "string", "pattern": "^https?://[^\\s]+$" },
+        "headers": {
+          "description": "Literal request headers. Secrets are not allowed here.",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "secret_env": {
+          "description": "Environment variables the server needs whose values must come from the machine, never from the repository.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/envName" }
+        },
+        "agents": {
+          "description": "Restrict rendering to these agent kinds. Default: every enabled target whose adapter supports MCP.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/agentKind" }
+        }
+      },
+      "oneOf": [
+        {
+          "description": "stdio server",
+          "required": ["command"],
+          "properties": {
+            "transport": { "const": "stdio" },
+            "url": false,
+            "headers": false
+          }
+        },
+        {
+          "description": "remote server",
+          "required": ["url"],
+          "properties": {
+            "transport": { "enum": ["http", "sse"] },
+            "command": false,
+            "args": false,
+            "env": false
+          }
+        }
+      ]
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["src", "dest"],
+      "properties": {
+        "src": { "$ref": "#/$defs/repoPath" },
+        "dest": { "$ref": "#/$defs/homePath" },
+        "mode": { "$ref": "#/$defs/mode" },
+        "hosts": {
+          "description": "Apply only on these hosts. Default: every host.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/hostName" }
+        }
+      }
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["include"],
+      "properties": {
+        "include": {
+          "description": "Git configuration files added as include.path entries of the user's global Git configuration.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/repoPath" }
+        }
+      }
+    },
+    "primitiveOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "mode": { "$ref": "#/$defs/mode" }
+      }
+    },
+    "primitives": {
+      "description": "Per-primitive switches for one target or instance. Unset primitives are applied wherever the adapter supports them.",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "instructions": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "mode": { "$ref": "#/$defs/mode" },
+            "render": {
+              "description": "import writes a file that imports the sources with the agent's native import syntax; concat writes the concatenated content. Default: the adapter's documented default.",
+              "type": "string",
+              "enum": ["import", "concat"]
+            }
+          }
+        },
+        "skills": { "$ref": "#/$defs/primitiveOptions" },
+        "commands": { "$ref": "#/$defs/primitiveOptions" },
+        "agents": { "$ref": "#/$defs/primitiveOptions" },
+        "hooks": { "$ref": "#/$defs/primitiveOptions" },
+        "rules": { "$ref": "#/$defs/primitiveOptions" },
+        "mcp": { "$ref": "#/$defs/primitiveOptions" }
+      }
+    },
+    "instances": {
+      "description": "Configuration directories of one agent, keyed by an instance name.",
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "$ref": "#/$defs/name" },
+      "additionalProperties": { "$ref": "#/$defs/instance" }
+    },
+    "instance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dir"],
+      "properties": {
+        "dir": {
+          "description": "The agent's configuration directory itself (for example ~/.claude_2), never a relocation variable.",
+          "$ref": "#/$defs/homePath"
+        },
+        "enabled": { "type": "boolean" },
+        "mode": { "$ref": "#/$defs/mode" },
+        "settings": {
+          "description": "Whether the target's settings fragment is merged into this instance. false corresponds to today's settings=off.",
+          "type": "boolean"
+        },
+        "roots": {
+          "description": "Per-primitive destination roots that replace the adapter's documented default for this instance. Required for generic.",
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/primitiveName" },
+          "additionalProperties": { "$ref": "#/$defs/homePath" }
+        },
+        "primitives": { "$ref": "#/$defs/primitives" }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agent"],
+      "properties": {
+        "agent": { "$ref": "#/$defs/agentKind" },
+        "enabled": { "type": "boolean" },
+        "mode": { "$ref": "#/$defs/mode" },
+        "settings": {
+          "description": "Native settings fragment merged into every instance that has settings enabled, with the documented merge rules.",
+          "$ref": "#/$defs/repoPath"
+        },
+        "primitives": { "$ref": "#/$defs/primitives" },
+        "instances": {
+          "description": "Default instances on every host. Omitted: the adapter's single documented default directory.",
+          "$ref": "#/$defs/instances"
+        }
+      },
+      "if": {
+        "properties": { "agent": { "const": "generic" } },
+        "required": ["agent"]
+      },
+      "then": {
+        "description": "generic has no adapter knowledge: every instance must declare its roots and settings merging is unavailable.",
+        "required": ["instances"],
+        "properties": {
+          "settings": false,
+          "instances": {
+            "additionalProperties": { "required": ["dir", "roots"] }
+          }
+        }
+      }
+    },
+    "hostTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "mode": { "$ref": "#/$defs/mode" },
+        "instances": {
+          "description": "Replaces the target's instance set on this host.",
+          "$ref": "#/$defs/instances"
+        }
+      }
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "mode": { "$ref": "#/$defs/mode" },
+        "publish": { "$ref": "#/$defs/publish" },
+        "targets": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/name" },
+          "additionalProperties": { "$ref": "#/$defs/hostTarget" }
+        }
+      }
+    },
+    "publish": {
+      "description": "How kitbag push publishes local changes: direct pushes to branch; pr pushes a kitbag/{host}/{slug} branch and opens a pull request.",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "mode": { "type": "string", "enum": ["direct", "pr"] },
+        "branch": {
+          "description": "Branch that receives changes. Default: the remote's default branch.",
+          "$ref": "#/$defs/gitRef"
+        }
+      }
+    }
+  }
+}

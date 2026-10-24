@@ -1,0 +1,6 @@
+# expect: does not match pattern
+schema = 1
+
+[instructions]
+source = "global/AGENTS.md"
+hosts = "hosts/runner02.md"

@@ -1,0 +1,5 @@
+# expect: does not match pattern
+schema = 1
+
+[instructions]
+source = "/home/someone/AGENTS.md"

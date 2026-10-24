@@ -1,0 +1,6 @@
+# expect: got boolean, want string
+schema = 1
+
+[[files]]
+src = "agent-browser/config.json"
+dest = true

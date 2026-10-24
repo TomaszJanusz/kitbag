@@ -1,0 +1,116 @@
+# Exercises every key of schema 1 once. It is a validation fixture, not a
+# recommended layout.
+schema = 1
+min_tool_version = "0.4.0"
+mode = "link"
+
+[instructions]
+source = "global/AGENTS.md"
+hosts = "hosts/{host}.md"
+per_agent = { claude = "global/CLAUDE.md", gemini = "global/GEMINI.md" }
+
+[skills]
+dirs = ["skills"]
+interchange = "skills-lock.json"
+
+[skills.imports.pdf]
+source = "https://github.com/anthropics/skills"
+path = "skills/pdf"
+ref = "main"
+dir = "skills"
+
+[commands]
+dir = "commands"
+per_agent = { gemini = "gemini/commands" }
+
+[agents]
+per_agent = { claude = "claude/agents" }
+
+[hooks]
+dir = "hooks"
+
+[rules]
+dir = "rules"
+per_agent = { cursor = "cursor/rules" }
+
+[mcp]
+policy = "merge"
+
+[mcp.servers.linear]
+command = "npx"
+args = ["-y", "@linear/mcp-server"]
+env = { LOG_LEVEL = "warn" }
+secret_env = ["LINEAR_API_KEY"]
+agents = ["claude", "codex"]
+
+[mcp.servers.docs]
+transport = "http"
+url = "https://docs.example.com/mcp"
+headers = { Accept = "application/json" }
+secret_env = ["DOCS_TOKEN"]
+
+[[files]]
+src = "agent-browser/config.json"
+dest = "~/.agent-browser/config.json"
+mode = "copy"
+hosts = ["mac"]
+
+[git]
+include = ["git/agent.gitconfig", "git/signing.gitconfig"]
+
+[targets.claude]
+agent = "claude"
+enabled = true
+mode = "link"
+settings = "claude/settings.json"
+
+[targets.claude.primitives]
+instructions = { render = "import" }
+mcp = { mode = "copy" }
+
+[targets.claude.instances.main]
+dir = "~/.claude"
+roots = { mcp = "~/.claude.json" }
+
+[targets.claude.instances.second]
+dir = "~/.claude_2"
+settings = false
+mode = "copy"
+primitives = { hooks = { enabled = false } }
+
+[targets.codex]
+agent = "codex"
+
+[targets.codex.instances.main]
+dir = "~/.codex"
+roots = { skills = "~/.agents/skills" }
+
+[targets.amp]
+agent = "generic"
+
+[targets.amp.instances.main]
+dir = "~/.config/amp"
+roots = { instructions = "~/.config/amp/AGENTS.md", skills = "~/.config/amp/skills" }
+primitives = { instructions = { render = "concat" } }
+
+[publish]
+mode = "direct"
+branch = "main"
+
+[hosts.mac]
+mode = "link"
+publish = { mode = "direct" }
+
+[hosts.runner02]
+mode = "copy"
+publish = { mode = "pr", branch = "main" }
+
+[hosts.runner02.targets.claude]
+enabled = true
+mode = "copy"
+
+[hosts.runner02.targets.claude.instances.only]
+dir = "~/.claude"
+
+[hosts.runner02.targets.amp]
+enabled = false

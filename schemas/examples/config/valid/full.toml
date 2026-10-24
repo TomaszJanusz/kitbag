@@ -1,0 +1,20 @@
+# Every key of config schema 1 once.
+schema = 1
+host = "mac"
+
+[repo]
+url = "git@github.com:TomaszJanusz/agent-config.git"
+branch = "main"
+path = "~/Developer/agent-config"
+
+[git]
+backend = "auto"
+
+[sync]
+poll_interval = "1h30m"
+mode = "copy"
+
+[ui]
+theme = "dark"
+color = "always"
+notifications = true

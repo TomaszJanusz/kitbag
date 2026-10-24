@@ -1,0 +1,8 @@
+# The smallest useful manifest: one instructions file for Claude Code.
+schema = 1
+
+[instructions]
+source = "AGENTS.md"
+
+[targets.claude]
+agent = "claude"

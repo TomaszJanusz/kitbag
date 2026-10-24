@@ -1,0 +1,5 @@
+# expect: missing property 'url'
+schema = 1
+
+[repo]
+branch = "main"

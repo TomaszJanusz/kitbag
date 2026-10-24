@@ -1,0 +1,5 @@
+# expect: missing property 'agent'
+schema = 1
+
+[targets.claude]
+settings = "claude/settings.json"
