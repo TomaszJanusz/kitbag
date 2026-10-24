@@ -1,0 +1,2 @@
+exec probe -stderr oops
+nooutput

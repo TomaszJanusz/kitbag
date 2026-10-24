@@ -1,0 +1,46 @@
+# Mandatory scenarios template. Every feature ticket copies this file to
+# cmd/kitbag/testdata/script/<feature>.txtar, replaces stubsync with
+# "exec kitbag <command>" and keeps all four scenarios. stubsync stands in for
+# a sync command: it links each file of a source directory into every listed
+# instance directory and reports only what it changed.
+
+# Arrange: a configuration repository behind a local bare remote, cloned into
+# a working copy, and a HOME with the agent instance directories to sync.
+gitremote $WORK/config.git config
+exec git clone --quiet $WORK/config.git $WORK/checkout
+agentdirs .claude .codex
+
+# 1. First run: creates the links and reports each one.
+exec stubsync $WORK/checkout/global $HOME/.claude $HOME/.codex
+stdout -count=2 '^linked '
+! stderr .
+linktarget $HOME/.claude/AGENTS.md $WORK/checkout/global/AGENTS.md
+linktarget $HOME/.codex/AGENTS.md $WORK/checkout/global/AGENTS.md
+content $HOME/.codex/AGENTS.md 'Shared rules.'
+
+# 2. Repeat run: nothing changed, so nothing is printed.
+exec stubsync $WORK/checkout/global $HOME/.claude $HOME/.codex
+nooutput
+
+# 3. A listed instance directory is missing: report it, sync the others and
+# do not create it.
+rm $HOME/.codex
+cp $WORK/skills.md $WORK/checkout/global/SKILLS.md
+! exec stubsync $WORK/checkout/global $HOME/.claude $HOME/.codex
+stderr '^stubsync: instance .*/\.codex is missing$'
+stdout '^linked .*/\.claude/SKILLS\.md$'
+! exists $HOME/.codex
+
+# 4. The case the change is about. For stubsync: a restored instance receives
+# every file, while the up-to-date instance is left alone and not reported.
+agentdirs .codex
+exec stubsync $WORK/checkout/global $HOME/.claude $HOME/.codex
+stdout -count=2 '^linked .*/\.codex/'
+! stdout '\.claude/'
+! stderr .
+linktarget $HOME/.codex/SKILLS.md $WORK/checkout/global/SKILLS.md
+
+-- config/global/AGENTS.md --
+Shared rules.
+-- skills.md --
+Shared skills.

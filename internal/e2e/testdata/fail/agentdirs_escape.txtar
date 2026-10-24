@@ -1,0 +1,2 @@
+# agentdirs refuses paths that leave $HOME.
+agentdirs ../outside

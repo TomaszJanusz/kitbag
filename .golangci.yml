@@ -82,6 +82,8 @@ linters:
             # Schema-gate test dependencies; the schema-check rule confines them.
             - github.com/BurntSushi/toml$
             - github.com/santhosh-tekuri/jsonschema/v6$
+            # Test-only: the end-to-end harness (see test-only below).
+            - github.com/rogpeppe/go-internal/testscript$
         schema-check:
           # The JSON Schema gate is the only consumer of these libraries until
           # KIT-12 decides the parser's dependencies; production code stays free.
@@ -91,6 +93,15 @@ linters:
               desc: TOML decoding is a test-only dependency of internal/schemacheck.
             - pkg: github.com/santhosh-tekuri/jsonschema/v6
               desc: JSON Schema validation is a test-only dependency of internal/schemacheck.
+        test-only:
+          # testscript and the harness built on it must never reach production
+          # builds: only _test.go files and internal/e2e itself may import them.
+          files: ["$all", "!$test", "!**/internal/e2e/*.go"]
+          deny:
+            - pkg: github.com/rogpeppe/go-internal/
+              desc: testscript is test-only; use it from _test.go files.
+            - pkg: github.com/TomaszJanusz/kitbag/internal/e2e
+              desc: The end-to-end harness is test-only; import it from _test.go files.
         outside-platform:
           # Negated file globs restrict OS primitives everywhere except platform.
           files: ["$all", "!**/internal/platform/*.go", "!**/internal/platform/**/*.go"]
@@ -192,6 +203,12 @@ linters:
         linters: [forbidigo]
         text: Console output belongs in cmd/
       - path: ^internal/platform/
+        linters: [forbidigo]
+        text: Environment and home discovery belong in internal/platform
+      # The test-only end-to-end harness must read HOME to refuse running
+      # against the real home directory; depguard's test-only rule keeps it
+      # out of production code, where the forbidigo rule stays intact.
+      - path: ^internal/e2e/
         linters: [forbidigo]
         text: Environment and home discovery belong in internal/platform
 

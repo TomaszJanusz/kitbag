@@ -1,0 +1,5 @@
+# agentdirs refuses a real home. The test registers $WORK/real as one, so the
+# script stays inside $WORK even if the guard regresses.
+mkdir real
+env HOME=$WORK/real
+agentdirs .claude

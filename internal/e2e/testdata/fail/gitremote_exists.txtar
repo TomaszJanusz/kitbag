@@ -1,0 +1,3 @@
+# gitremote never reuses an existing path.
+mkdir remote.git
+gitremote remote.git

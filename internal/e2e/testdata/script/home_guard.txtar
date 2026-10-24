@@ -1,0 +1,14 @@
+# Commands wrapped with e2e.Guarded, kitbag included, refuse to run unless HOME
+# is a throwaway directory inside $WORK, even when a script changes HOME.
+exec probe
+nooutput
+
+env HOME=$REAL_HOME
+! exec probe hello
+stderr 'refusing to run with HOME=.*: it is the real home directory'
+! stdout .
+
+env HOME=$WORK/..
+! exec probe hello
+stderr 'refusing to run with HOME=.*: it is not a throwaway directory inside \$WORK'
+! stdout .

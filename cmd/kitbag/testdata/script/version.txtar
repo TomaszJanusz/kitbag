@@ -1,0 +1,9 @@
+# kitbag version prints the version and nothing else.
+exec kitbag version
+stdout '^kitbag dev$'
+! stderr .
+
+# Anything else prints usage to stderr and fails.
+! exec kitbag sync
+stderr '^usage: kitbag version$'
+! stdout .
