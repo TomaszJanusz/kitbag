@@ -10,6 +10,9 @@
 "aqua:mvdan/sh" = "3.14.1"
 "aqua:crate-ci/typos" = "1.51.1"
 "aqua:gitleaks/gitleaks" = "8.30.1"
+"aqua:google/osv-scanner" = "2.7.0"
+"aqua:rhysd/actionlint" = "1.7.12"
+"aqua:zizmorcore/zizmor" = "1.31.1"
 "go:github.com/daixiang0/gci" = "0.14.0"
 "go:golang.org/x/tools/cmd/goimports" = "0.52.0"
 "go:golang.org/x/vuln/cmd/govulncheck" = "1.9.0"
@@ -48,3 +51,27 @@ run = [
 [tasks."hooks:install"]
 description = "Install the repository's pre-commit hook"
 run = "lefthook install"
+
+[tasks.coverage]
+description = "Report core coverage; enforce 85% once core has statements"
+run = "bash scripts/coverage.sh"
+
+[tasks."check:modules"]
+description = "Check module metadata without writing and verify downloads"
+run = ["go mod tidy -diff", "go mod verify"]
+
+[tasks."check:windows"]
+description = "Cross-compile and vet every package for Windows"
+# Inline env keeps GOOS away from mise's own tool installs (go install cannot cross-compile).
+run = [
+  "GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ./...",
+  "GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go vet ./...",
+]
+
+[tasks."check:workflows"]
+description = "Lint and audit GitHub Actions workflows (zizmor adds online audits when GH_TOKEN is set)"
+run = ["actionlint", "zizmor .github/workflows"]
+
+[tasks."check:dependencies"]
+description = "Scan all module versions, including unreachable dependencies"
+run = "osv-scanner scan source --lockfile=go.mod"
