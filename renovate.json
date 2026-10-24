@@ -16,6 +16,11 @@
   "separateMinorPatch": true,
   "packageRules": [
     {
+      "matchManagers": ["github-actions"],
+      "matchDepNames": ["jdx/mise"],
+      "pinDigests": false
+    },
+    {
       "matchManagers": ["gomod"],
       "groupName": "Go modules"
     },
