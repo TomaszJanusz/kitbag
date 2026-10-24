@@ -5,8 +5,9 @@
 - Install the pinned tools with `mise install` (trust `mise.toml` when prompted).
 - Run `mise run hooks:install` after setup to enable pre-commit checks.
 - Run `mise run check` before every PR: read-only formatting, lint, vet, race
-  tests with shuffle, govulncheck and typos. CI runs this on Linux and macOS;
-  it also checks Windows builds/vet, modules, supply chains and core coverage.
+  tests with shuffle, govulncheck and typos.
+- CI checks: `check (ubuntu-latest)`, `check (macos-latest)`, `windows`,
+  `modules`, `security`; `ci-success` aggregates them for branch protection.
 - Use `mise run format` to fix Go formatting; `mise run format:check` only checks.
 - Hooks format staged Go files, lint changed packages, scan staged secrets and
   check spelling; lefthook preserves partially staged edits. Bash is required.

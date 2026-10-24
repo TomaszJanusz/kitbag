@@ -18,6 +18,12 @@ done < <(git diff --cached --name-only --diff-filter=ACMRD -z)
 # golangci-lint embeds its own (potentially older) formatter dependencies.
 gci_sections=(-s standard -s default -s 'prefix(github.com/TomaszJanusz/kitbag/)')
 
+# gci also formats stdin whenever it is not a terminal (a pipe on CI runners),
+# failing on the empty input. /dev/null is a character device, so gci skips it.
+gci() {
+  command gci "$@" </dev/null
+}
+
 format_go() {
   gofumpt -w "$@"
   gci write "${gci_sections[@]}" "$@"

@@ -60,9 +60,17 @@ run = "bash scripts/coverage.sh"
 description = "Check module metadata without writing and verify downloads"
 run = ["go mod tidy -diff", "go mod verify"]
 
+[tasks."check:windows"]
+description = "Cross-compile and vet every package for Windows"
+# Inline env keeps GOOS away from mise's own tool installs (go install cannot cross-compile).
+run = [
+  "GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ./...",
+  "GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go vet ./...",
+]
+
 [tasks."check:workflows"]
-description = "Lint and audit GitHub Actions workflows"
-run = ["actionlint", "zizmor --offline .github/workflows"]
+description = "Lint and audit GitHub Actions workflows (zizmor adds online audits when GH_TOKEN is set)"
+run = ["actionlint", "zizmor .github/workflows"]
 
 [tasks."check:dependencies"]
 description = "Scan all module versions, including unreachable dependencies"

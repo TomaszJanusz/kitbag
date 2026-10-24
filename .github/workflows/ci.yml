@@ -36,10 +36,6 @@ jobs:
         with:
           version: 2026.10.17
           cache: false
-          install_args: >-
-            go aqua:golangci/golangci-lint aqua:mvdan/gofumpt
-            go:github.com/daixiang0/gci go:golang.org/x/vuln/cmd/govulncheck
-            aqua:crate-ci/typos go:github.com/vladopajic/go-test-coverage/v2
       - run: mise run check
       - name: Core coverage (85% once core has code)
         run: mise run coverage
@@ -58,15 +54,7 @@ jobs:
         with:
           version: 2026.10.17
           cache: false
-          install_args: go
-      - name: Cross-compile and vet for Windows
-        env:
-          GOOS: windows
-          GOARCH: amd64
-          CGO_ENABLED: "0"
-        run: |
-          mise exec -- go build ./...
-          mise exec -- go vet ./...
+      - run: mise run check:windows
 
   modules:
     name: modules
@@ -82,7 +70,6 @@ jobs:
         with:
           version: 2026.10.17
           cache: false
-          install_args: go
       - run: mise run check:modules
 
   security:
@@ -101,11 +88,11 @@ jobs:
         with:
           version: 2026.10.17
           cache: false
-          install_args: >-
-            go aqua:gitleaks/gitleaks aqua:google/osv-scanner
-            aqua:rhysd/actionlint aqua:zizmorcore/zizmor
       # Run on every PR so changes to tool pins and lint configuration are audited too.
+      # The token enables zizmor's online audits (impostor commits, vulnerable actions).
       - run: mise run check:workflows
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: Scan history for secrets
         run: mise exec -- gitleaks git --redact --no-banner
       - run: mise run check:dependencies
