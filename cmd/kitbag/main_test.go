@@ -27,7 +27,7 @@ func TestRun(t *testing.T) {
 			t.Parallel()
 
 			var stdout, stderr bytes.Buffer
-			if code := run(tt.args, &stdout, &stderr); code != tt.code {
+			if code := run("linux", tt.args, &stdout, &stderr); code != tt.code {
 				t.Errorf("exit code = %d, want %d", code, tt.code)
 			}
 			if got := stdout.String(); got != tt.out {
@@ -40,11 +40,30 @@ func TestRun(t *testing.T) {
 	}
 }
 
+// TestRunRefusesWindows pins the documented message and exit code; changing
+// either is a user-visible change that must update docs/platform.md.
+func TestRunRefusesWindows(t *testing.T) {
+	t.Parallel()
+
+	for _, args := range [][]string{nil, {"version"}, {"sync"}} {
+		var stdout, stderr bytes.Buffer
+		if code := run("windows", args, &stdout, &stderr); code != 5 {
+			t.Errorf("args %q: exit code = %d, want 5", args, code)
+		}
+		if got := stdout.String(); got != "" {
+			t.Errorf("args %q: stdout = %q, want empty", args, got)
+		}
+		if got, want := stderr.String(), "kitbag: Windows is not supported before 1.x\n"; got != want {
+			t.Errorf("args %q: stderr = %q, want %q", args, got, want)
+		}
+	}
+}
+
 func TestRunOutputFailure(t *testing.T) {
 	t.Parallel()
 
 	var stderr bytes.Buffer
-	if code := run([]string{"version"}, failedWriter{}, &stderr); code != 1 {
+	if code := run("linux", []string{"version"}, failedWriter{}, &stderr); code != 1 {
 		t.Fatalf("exit code = %d, want 1", code)
 	}
 	if !strings.Contains(stderr.String(), "output unavailable") {
@@ -57,15 +76,17 @@ func TestRunDiagnosticFailure(t *testing.T) {
 
 	for _, tt := range []struct {
 		name string
+		goos string
 		args []string
 	}{
-		{name: "usage diagnostic"},
-		{name: "output failure diagnostic", args: []string{"version"}},
+		{name: "usage diagnostic", goos: "linux"},
+		{name: "output failure diagnostic", goos: "darwin", args: []string{"version"}},
+		{name: "unsupported OS diagnostic", goos: "windows", args: []string{"version"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			if code := run(tt.args, failedWriter{}, failedWriter{}); code != 1 {
+			if code := run(tt.goos, tt.args, failedWriter{}, failedWriter{}); code != 1 {
 				t.Fatalf("exit code = %d, want 1", code)
 			}
 		})

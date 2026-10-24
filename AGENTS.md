@@ -19,7 +19,9 @@
 - `cmd/kitbag`: CLI entry point; orchestration belongs in `internal/core`.
 - `internal/core`: synchronization policy, independent of the OS and UI.
 - `internal/platform`: host contracts; `unix`, `windows` and `fake` implement them.
-  OS-specific filesystem, services and credential operations belong here.
+  OS-specific filesystem, services and credential operations belong here. Core
+  tests use `fake`; implementations must pass the shared contract suite. See
+  [docs/platform.md](docs/platform.md).
 - `internal/adapters/<agent>`: agent paths, instruction and settings formats.
 - `internal/vcs`: Git contracts and backends.
 - `internal/ui/model`: shared view models, independent of UI renderers.
