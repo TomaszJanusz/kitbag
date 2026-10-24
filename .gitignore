@@ -1,0 +1,33 @@
+# Build and release output
+/kitbag
+/kitbag.exe
+/bin/
+/dist/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+mise.local.toml
+mise.*.local.toml
+.mise.local.toml
+.mise.*.local.toml
+
+# Tests and tool artifacts
+*.test
+*.test.exe
+*.out
+*.prof
+*.log
+/coverage/
+.playwright-cli/
+test-results/
+playwright-report/
+
+# Editors and OS metadata
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*~
