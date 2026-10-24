@@ -1,0 +1,1 @@
+bad-mode-enum.toml:3:1: /mode: value must be one of link, copy; got "symlink"

@@ -1,0 +1,1 @@
+bad-agent-kind.toml:5:1: /targets/devin/agent: value must be one of claude, codex, cursor, gemini, opencode, copilot, windsurf, generic; got "devin"

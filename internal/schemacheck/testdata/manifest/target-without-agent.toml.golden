@@ -1,0 +1,1 @@
+target-without-agent.toml:4:10: /targets/claude: missing property 'agent'

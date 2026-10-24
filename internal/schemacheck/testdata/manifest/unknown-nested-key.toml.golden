@@ -1,0 +1,1 @@
+unknown-nested-key.toml:6:1: /targets/claude/settings_file: additional properties 'settings_file' not allowed; did you mean 'settings'?

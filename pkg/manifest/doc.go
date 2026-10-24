@@ -1,4 +1,5 @@
-// Package manifest is reserved for the public kitbag configuration schema,
-// parsing and validation API. It is the module's only public library package.
-// The initial API arrives in KIT-12.
+// Package manifest parses and validates schema-v1 kitbag.toml intent.
+// Parse checks the portable document contract; Load additionally checks repository
+// sources through an injected filesystem. Neither function executes manifest
+// content. Call CheckVersion before planning and ResolveHost to select overrides.
 package manifest

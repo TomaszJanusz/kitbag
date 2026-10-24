@@ -1,0 +1,1 @@
+files-wrong-type.toml:6:1: /files/0/dest: got boolean, want string

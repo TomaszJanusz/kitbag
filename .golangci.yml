@@ -82,18 +82,33 @@ linters:
             - golang.org/x/sys/
             # Schema-gate test dependencies; the schema-check rule confines them.
             - github.com/BurntSushi/toml$
+            # KIT-12: positioned TOML parsing is confined to pkg/manifest.
+            - github.com/pelletier/go-toml/v2$
+            - github.com/pelletier/go-toml/v2/unstable$
             - github.com/santhosh-tekuri/jsonschema/v6$
             # Test-only: the end-to-end harness (see test-only below).
             - github.com/rogpeppe/go-internal/testscript$
         schema-check:
-          # The JSON Schema gate is the only consumer of these libraries until
-          # KIT-12 decides the parser's dependencies; production code stays free.
+          # The schema oracle remains test-only; production parsing uses pelletier.
           files: ["$all", "!**/internal/schemacheck/*_test.go"]
           deny:
             - pkg: github.com/BurntSushi/toml
               desc: TOML decoding is a test-only dependency of internal/schemacheck.
             - pkg: github.com/santhosh-tekuri/jsonschema/v6
               desc: JSON Schema validation is a test-only dependency of internal/schemacheck.
+        manifest-toml:
+          files: ["$all", "!**/pkg/manifest/*.go"]
+          deny:
+            - pkg: github.com/pelletier/go-toml/v2
+              desc: TOML parsing belongs in pkg/manifest.
+        manifest-host:
+          # Public parsing code and its tests use injected platform contracts.
+          files: ["**/pkg/manifest/*.go", "**/pkg/manifest/**/*.go"]
+          deny:
+            - pkg: os
+              desc: Manifest validation reaches the host through platform interfaces.
+            - pkg: io/ioutil
+              desc: Manifest validation reaches the host through platform interfaces.
         test-only:
           # testscript and the harness built on it must never reach production
           # builds: only _test.go files and internal/e2e itself may import them.
