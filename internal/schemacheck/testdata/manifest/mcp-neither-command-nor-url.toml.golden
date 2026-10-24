@@ -1,0 +1,1 @@
+mcp-neither-command-nor-url.toml:4:14: /mcp/servers/empty: oneOf: exactly one of command and url is required

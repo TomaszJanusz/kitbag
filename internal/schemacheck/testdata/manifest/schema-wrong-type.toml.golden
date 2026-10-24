@@ -1,0 +1,1 @@
+schema-wrong-type.toml:2:1: /schema: got string, want integer

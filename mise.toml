@@ -44,6 +44,8 @@ run = [
   "golangci-lint run ./...",
   "go vet ./...",
   "go test -race -shuffle=on -count=1 ./...",
+  "go test ./pkg/manifest -run=^$ -fuzz=^FuzzParse$ -fuzztime=2s -parallel=2",
+  "bash scripts/manifest-api.sh",
   "govulncheck ./...",
   "typos",
 ]
@@ -75,3 +77,11 @@ run = ["actionlint", "zizmor .github/workflows"]
 [tasks."check:dependencies"]
 description = "Scan all module versions, including unreachable dependencies"
 run = "osv-scanner scan source --lockfile=go.mod"
+
+[tasks."manifest:api:update"]
+description = "Record the reviewed public manifest API baseline"
+run = "apidiff -w docs/api/manifest.export github.com/TomaszJanusz/kitbag/pkg/manifest"
+
+[tasks."manifest:golden"]
+description = "Update reviewed manifest diagnostic golden files"
+run = "go test ./internal/schemacheck -run '^TestManifest(SchemaParity|RuntimeGoldens|SourceGoldens)$' -args -update"

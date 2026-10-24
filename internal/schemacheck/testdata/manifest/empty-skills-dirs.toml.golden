@@ -1,0 +1,1 @@
+empty-skills-dirs.toml:5:1: /skills/dirs: minItems: got 0, want 1

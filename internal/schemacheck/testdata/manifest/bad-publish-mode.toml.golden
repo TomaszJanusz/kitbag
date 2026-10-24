@@ -1,0 +1,1 @@
+bad-publish-mode.toml:5:1: /publish/mode: value must be one of direct, pr; got "force-push"

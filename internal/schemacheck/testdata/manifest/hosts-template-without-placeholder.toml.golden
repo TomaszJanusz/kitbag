@@ -1,0 +1,1 @@
+hosts-template-without-placeholder.toml:6:1: /instructions/hosts: does not match pattern: host template must contain {host}
