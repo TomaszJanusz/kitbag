@@ -79,6 +79,7 @@ linters:
             - $gostd
             - github.com/TomaszJanusz/kitbag/
             - golang.org/x/sys/
+            - golang.org/x/text/
         outside-platform:
           # Negated file globs restrict OS primitives everywhere except platform.
           files: ["$all", "!**/internal/platform/*.go", "!**/internal/platform/**/*.go"]
