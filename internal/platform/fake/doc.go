@@ -8,7 +8,8 @@
 // directory layout. Errors match the same sentinels as the unix host. Every
 // method is safe for concurrent use.
 //
-// Deliberate simplifications: there is one user and no umask, modification
+// Deliberate simplifications: there is one user and no umask, names are
+// case-sensitive (as on Linux, unlike default macOS volumes), modification
 // times are zero, directory sizes are zero and FileInfo.Sys returns nil.
 // [Host.Mount] simulates a second filesystem for cross-device renames, and
 // [Host.Opened] records targets passed to Open instead of launching anything.

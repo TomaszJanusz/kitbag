@@ -112,7 +112,9 @@ func (s suite) readDirSortedWithTypes(t *testing.T) {
 	sub := s.subject(t)
 	h := sub.host
 	mustWrite(t, h, filepath.Join(sub.root, "b"), "bb", 0o600)
-	mustWrite(t, h, filepath.Join(sub.root, "B"), "B", 0o644)
+	// Upper case sorts first in byte order; names differ beyond case because
+	// default macOS volumes are case-insensitive.
+	mustWrite(t, h, filepath.Join(sub.root, "Zeta"), "Z", 0o644)
 	mustMkdir(t, h, filepath.Join(sub.root, "a"))
 	mustLink(t, h, "b", filepath.Join(sub.root, "c"))
 	entries, err := h.ReadDir(sub.root)
@@ -120,7 +122,7 @@ func (s suite) readDirSortedWithTypes(t *testing.T) {
 	want := []struct {
 		name string
 		kind fs.FileMode
-	}{{"B", 0}, {"a", fs.ModeDir}, {"b", 0}, {"c", fs.ModeSymlink}}
+	}{{"Zeta", 0}, {"a", fs.ModeDir}, {"b", 0}, {"c", fs.ModeSymlink}}
 	if len(entries) != len(want) {
 		t.Fatalf("ReadDir = %d entries, want %d", len(entries), len(want))
 	}
@@ -267,8 +269,10 @@ func (s suite) writeAtomicForReaders(t *testing.T) {
 	)
 }
 
-// linkAtomicForReaders repoints a link while reading through it: the link
-// must never be missing or dangling in between.
+// linkAtomicForReaders repoints a link while reading: the entry must always
+// be a link, and reading through it must yield a complete target. Hosts with
+// transientLinkReads (macOS) may instead fail such a read with
+// fs.ErrInvalid, never with a missing entry.
 func (s suite) linkAtomicForReaders(t *testing.T) {
 	t.Parallel()
 	sub := s.subject(t)
@@ -282,7 +286,16 @@ func (s suite) linkAtomicForReaders(t *testing.T) {
 	mustLink(t, h, targets[0], path)
 	concurrentReads(t,
 		func(i int) error { return h.Link(targets[(i+1)%2], path) },
-		func() error { return oneOf(h, path, contents) },
+		func() error {
+			if fi, err := h.Lstat(path); err != nil || fi.Mode().Type() != fs.ModeSymlink {
+				return fmt.Errorf("entry is not a link: %v, %w", fi, err)
+			}
+			err := oneOf(h, path, contents)
+			if sub.transientLinkReads && errors.Is(err, fs.ErrInvalid) {
+				return nil
+			}
+			return err
+		},
 	)
 }
 

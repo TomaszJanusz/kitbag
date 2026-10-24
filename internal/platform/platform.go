@@ -60,7 +60,9 @@ type FS interface {
 	WriteAtomic(path string, data []byte, perm fs.FileMode) error
 	// Link replaces the file or symbolic link at path with a symbolic link to
 	// target, which is stored verbatim and need not exist. The parent
-	// directory must exist.
+	// directory must exist. The entry is never missing during replacement; on
+	// macOS a concurrent read through the old link can fail transiently with
+	// EINVAL (fs.ErrInvalid).
 	Link(target, path string) error
 	// Rename moves oldpath, of any kind, to newpath, which must not exist. A
 	// final symbolic link is moved, not followed.

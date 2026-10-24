@@ -67,6 +67,20 @@ repository file untouched. The parent directory must already exist. Whether an
 existing entry may be replaced (an unmanaged file needs a backup first, for
 example) is core policy, not platform behavior.
 
+On macOS, replacing a link has one caveat observed in CI: a program reading
+*through* the old link at the moment of the rename can get a transient
+`EINVAL` from `open(2)`, although the directory entry is never missing and
+never anything but the old or the new link. Linux readers always see one of
+the two targets. The contract suite asserts the stronger property where it
+holds and tolerates only that error on macOS. Only a read that races the
+rename is affected; a later read sees the new link. Regular files replaced by
+`WriteAtomic` showed no such effect.
+
+**Case.** Default macOS volumes are case-insensitive; Linux and the fake are
+case-sensitive. The platform does not normalize names, so callers must never
+rely on two names that differ only in case (manifest validation rejects such
+collisions independently of the OS, plan §18.1).
+
 **Durability (unix).** `WriteAtomic` writes a `.kitbag-*.tmp` sibling, sets the
 mode, syncs the file (Go uses `F_FULLFSYNC` on macOS), renames it over the
 destination and syncs the directory. `Link`, `Rename` and `Remove` also sync the
@@ -186,8 +200,13 @@ capabilities and skip when they are unavailable:
 - Cross-device renames need a second filesystem: `/dev/shm` on Linux, a
   simulated mount in the fake; macOS runners have none.
 
+One case declares a host property instead of skipping: reading through a link
+during its replacement may fail with `fs.ErrInvalid` on macOS (see
+Semantics).
+
 White-box tests in `internal/platform/unix` cover what the contract cannot
 observe: the sync-before-rename order, cleanup after injected failures, the
-opener command and terminal detection on a pseudo-terminal. A new
+opener command and terminal detection on a pseudo-terminal (the master on
+Linux; the slave on macOS, whose master is not a terminal). A new
 implementation (M6) adds a factory next to `contract_unix_test.go` and must
 pass the same suite.

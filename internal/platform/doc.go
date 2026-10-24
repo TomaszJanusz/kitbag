@@ -26,12 +26,16 @@
 //
 // [FS.WriteAtomic] and [FS.Link] atomically replace an existing file or symbolic
 // link at the destination, so readers see either the old or the new entry,
-// never a partial one. They never replace a directory and never write through a
-// symbolic link. Deciding whether an existing entry may be replaced (for example
+// never a partial one (macOS adds one caveat for links, see [FS.Link]). They
+// never replace a directory and never write through a symbolic link. Deciding whether an existing entry may be replaced (for example
 // an unmanaged file that needs a backup) is policy and belongs to the core. The
 // unix implementation writes a temporary sibling named ".kitbag-*.tmp", syncs
 // it, renames it over the destination and syncs the directory; a crash can leave
 // such a temporary file behind, never a truncated destination.
+//
+// Names are compared byte for byte, but default macOS volumes are
+// case-insensitive while Linux and the fake are case-sensitive: callers must
+// not create names that differ only in case.
 //
 // # Errors
 //

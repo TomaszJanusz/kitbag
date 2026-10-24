@@ -7,6 +7,7 @@ import (
 	"os"
 	"runtime"
 	"slices"
+	"syscall"
 	"testing"
 )
 
@@ -52,24 +53,31 @@ func TestNewUsesProcess(t *testing.T) {
 	}
 }
 
-// TestIsTerminalOnPseudoTerminal opens a pseudo-terminal master, which
-// answers terminal attribute requests on Linux and macOS.
+// TestIsTerminalOnPseudoTerminal checks a positive answer on a real
+// pseudo-terminal, opened per OS by openTerminal.
 func TestIsTerminalOnPseudoTerminal(t *testing.T) {
 	t.Parallel()
-	ptmx, err := os.OpenFile("/dev/ptmx", os.O_RDWR, 0)
-	if err != nil {
-		t.Skipf("no pseudo-terminal available: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := ptmx.Close(); err != nil {
-			t.Error(err)
-		}
-	})
 	h := New(WithEnv(noEnv))
-	if !h.IsTerminal(ptmx.Fd()) {
-		t.Error("IsTerminal(pty master) = false, want true")
+	if term := openTerminal(t); !h.IsTerminal(term.Fd()) {
+		t.Errorf("IsTerminal(%s) = false, want true", term.Name())
 	}
 	if h.IsTerminal(^uintptr(0)) {
 		t.Error("IsTerminal(out-of-range fd) = true, want false")
 	}
+}
+
+// openFile opens a device read-write without making it the controlling
+// terminal, skipping the test when pseudo-terminals are unavailable.
+func openFile(t *testing.T, path string) *os.File {
+	t.Helper()
+	f, err := os.OpenFile(path, os.O_RDWR|syscall.O_NOCTTY, 0) //nolint:gosec // G304: fixed pseudo-terminal device paths.
+	if err != nil {
+		t.Skipf("no pseudo-terminal available: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := f.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return f
 }

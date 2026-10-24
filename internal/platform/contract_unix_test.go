@@ -5,6 +5,7 @@ package platform_test
 import (
 	"errors"
 	"os"
+	"runtime"
 	"sync"
 	"syscall"
 	"testing"
@@ -49,8 +50,12 @@ func newUnixSubject(t *testing.T, env map[string]string) subject {
 		host:        h,
 		root:        root,
 		permissions: os.Geteuid() != 0,
-		otherDevice: otherDevice(t, root),
-		nonTerminal: r.Fd(),
+		// Observed on macOS CI: open(2) through a symbolic link that a
+		// concurrent rename replaces can fail with EINVAL. The entry itself is
+		// never missing.
+		transientLinkReads: runtime.GOOS == "darwin",
+		otherDevice:        otherDevice(t, root),
+		nonTerminal:        r.Fd(),
 		opened: func() []string {
 			mu.Lock()
 			defer mu.Unlock()

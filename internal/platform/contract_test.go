@@ -25,6 +25,9 @@ type subject struct {
 	nonTerminal uintptr
 	// permissions is false when permission bits are not enforced (root user).
 	permissions bool
+	// transientLinkReads is set where reading through a link that is being
+	// replaced can fail with EINVAL (macOS).
+	transientLinkReads bool
 }
 
 // factory builds a fresh subject whose environment is exactly env.
