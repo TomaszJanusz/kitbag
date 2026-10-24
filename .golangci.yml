@@ -1,0 +1,202 @@
+version: "2"
+
+run:
+  # Bound resource use on the shared runner; fail rather than hang indefinitely.
+  concurrency: 2
+  timeout: 5m
+  # A check must never repair or update module metadata.
+  modules-download-mode: readonly
+
+linters:
+  # An explicit set keeps upgrades reviewable; no implicit/default exclusions.
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - gosec
+    - revive
+    - gocritic
+    - exhaustive
+    - nilnil
+    - errorlint
+    - forbidigo
+    - depguard
+    - gochecknoglobals
+    - gochecknoinits
+    - cyclop
+    - funlen
+    - nestif
+    - unparam
+    - prealloc
+    - copyloopvar
+    - intrange
+    - perfsprint
+    - mnd
+    - misspell
+    - godot
+    - testifylint
+    - thelper
+    - tparallel
+    - paralleltest
+    - nolintlint
+    - ineffassign
+    - unused
+  settings:
+    errcheck:
+      # Include fmt/io helpers, blank assignments and type assertions: no lost errors.
+      disable-default-exclusions: true
+      check-blank: true
+      check-type-assertions: true
+    govet:
+      # Include shadow and every other available analyzer, beyond vet's defaults.
+      enable-all: true
+    exhaustive:
+      # Enum-keyed maps need the same completeness guarantees as switches.
+      check: [switch, mapliteral]
+    forbidigo:
+      # Canonical package identities catch aliased and dot-imported functions.
+      analyze-types: true
+      # Examples must respect the same architectural rules as other source.
+      exclude-godoc-examples: false
+      forbid:
+        - pattern: '^fmt\.Print.*$'
+          pkg: '^fmt$'
+          msg: Console output belongs in cmd/.
+        # Forbidigo matches identifiers, not arguments. Route ALL Getenv calls
+        # through platform so HOME (including computed keys) cannot bypass it.
+        - pattern: '^os\.(Getenv|UserHomeDir)$'
+          pkg: '^os$'
+          msg: Environment and home discovery belong in internal/platform.
+    depguard:
+      # Strict allow-lists admit stdlib + this module only. New external
+      # dependencies require an explicit review here; x/sys is platform-only.
+      # Anchored module prefixes avoid accidentally allowing similarly named modules.
+      rules:
+        common:
+          list-mode: strict
+          allow:
+            - $gostd
+            - github.com/TomaszJanusz/kitbag/
+            - golang.org/x/sys/
+        outside-platform:
+          # Negated file globs restrict OS primitives everywhere except platform.
+          files: ["$all", "!**/internal/platform/*.go", "!**/internal/platform/**/*.go"]
+          deny:
+            - pkg: syscall
+              desc: OS primitives belong in internal/platform.
+            - pkg: golang.org/x/sys/
+              desc: OS primitives belong in internal/platform.
+        core:
+          # The policy layer must not depend on command or UI renderers/models.
+          files: ["**/internal/core/*.go", "**/internal/core/**/*.go"]
+          deny:
+            - pkg: github.com/TomaszJanusz/kitbag/cmd/
+              desc: Commands orchestrate core, never the reverse.
+            - pkg: github.com/TomaszJanusz/kitbag/internal/ui/
+              desc: Core is independent of UI.
+        claude:
+          # Allow shared adapter contracts and this agent's subtree, never peers.
+          files: ["**/internal/adapters/claude/*.go", "**/internal/adapters/claude/**/*.go"]
+          list-mode: strict
+          allow:
+            - $gostd
+            - github.com/TomaszJanusz/kitbag/
+            - github.com/TomaszJanusz/kitbag/internal/adapters/claude/
+            - github.com/TomaszJanusz/kitbag/internal/adapters/claude$
+            - github.com/TomaszJanusz/kitbag/internal/adapters$
+          deny:
+            - pkg: github.com/TomaszJanusz/kitbag/internal/adapters/
+              desc: Adapters cannot import other agents.
+        codex:
+          # Longest-prefix matching admits only codex below the adapters prefix.
+          files: ["**/internal/adapters/codex/*.go", "**/internal/adapters/codex/**/*.go"]
+          list-mode: strict
+          allow:
+            - $gostd
+            - github.com/TomaszJanusz/kitbag/
+            - github.com/TomaszJanusz/kitbag/internal/adapters/codex/
+            - github.com/TomaszJanusz/kitbag/internal/adapters/codex$
+            - github.com/TomaszJanusz/kitbag/internal/adapters$
+          deny:
+            - pkg: github.com/TomaszJanusz/kitbag/internal/adapters/
+              desc: Adapters cannot import other agents.
+        generic:
+          # Apply the same self-only import boundary to the generic adapter.
+          files: ["**/internal/adapters/generic/*.go", "**/internal/adapters/generic/**/*.go"]
+          list-mode: strict
+          allow:
+            - $gostd
+            - github.com/TomaszJanusz/kitbag/
+            - github.com/TomaszJanusz/kitbag/internal/adapters/generic/
+            - github.com/TomaszJanusz/kitbag/internal/adapters/generic$
+            - github.com/TomaszJanusz/kitbag/internal/adapters$
+          deny:
+            - pkg: github.com/TomaszJanusz/kitbag/internal/adapters/
+              desc: Adapters cannot import other agents.
+        unregistered-adapters:
+          # Fail closed for a new agent until it has its own self-only rule.
+          files:
+            - "**/internal/adapters/*.go"
+            - "**/internal/adapters/**/*.go"
+            - "!**/internal/adapters/claude/*.go"
+            - "!**/internal/adapters/claude/**/*.go"
+            - "!**/internal/adapters/codex/*.go"
+            - "!**/internal/adapters/codex/**/*.go"
+            - "!**/internal/adapters/generic/*.go"
+            - "!**/internal/adapters/generic/**/*.go"
+          deny:
+            - pkg: github.com/TomaszJanusz/kitbag/internal/adapters/
+              desc: Register the adapter's self-only import rule first.
+    revive:
+      # Keep idiomatic defaults when customizing exported/package documentation.
+      enable-default-rules: true
+      rules:
+        - name: exported
+          # Document exported methods even when their receiver is private.
+          arguments: [checkPrivateReceivers]
+        - name: package-comments
+    cyclop:
+      # Keep each function within ten independent paths (including tests).
+      max-complexity: 10
+    funlen:
+      # Keep review units small; both line and statement ceilings apply to tests too.
+      lines: 60
+      statements: 40
+    nestif:
+      # Flag nesting once its cumulative complexity reaches four.
+      min-complexity: 4
+    nolintlint:
+      # Suppressions must name the linter and explain why; unused ones still fail.
+      require-specific: true
+      require-explanation: true
+  exclusions:
+    # Generated code is still project source and must satisfy the gate.
+    generated: disable
+    rules:
+      # These are architectural permissions, not baselines: permit only the
+      # relevant forbidigo diagnostic in its designated layer.
+      - path: ^cmd/
+        linters: [forbidigo]
+        text: Console output belongs in cmd/
+      - path: ^internal/platform/
+        linters: [forbidigo]
+        text: Environment and home discovery belong in internal/platform
+
+formatters:
+  # Mirror scripts/quality.sh for editor integrations; the gate and hooks use
+  # standalone mise-pinned versions rather than golangci-lint's embedded versions.
+  enable: [gofumpt, gci]
+  settings:
+    gci:
+      # Separate stdlib, third-party and KitBag imports deterministically.
+      sections: [standard, default, prefix(github.com/TomaszJanusz/kitbag/)]
+  exclusions:
+    # Format generated and build-tagged files when explicitly passed by quality.sh.
+    generated: disable
+
+issues:
+  # Show every violation and every responsible linter for useful negative controls.
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  uniq-by-line: false

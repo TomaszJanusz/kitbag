@@ -1,0 +1,16 @@
+# Sequential execution ensures lint sees formatter output; lefthook hides and
+# restores partially staged edits before running pre-commit jobs.
+min_version: 2.2.2
+pre-commit:
+  parallel: false
+  commands:
+    1-format:
+      run: mise exec -- bash scripts/quality.sh staged-format
+      glob: "*.go"
+      stage_fixed: true
+    2-lint:
+      run: mise exec -- bash scripts/quality.sh staged-lint
+    3-secrets:
+      run: mise exec -- gitleaks git --staged --redact --no-banner
+    4-typos:
+      run: mise exec -- bash scripts/quality.sh staged-typos

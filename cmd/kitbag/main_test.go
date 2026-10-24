@@ -8,12 +8,14 @@ import (
 )
 
 func TestRun(t *testing.T) {
+	t.Parallel()
+
 	for _, tt := range []struct {
 		name string
-		args []string
-		code int
 		out  string
 		err  string
+		args []string
+		code int
 	}{
 		{name: "version", args: []string{"version"}, out: "kitbag dev\n"},
 		{name: "missing command", code: 2, err: "usage: kitbag version\n"},
@@ -22,6 +24,8 @@ func TestRun(t *testing.T) {
 		{name: "flag is not a command", args: []string{"--version"}, code: 2, err: "usage: kitbag version\n"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			var stdout, stderr bytes.Buffer
 			if code := run(tt.args, &stdout, &stderr); code != tt.code {
 				t.Errorf("exit code = %d, want %d", code, tt.code)
@@ -37,12 +41,34 @@ func TestRun(t *testing.T) {
 }
 
 func TestRunOutputFailure(t *testing.T) {
+	t.Parallel()
+
 	var stderr bytes.Buffer
 	if code := run([]string{"version"}, failedWriter{}, &stderr); code != 1 {
 		t.Fatalf("exit code = %d, want 1", code)
 	}
 	if !strings.Contains(stderr.String(), "output unavailable") {
 		t.Errorf("stderr = %q, want output failure", stderr.String())
+	}
+}
+
+func TestRunDiagnosticFailure(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name string
+		args []string
+	}{
+		{name: "usage diagnostic"},
+		{name: "output failure diagnostic", args: []string{"version"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if code := run(tt.args, failedWriter{}, failedWriter{}); code != 1 {
+				t.Fatalf("exit code = %d, want 1", code)
+			}
+		})
 	}
 }
 
