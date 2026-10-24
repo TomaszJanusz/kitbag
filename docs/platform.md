@@ -188,6 +188,12 @@ follows the exit codes planned for the apply engine (0 success, 1 warnings,
 `ErrUnsupported` wrapped with the operation name from every method; M6
 (KIT-66) replaces it without changes outside `internal/platform`.
 
+## State store
+
+The machine-local store and its lock/history contracts are documented in
+[state.md](state.md). Core state tests use the fake; one process integration
+test under `cmd/kitbag` verifies the Unix kernel lock across process boundaries.
+
 ## Contract tests
 
 `internal/platform/contract_test.go` and its sibling files hold one suite
