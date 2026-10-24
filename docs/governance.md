@@ -100,6 +100,7 @@ digests and those pins are updated. Digest-only, pin, minor and major updates
 require manual merge; only patch updates opt into automerge. Renovate uses
 Conventional Commit titles, the `dependencies` label and a Monday-before-07:00
 Europe/Warsaw schedule. Its default dashboard provides manual scheduling controls.
+The `jdx/mise` version input gets version updates without digest pinning.
 
 Automerge uses PRs and squash, with `platformAutomerge: false` and
 `ignoreTests: false`: Renovate waits for checks rather than queuing platform
