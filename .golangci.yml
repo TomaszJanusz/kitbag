@@ -63,9 +63,10 @@ linters:
         - pattern: '^fmt\.Print.*$'
           pkg: '^fmt$'
           msg: Console output belongs in cmd/.
-        # Forbidigo matches identifiers, not arguments. Route ALL Getenv calls
-        # through platform so HOME (including computed keys) cannot bypass it.
-        - pattern: '^os\.(Getenv|UserHomeDir)$'
+        # Forbidigo matches identifiers, not arguments. Route ALL environment
+        # reads through platform so HOME (including computed keys) cannot bypass
+        # it; the os user directories would also pick macOS Library paths.
+        - pattern: '^os\.(Getenv|LookupEnv|Environ|ExpandEnv|UserHomeDir|UserConfigDir|UserCacheDir)$'
           pkg: '^os$'
           msg: Environment and home discovery belong in internal/platform.
     depguard:
@@ -111,13 +112,43 @@ linters:
             - pkg: golang.org/x/sys/
               desc: OS primitives belong in internal/platform.
         core:
-          # The policy layer must not depend on command or UI renderers/models.
+          # The policy layer must not depend on command or UI renderers/models,
+          # nor reach the host except through the platform interfaces. Denying
+          # os (and os/...) keeps core and its tests off the real filesystem.
           files: ["**/internal/core/*.go", "**/internal/core/**/*.go"]
           deny:
             - pkg: github.com/TomaszJanusz/kitbag/cmd/
               desc: Commands orchestrate core, never the reverse.
             - pkg: github.com/TomaszJanusz/kitbag/internal/ui/
               desc: Core is independent of UI.
+            - pkg: os
+              desc: Core reaches the host only through internal/platform; use io/fs for types.
+            - pkg: io/ioutil
+              desc: Core reaches the host only through internal/platform.
+        platform-implementations:
+          # Only the binary wires a real host; everything else, tests included,
+          # accepts the platform interfaces (tests use the in-memory fake).
+          files:
+            - "$all"
+            - "!**/cmd/*.go"
+            - "!**/cmd/**/*.go"
+            - "!**/internal/platform/*.go"
+            - "!**/internal/platform/**/*.go"
+          deny:
+            - pkg: github.com/TomaszJanusz/kitbag/internal/platform/unix
+              desc: Accept platform interfaces; only cmd/kitbag constructs a real host.
+            - pkg: github.com/TomaszJanusz/kitbag/internal/platform/windows
+              desc: Accept platform interfaces; only cmd/kitbag constructs a real host.
+        platform-fake:
+          # The in-memory host must never be wired into production code.
+          files:
+            - "$all"
+            - "!$test"
+            - "!**/internal/platform/*.go"
+            - "!**/internal/platform/**/*.go"
+          deny:
+            - pkg: github.com/TomaszJanusz/kitbag/internal/platform/fake
+              desc: The in-memory platform is for tests only.
         claude:
           # Allow shared adapter contracts and this agent's subtree, never peers.
           files: ["**/internal/adapters/claude/*.go", "**/internal/adapters/claude/**/*.go"]
