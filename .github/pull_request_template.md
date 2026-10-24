@@ -6,8 +6,8 @@ Closes KIT-
 
 ## Checks
 
-<!-- List commands and results. Run mise run check once KIT-8 provides it;
-until then use the checks in AGENTS.md. Include tests for changed behavior. -->
+<!-- Run mise run check and list results. Include tests for changed behavior
+and negative controls for quality-gate or architecture boundary changes. -->
 
 ## Not verified
 

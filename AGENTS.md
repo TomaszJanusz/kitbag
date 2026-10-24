@@ -3,11 +3,13 @@
 ## Setup and checks
 
 - Install the pinned tools with `mise install` (trust `mise.toml` when prompted).
-- Use `mise exec -- go build ./...` and `mise exec -- go test ./...` now.
-- Run `mise exec -- go vet ./...` and `mise exec -- gofumpt -d .` before a PR.
+- Run `mise run hooks:install` after setup to enable pre-commit checks.
+- Run `mise run check` before every PR: read-only formatting, lint, vet, race
+  tests with shuffle, govulncheck and typos. CI arrives in KIT-9.
+- Use `mise run format` to fix Go formatting; `mise run format:check` only checks.
+- Hooks format staged Go files, lint changed packages, scan staged secrets and
+  check spelling; lefthook preserves partially staged edits. Bash is required.
 - Run `mise exec -- go run ./cmd/kitbag version` to check the CLI.
-- The required `mise run check` gate arrives in KIT-8; this bootstrap does not
-  define it. Once available, run it before every PR. CI arrives in KIT-9.
 - Keep every tool pinned in `mise.toml`; do not install global workarounds.
 
 ## Architecture
@@ -21,7 +23,8 @@
 - `internal/ui/model`: shared view models, independent of UI renderers.
 - `pkg/manifest`: the only public library package; treat its API as a contract.
 - Record architecture decisions in [docs/adr](docs/adr/). Read relevant ADRs
-  before changing package responsibilities. Dependency linting arrives in KIT-8.
+  before changing package responsibilities. Update `.golangci.yml` allow-lists
+  when adding dependencies or agents; adapters may import only their own subtree.
 
 ## Pull requests
 
