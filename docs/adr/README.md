@@ -13,6 +13,10 @@ architecture, not features already implemented.
 7. [Name the project kitbag](0007-name.md) — Accepted
 8. [Use the MIT License](0008-license.md) — Accepted
 
+Follow-up recommendations remain open until accepted:
+
+9. [Preserve skills lock interchange and separate immutable provenance](0009-skill-lock-interchange.md) — Proposed (KIT-2)
+
 ## Planning sources and revisions
 
 The source is [KIT-3](https://linear.app/privacybrand/issue/KIT-3/adrs-for-the-decisions-already-taken-plus-licence)
