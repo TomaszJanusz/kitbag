@@ -19,14 +19,15 @@ var errMountNotEmpty = errors.New("mount point is not an empty directory")
 
 // Host is an in-memory platform.Host. Create it with [New].
 type Host struct {
-	volumes   map[string]*node
-	locks     map[*node]bool
-	env       map[string]string
-	terminals map[uintptr]bool
-	hostname  string
-	opened    []string
-	devices   int
-	mu        sync.Mutex
+	volumes    map[string]*node
+	locks      map[*node]bool
+	env        map[string]string
+	terminals  map[uintptr]bool
+	writeFault *writeFault
+	hostname   string
+	opened     []string
+	devices    int
+	mu         sync.Mutex
 }
 
 var _ platform.Host = (*Host)(nil)

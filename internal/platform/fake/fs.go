@@ -217,6 +217,11 @@ func (h *Host) replace(op, path string, n *node) error {
 		return wrap(op, path, fs.ErrPermission)
 	}
 	n.dev = w.parent.dev
+	if op == "write" {
+		if err := h.interruptWrite(path, n); err != nil {
+			return wrap(op, path, err)
+		}
+	}
 	w.parent.children[w.name] = n
 	return nil
 }
