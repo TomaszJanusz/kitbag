@@ -1,5 +1,7 @@
 # kitbag
 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/TomaszJanusz/kitbag/badge)](https://scorecard.dev/viewer/?uri=github.com/TomaszJanusz/kitbag)
+
 kitbag is a planned tool for synchronizing AI coding agents' global configuration
 from a Git repository across machines. The initial target platforms are macOS and
 Linux; Windows support follows later.
