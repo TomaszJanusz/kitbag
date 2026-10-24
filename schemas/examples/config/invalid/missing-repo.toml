@@ -1,0 +1,5 @@
+# expect: missing property 'repo'
+schema = 1
+
+[git]
+backend = "system"

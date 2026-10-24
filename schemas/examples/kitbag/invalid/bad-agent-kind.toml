@@ -1,0 +1,5 @@
+# expect: value must be one of
+schema = 1
+
+[targets.devin]
+agent = "devin"

@@ -1,0 +1,10 @@
+# expect: /targets/amp/settings
+schema = 1
+
+[targets.amp]
+agent = "generic"
+settings = "amp/settings.json"
+
+[targets.amp.instances.main]
+dir = "~/.config/amp"
+roots = { instructions = "~/.config/amp/AGENTS.md" }

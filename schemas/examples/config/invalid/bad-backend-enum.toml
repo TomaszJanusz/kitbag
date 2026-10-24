@@ -1,0 +1,8 @@
+# expect: value must be one of
+schema = 1
+
+[repo]
+url = "git@github.com:TomaszJanusz/agent-config.git"
+
+[git]
+backend = "libgit2"

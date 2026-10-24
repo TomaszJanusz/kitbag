@@ -1,0 +1,6 @@
+# expect: oneOf
+schema = 1
+
+[mcp.servers.mixed]
+command = "npx"
+url = "https://example.com/mcp"

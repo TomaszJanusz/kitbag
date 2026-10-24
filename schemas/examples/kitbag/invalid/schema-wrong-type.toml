@@ -1,0 +1,5 @@
+# expect: got string, want integer
+schema = "1"
+
+[instructions]
+source = "AGENTS.md"

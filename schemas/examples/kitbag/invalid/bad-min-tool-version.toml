@@ -1,0 +1,3 @@
+# expect: does not match pattern
+schema = 1
+min_tool_version = "v0.1"

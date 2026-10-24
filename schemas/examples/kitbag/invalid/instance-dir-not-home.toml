@@ -1,0 +1,8 @@
+# expect: does not match pattern
+schema = 1
+
+[targets.claude]
+agent = "claude"
+
+[targets.claude.instances.main]
+dir = ".claude"

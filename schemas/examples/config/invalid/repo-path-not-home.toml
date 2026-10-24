@@ -1,0 +1,6 @@
+# expect: does not match pattern
+schema = 1
+
+[repo]
+url = "git@github.com:TomaszJanusz/agent-config.git"
+path = "/srv/agent-config"

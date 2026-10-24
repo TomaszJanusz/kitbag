@@ -1,0 +1,4 @@
+# expect: missing property 'schema'
+
+[repo]
+url = "git@github.com:TomaszJanusz/agent-config.git"
