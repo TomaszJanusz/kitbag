@@ -28,6 +28,21 @@
       "groupName": "mise tools"
     },
     {
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["patch"],
+      "groupName": "Go module patches"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["patch"],
+      "groupName": "GitHub Actions patches"
+    },
+    {
+      "matchManagers": ["mise"],
+      "matchUpdateTypes": ["patch"],
+      "groupName": "mise tool patches"
+    },
+    {
       "matchUpdateTypes": ["patch"],
       "automerge": true
     }
