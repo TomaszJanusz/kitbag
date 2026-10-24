@@ -1,0 +1,35 @@
+# gitremote serves a seeded configuration repository from a local bare remote.
+gitremote $WORK/config.git config
+exec git clone --quiet $WORK/config.git checkout
+cmp checkout/global/AGENTS.md config/global/AGENTS.md
+exec git -C checkout branch --show-current
+stdout '^main$'
+! exists config/.git
+
+# Commits have a fixed identity and date and are never signed.
+exec git -C checkout log -1 --date=iso-strict '--format=%an <%ae>|%cn <%ce>|%ad|%s|%G?'
+stdout '^KitBag Test <test@kitbag.invalid>\|KitBag Test <test@kitbag.invalid>\|2026-01-01T00:00:00\+00:00\|Seed config\|N$'
+
+# Without a seed directory the remote is empty.
+gitremote empty.git
+exec git ls-remote empty.git
+nooutput
+
+# The harness file is the only global configuration; system files are ignored.
+exec git config --show-origin --get commit.gpgsign
+stdout '^file:'${WORK@R}'/\.gitconfig\tfalse$'
+
+# Hooks never run: this one would fail the commit.
+cp fail-hook checkout/.git/hooks/pre-commit
+chmod 755 checkout/.git/hooks/pre-commit
+exec git -C checkout commit --quiet --allow-empty --message 'Hooks are disabled'
+
+# Only local file remotes are allowed, so scripts never reach the network.
+! exec git ls-remote https://example.invalid/config.git
+stderr 'transport ''https'' not allowed'
+
+-- config/global/AGENTS.md --
+Shared rules.
+-- fail-hook --
+#!/bin/sh
+exit 1

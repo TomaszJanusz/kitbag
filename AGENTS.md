@@ -24,6 +24,8 @@
 - `internal/vcs`: Git contracts and backends.
 - `internal/ui/model`: shared view models, independent of UI renderers.
 - `pkg/manifest`: the only public library package; treat its API as a contract.
+- `internal/e2e`: test-only testscript harness; prove CLI behaviour with scripts
+  in `cmd/kitbag/testdata/script` (see README), never against the real HOME.
 - Record architecture decisions in [docs/adr](docs/adr/). Read relevant ADRs
   before changing package responsibilities. Update `.golangci.yml` allow-lists
   when adding dependencies or agents; adapters may import only their own subtree.

@@ -1,0 +1,35 @@
+# Harness helpers: a throwaway HOME with agent directories, and assertions on
+# symlink targets, file content and silent commands.
+
+# HOME is $WORK/home; sections under home/ pre-populate it.
+exec probe $HOME
+stdout '^'${WORK@R}'/home$'
+agentdirs .claude .codex .claude_2
+exists $HOME/.codex
+exists $HOME/.claude_2
+content $HOME/.claude/settings.json '{}'
+
+# linktarget checks the exact target, or only that the path is a symlink.
+symlink $HOME/.codex/AGENTS.md -> $WORK/shared/AGENTS.md
+linktarget $HOME/.codex/AGENTS.md $WORK/shared/AGENTS.md
+linktarget $HOME/.codex/AGENTS.md
+! linktarget $HOME/.codex/AGENTS.md $WORK/other/AGENTS.md
+! linktarget $HOME/.claude/settings.json
+! linktarget $HOME/.claude/missing.json
+
+# content reads through symlinks; pair it with linktarget to check the mode.
+content $HOME/.codex/AGENTS.md 'Shared rules.'
+! content $HOME/.codex/AGENTS.md 'Other rules.'
+
+# nooutput checks that the last command wrote nothing to stdout or stderr.
+exec probe
+nooutput
+exec probe hello
+! nooutput
+exec probe -stderr warning
+! nooutput
+
+-- home/.claude/settings.json --
+{}
+-- shared/AGENTS.md --
+Shared rules.
