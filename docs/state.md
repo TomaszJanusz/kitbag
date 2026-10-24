@@ -24,9 +24,9 @@ Path fields must be absolute and clean in the host's syntax. `link_target` is
 an exception: it preserves the symbolic link's exact text, including relative
 links, so revert can reproduce the original link. NUL bytes are rejected.
 Hashes currently require `sha256:` plus 64 lowercase hexadecimal digits. The
-store validates the envelope; the materializer computes hashes and defines the
-representation of directories and generated output. It stores neither file
-contents nor credentials. Local source paths/hashes describe applied working-copy
+store validates the envelope; the [plan engine](plan.md#hashes-and-ownership)
+computes hashes and defines the representation of directories and generated
+output. It stores neither file contents nor credentials. Local source paths/hashes describe applied working-copy
 inputs, never canonical remote identities or resolved pins. Those belong in the
 separate provenance contract ([ADR 9](adr/0009-skill-lock-interchange.md)).
 

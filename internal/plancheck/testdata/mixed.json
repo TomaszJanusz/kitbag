@@ -1,0 +1,114 @@
+{
+  "operations": [
+    {
+      "kind": "remove",
+      "path": "/home/stale",
+      "classification": "update needed"
+    },
+    {
+      "kind": "backup",
+      "path": "/home/generated",
+      "classification": "unmanaged obstacle",
+      "backup_path": "/home/generated.kitbag-backup"
+    },
+    {
+      "desired": {
+        "path": "/home/generated",
+        "kind": "generated",
+        "written_hash": "sha256:90b6b349ef80022c1fb215f3d9ff005614ef5f28be4177dc1570dfd25bc00517",
+        "owners": [
+          {
+            "primitive": "skills",
+            "agent_instance": "fake:main"
+          }
+        ]
+      },
+      "kind": "write",
+      "path": "/home/generated",
+      "classification": "unmanaged obstacle"
+    },
+    {
+      "desired": {
+        "path": "/home/settings",
+        "kind": "merged",
+        "written_hash": "sha256:1bc1e275be9de55fc61946ee4a874bed7563e96a39fdd94edeb22304971952b0",
+        "owners": [
+          {
+            "primitive": "skills",
+            "agent_instance": "fake:main"
+          }
+        ]
+      },
+      "kind": "merge",
+      "path": "/home/settings",
+      "classification": "update needed"
+    },
+    {
+      "desired": {
+        "path": "/home/skill",
+        "kind": "materialized",
+        "source_path": "/repo/skill",
+        "source_hash": "sha256:2055cc30c64fd49d203476b0379b038f706b394d4fa420d581d18968bc742cb7",
+        "written_hash": "sha256:2055cc30c64fd49d203476b0379b038f706b394d4fa420d581d18968bc742cb7",
+        "owners": [
+          {
+            "primitive": "skills",
+            "agent_instance": "fake:main"
+          }
+        ]
+      },
+      "kind": "materialize",
+      "path": "/home/skill",
+      "classification": "update needed"
+    },
+    {
+      "desired": {
+        "path": "/home/refresh",
+        "kind": "generated",
+        "written_hash": "sha256:4969d019569c1478f23ce2c2605fa3defcbfedd7c94958b3841272dabf09ffd2",
+        "owners": [
+          {
+            "primitive": "skills",
+            "agent_instance": "fake:main"
+          }
+        ]
+      },
+      "kind": "record",
+      "path": "/home/refresh",
+      "classification": "in sync"
+    },
+    {
+      "kind": "skip",
+      "path": "/home/drift",
+      "classification": "local drift",
+      "warning": "managed destination has local changes"
+    }
+  ],
+  "observations": [
+    {
+      "path": "/home/drift",
+      "classification": "local drift"
+    },
+    {
+      "path": "/home/generated",
+      "classification": "unmanaged obstacle"
+    },
+    {
+      "path": "/home/refresh",
+      "classification": "in sync"
+    },
+    {
+      "path": "/home/settings",
+      "classification": "update needed"
+    },
+    {
+      "path": "/home/skill",
+      "classification": "update needed"
+    },
+    {
+      "path": "/home/stale",
+      "classification": "update needed"
+    }
+  ],
+  "plan_schema": 1
+}

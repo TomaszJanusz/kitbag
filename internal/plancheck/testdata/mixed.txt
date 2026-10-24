@@ -1,0 +1,7 @@
+remove "/home/stale" [update needed]
+backup "/home/generated" [unmanaged obstacle] -> "/home/generated.kitbag-backup"
+write "/home/generated" [unmanaged obstacle]
+merge "/home/settings" [update needed]
+materialize "/home/skill" [update needed]
+record "/home/refresh" [in sync]
+skip "/home/drift" [local drift]: managed destination has local changes
