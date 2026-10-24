@@ -1,0 +1,45 @@
+# --git-backend selects the Git backend for every command (docs/vcs.md).
+
+# With Git installed, forcing system Git works.
+exec kitbag --git-backend=system version
+stdout '^kitbag dev$'
+! stderr .
+
+# Without Git on PATH, the default (auto) does not need Git for version...
+hidecmd git
+exec kitbag version
+stdout '^kitbag dev$'
+! stderr .
+
+# ...but forcing system Git is a hard error with an install hint, never a
+# silent fallback.
+! exec kitbag --git-backend=system version
+! stdout .
+stderr '^kitbag: Git backend "system" \(selected by --git-backend\) is unavailable: git was not found in PATH; install Git 2\.30 or newer \(https://git-scm\.com/downloads\)$'
+
+# KITBAG_GIT_BACKEND forces it too, and the flag takes precedence over it.
+env KITBAG_GIT_BACKEND=system
+! exec kitbag version
+stderr '\(selected by KITBAG_GIT_BACKEND\) is unavailable: git was not found in PATH'
+exec kitbag --git-backend=auto version
+stdout '^kitbag dev$'
+env KITBAG_GIT_BACKEND=
+
+# The embedded backend is not available yet; selecting it says so.
+! exec kitbag --git-backend=embedded version
+stderr '^kitbag: Git backend "embedded" \(selected by --git-backend\) is unavailable: the embedded Git backend is not available in this version of kitbag; '
+
+# An unknown backend is a usage error.
+! exec kitbag --git-backend=libgit2 version
+stderr '^kitbag: --git-backend: invalid Git backend "libgit2": want auto, system or embedded$'
+
+# A Git older than 2.30 is refused with both versions named.
+[windows] stop 'the fake git is a shell script'
+chmod 0755 oldgit/git
+env PATH=$WORK${/}oldgit${:}$PATH
+! exec kitbag --git-backend=system version
+stderr '^kitbag: Git backend "system" \(selected by --git-backend\) is unavailable: git 2\.29\.2 is older than the required 2\.30; install Git 2\.30 or newer'
+
+-- oldgit/git --
+#!/bin/sh
+echo 'git version 2.29.2'

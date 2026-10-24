@@ -29,6 +29,14 @@ exec probe hello
 exec probe -stderr warning
 ! nooutput
 
+
+# hidecmd removes the PATH entries that hold a program; harness commands stay.
+exec git --version
+hidecmd git
+! exec git --version
+exec probe still here
+stdout '^still here$'
+
 -- home/.claude/settings.json --
 {}
 -- shared/AGENTS.md --

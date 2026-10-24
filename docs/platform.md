@@ -20,7 +20,9 @@ and the decisions behind it. The package documentation (`go doc
 Lint enforces the boundaries: `syscall` and `golang.org/x/sys` stay in
 `internal/platform`; environment and user-directory lookups (`os.Getenv`,
 `os.LookupEnv`, `os.Environ`, `os.UserHomeDir`, `os.UserConfigDir`, ...) stay
-in `internal/platform`; only `cmd/` may import `unix` or `windows`; only tests
+in `internal/platform`; `os/exec` stays in `internal/platform` and the system
+Git backend ([vcs.md](vcs.md)), which pass child processes an explicit
+environment; only `cmd/` may import `unix` or `windows`; only tests
 may import `fake`; and `internal/core`, tests included, may not import `os`,
 so it cannot touch the real filesystem.
 
