@@ -7,6 +7,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/TomaszJanusz/kitbag/internal/core/apply"
 	"github.com/TomaszJanusz/kitbag/internal/core/plan"
 	"github.com/TomaszJanusz/kitbag/internal/core/state"
 	"github.com/TomaszJanusz/kitbag/internal/platform"
@@ -72,6 +73,9 @@ func OutOfRange(err error) bool { return errors.Is(err, rangeError{}) }
 // it aside to a backup. Discarded KitBag output cannot be restored; it is
 // skipped with a hint to sync. Revert is itself journaled, so it can be undone.
 func Revert(fsys platform.FS, session *state.Session, to int, options Options) (Outcome, error) {
+	if err := recovered(fsys, session, options); err != nil {
+		return Outcome{Plan: newPlan(options.Force)}, err
+	}
 	db, err := prepare(fsys, session, options)
 	if err != nil {
 		return Outcome{Plan: newPlan(options.Force)}, err
@@ -116,6 +120,21 @@ func selected(plans []Applied) ([]string, map[string]state.Change, map[string]*s
 	}
 	slices.Sort(paths)
 	return paths, oldest, newer
+}
+
+// recovered finishes an interrupted step and then stops: unlike sync and
+// unmanage, revert is not idempotent, and the completed steps of an interrupted
+// revert form their own journaled plan that a blind retry would undo.
+func recovered(fsys platform.FS, session *state.Session, options Options) error {
+	db, err := session.Load()
+	if err != nil || db.Pending == nil || options.DryRun {
+		return err
+	}
+	if err = apply.Recover(fsys, session); err != nil {
+		return err
+	}
+	return errors.New("recovered an interrupted step; review kitbag revert --list before reverting again " +
+		"(the completed steps of an interrupted revert are plan 1, so --to 2 finishes it)")
 }
 
 func ownerPointer(t state.Target, ok bool) *state.Target {
