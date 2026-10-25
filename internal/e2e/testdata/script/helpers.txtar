@@ -37,6 +37,30 @@ hidecmd git
 exec probe still here
 stdout '^still here$'
 
+# homefixture installs a recorded HOME with @HOME@ expanded, links included.
+homefixture recorded
+content $HOME/.codex/recorded.md 'Recorded in '$HOME'.'
+linktarget $HOME/.agents/skills/tool $HOME/checkout/skills/tool
+grep 'path = '$HOME'/checkout/git' $GIT_CONFIG_GLOBAL
+
+# treesnap fingerprints a tree: equal bytes rewritten still differ (mtime).
+treesnap $HOME before.snap .claude
+cp $HOME/.claude/settings.json $HOME/.claude/other.json
+treesnap $HOME same.snap .claude
+cmp before.snap same.snap
+cp $HOME/.codex/recorded.md $WORK/copy.md
+cp $WORK/copy.md $HOME/.codex/recorded.md
+treesnap $HOME rewritten.snap .claude
+! cmp before.snap rewritten.snap
+grep '^\.agents/skills/tool L.* -> '$HOME'/checkout/skills/tool$' before.snap
+
+-- recorded/.codex/recorded.md --
+Recorded in @HOME@.
+-- recorded.links --
+.agents/skills/tool -> @HOME@/checkout/skills/tool
+-- recorded.gitconfig --
+[include]
+	path = @HOME@/checkout/git/agent.gitconfig
 -- home/.claude/settings.json --
 {}
 -- shared/AGENTS.md --

@@ -60,6 +60,13 @@ func (b *builder) activeWarning(p prepared, c current, owned bool) bool {
 
 func (b *builder) managed(p prepared, previous state.Target, c current) error {
 	d := p.declaration
+	if legacy, ok := legacyEquivalent(p.desired, c); ok {
+		b.observe(d.Path, InSync)
+		if !metadataEqual(legacy, previous) {
+			b.plan.Operations = append(b.plan.Operations, Operation{Kind: Record, Path: d.Path, Classification: InSync, Desired: &legacy})
+		}
+		return nil
+	}
 	classification := classify(p.desired, previous, c)
 	if c.repair {
 		classification = UpdateNeeded
@@ -80,6 +87,18 @@ func (b *builder) managed(p prepared, previous state.Target, c current) error {
 	}
 	b.plan.Operations = append(b.plan.Operations, Operation{Kind: kind, Path: d.Path, Classification: classification, Desired: &p.desired})
 	return nil
+}
+
+// legacyEquivalent accepts agent-config-sync's rendering of exactly the desired
+// output (its marker instead of KitBag's) and records the bytes actually present.
+// The next change of the desired output rewrites the file with KitBag's marker.
+func legacyEquivalent(d Desired, c current) (Desired, bool) {
+	if d.LegacyHash == "" || !c.exists || c.directory || c.link || c.hash != d.LegacyHash {
+		return d, false
+	}
+	d.WrittenHash = d.LegacyHash
+	d.Content = nil
+	return d, true
 }
 
 func obstacleClass(owned bool) Classification {
@@ -164,6 +183,11 @@ func (b *builder) merge(p *prepared, c current) (bool, error) {
 	}
 	p.desired.Content = bytes.Clone(content)
 	p.desired.WrittenHash = HashBytes(content)
+	if renderer, ok := p.declaration.Merger.(target.LegacyRenderer); ok {
+		if legacy, legacyErr := renderer.Legacy(bytes.Clone(content)); legacyErr == nil {
+			p.desired.LegacyHash = HashBytes(legacy)
+		}
+	}
 	return true, nil
 }
 

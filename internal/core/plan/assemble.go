@@ -46,6 +46,7 @@ func addDeclaration(byPath map[string]target.Target, d target.Target, repository
 		return err
 	}
 	d.Content = bytes.Clone(d.Content)
+	d.Legacy = bytes.Clone(d.Legacy)
 	d.Owners = sortedOwners(d.Owners)
 	if previous, ok := byPath[d.Path]; ok {
 		if !sameDeclaration(previous, d) {
@@ -121,7 +122,7 @@ func sortedOwners(owners []state.Owner) []state.Owner {
 
 func sameDeclaration(a, b target.Target) bool {
 	// Independently composed mergers cannot safely share a destination yet.
-	return a.Preserve == b.Preserve && a.Kind != target.Merged && a.Kind == b.Kind && a.Mode == b.Mode && a.InstanceDir == b.InstanceDir && a.SourcePath == b.SourcePath && bytes.Equal(a.Content, b.Content) && a.Backup == b.Backup && a.Warning == b.Warning
+	return a.Preserve == b.Preserve && a.Kind != target.Merged && a.Kind == b.Kind && a.Mode == b.Mode && a.InstanceDir == b.InstanceDir && a.SourcePath == b.SourcePath && bytes.Equal(a.Content, b.Content) && bytes.Equal(a.Legacy, b.Legacy) && a.Backup == b.Backup && a.Warning == b.Warning
 }
 
 func foldedOverlap(a, b string) bool {

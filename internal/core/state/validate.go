@@ -116,6 +116,9 @@ func validateChanges(changes []Change) error {
 			return invalid("duplicate journal path")
 		}
 		paths[change.Path] = true
+		if change.Adopted && change.Previous != nil {
+			return invalid("adopted journal entry has a previous entry")
+		}
 		if change.Previous == nil {
 			continue
 		}
@@ -154,6 +157,10 @@ func validateRestore(prev Previous) error {
 	}
 	if prev.LinkTarget != "" {
 		return invalid("file cannot have link target")
+	}
+	if prev.BackupPath == "" && prev.Managed != nil {
+		// Discarded KitBag output: the repository reproduces it.
+		return nil
 	}
 	return validPath(prev.BackupPath)
 }

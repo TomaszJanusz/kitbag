@@ -20,9 +20,12 @@ kitbag [flags]
 
 ### SEE ALSO
 
+* [kitbag adopt](kitbag_adopt.md)	 - Take over destinations agent-config-sync already manages
 * [kitbag doctor](kitbag_doctor.md)	 - Explain synchronization problems and suggest fixes
 * [kitbag plan](kitbag_plan.md)	 - Show the local synchronization diff without applying it
+* [kitbag revert](kitbag_revert.md)	 - Restore the targets as they were before recent plans
 * [kitbag status](kitbag_status.md)	 - Show upstream relation, last sync and local drift
 * [kitbag sync](kitbag_sync.md)	 - Pull and apply configuration in one pass
+* [kitbag unmanage](kitbag_unmanage.md)	 - Remove everything KitBag created and restore what it replaced
 * [kitbag version](kitbag_version.md)	 - Print the tool version
 

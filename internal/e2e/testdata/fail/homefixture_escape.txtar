@@ -1,0 +1,5 @@
+homefixture fixture
+-- fixture/.claude/CLAUDE.md --
+inside
+-- fixture.links --
+../outside -> @HOME@/.claude/CLAUDE.md

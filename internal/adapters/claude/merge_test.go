@@ -78,4 +78,44 @@ func checkGolden(t *testing.T, name string, fragment, got []byte, mergeErr error
 	if mergeErr != nil || !bytes.Equal(got, again) {
 		t.Fatalf("merge not idempotent: %s, %v", again, mergeErr)
 	}
+	checkLegacy(t, name, got)
+}
+
+func checkLegacy(t *testing.T, name string, got []byte) {
+	t.Helper()
+	// The legacy rendering is exactly what agent-config-sync's jq produced.
+	if legacy, err := (claude.Merger{}).Legacy(got); err != nil || !bytes.Equal(legacy, read(t, name+".legacy.json")) {
+		t.Fatalf("legacy rendering:\ngot:\n%s\nwant:\n%s (%v)", legacy, read(t, name+".legacy.json"), err)
+	}
+	unmerged, err := (claude.Merger{}).Unmerge(got)
+	if err != nil || bytes.Contains(unmerged, []byte(" "+claude.HookMarker+`"`)) {
+		t.Fatalf("unmerge kept managed hooks: %s, %v", unmerged, err)
+	}
+}
+
+func TestUnmerge(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ name, current, want string }{
+		{"empty", ``, ``},
+		{"unowned unchanged", `{"b":1,  "a":2}`, `{"b":1,  "a":2}`},
+		{"foreign hooks kept", `{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"x"}]}]}}`, `{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"x"}]}]}}`},
+		{"owned removed", `{"theme":"dark","hooks":{"Stop":[{"hooks":[{"type":"command","command":"x # kitbag-managed"}]}],"Start":[{"hooks":[{"type":"command","command":"y"}]}]}}`, "{\n  \"theme\": \"dark\",\n  \"hooks\": {\n    \"Start\": [\n      {\n        \"hooks\": [\n          {\n            \"type\": \"command\",\n            \"command\": \"y\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"},
+		{"legacy removed with empty hooks", `{"theme":"dark","hooks":{"Stop":[{"hooks":[{"type":"command","command":"x # agent-config-managed"}]}]}}`, "{\n  \"theme\": \"dark\"\n}\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := (claude.Merger{}).Unmerge([]byte(tc.current))
+			if err != nil || string(got) != tc.want {
+				t.Fatalf("Unmerge = %q, %v; want %q", got, err, tc.want)
+			}
+		})
+	}
+	for _, bad := range []string{`[]`, `{"hooks":[]}`, `{bad`} {
+		if _, err := (claude.Merger{}).Unmerge([]byte(bad)); err == nil {
+			t.Fatalf("Unmerge accepted %s", bad)
+		}
+	}
+	if _, err := (claude.Merger{}).Legacy([]byte(`[]`)); err == nil {
+		t.Fatal("Legacy accepted a non-object")
+	}
 }

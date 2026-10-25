@@ -87,3 +87,74 @@ func contains(values []any, wanted any) bool {
 	}
 	return false
 }
+
+// Legacy renders merged output as agent-config-sync wrote the same content:
+// every trailing HookMarker becomes the legacy marker. Nothing else differs, so
+// an adopted file the script merged is recognized as in sync, never rewritten.
+func (Merger) Legacy(output []byte) ([]byte, error) {
+	settings, err := parseObject(output, false)
+	if err != nil {
+		return nil, err
+	}
+	for _, hook := range commandHooks(settings) {
+		if command := asString(hook.get("command")); strings.HasSuffix(command, " "+HookMarker) {
+			hook.set("command", strings.TrimSuffix(command, HookMarker)+legacyHookMarker)
+		}
+	}
+	return formatJSON(settings)
+}
+
+// Unmerge removes every hook group carrying either managed marker and drops
+// events or a hooks object left empty. Other keys, including merged repository
+// values that cannot be told apart from local ones, stay. Unowned input is
+// returned unchanged, byte for byte.
+func (Merger) Unmerge(current []byte) ([]byte, error) {
+	settings, err := parseObject(current, true)
+	if err != nil {
+		return nil, err
+	}
+	events, err := hookEvents(settings.get("hooks"), false)
+	if err != nil {
+		return nil, err
+	}
+	kept, removed := object{}, false
+	for _, event := range events {
+		retained := []any{}
+		for _, group := range asArray(event.value) {
+			if managedGroup(asObject(group)) {
+				removed = true
+				continue
+			}
+			retained = append(retained, group)
+		}
+		if len(retained) > 0 {
+			kept = append(kept, member{key: event.key, value: retained})
+		}
+	}
+	if !removed {
+		return current, nil
+	}
+	if len(kept) == 0 {
+		settings = settings.without("hooks")
+	} else {
+		settings.set("hooks", kept)
+	}
+	return formatJSON(settings)
+}
+
+// commandHooks returns the hook objects of every group, sharing their storage.
+func commandHooks(settings object) []object {
+	var hooks []object
+	events, ok := settings.get("hooks").(object)
+	if !ok {
+		return nil
+	}
+	for _, event := range events {
+		for _, group := range asArray(event.value) {
+			for _, hook := range asArray(asObject(group).get("hooks")) {
+				hooks = append(hooks, asObject(hook))
+			}
+		}
+	}
+	return hooks
+}

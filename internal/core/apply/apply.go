@@ -45,6 +45,7 @@ func validateOptions(p plan.Plan, options Options) error {
 func executeOperations(fsys platform.FS, session *state.Session, db *state.Database, p plan.Plan, options Options) (Result, error) {
 	result := Result{}
 	blocked := map[string]bool{}
+	group := ""
 	for _, op := range p.Operations {
 		if op.Kind == plan.Skip {
 			result.skip(op)
@@ -53,7 +54,7 @@ func executeOperations(fsys platform.FS, session *state.Session, db *state.Datab
 		if blocked[op.Path] {
 			continue
 		}
-		err := executeStep(fsys, session, db, op, options)
+		err := executeStep(fsys, session, db, op, options, &group)
 		if errors.Is(err, errChanged()) && db.Pending == nil {
 			result.Conflicts = append(result.Conflicts, Diagnostic{op.Path, err.Error()})
 			blocked[op.Path] = true
@@ -97,18 +98,23 @@ func check(fsys platform.FS, path string, expected state.Entry) error {
 	return nil
 }
 
-func executeStep(fsys platform.FS, session *state.Session, db *state.Database, op plan.Operation, options Options) error {
+// executeStep runs one operation. All journal entries of one Execute share the
+// first step's ID as their plan group, which revert undoes as a unit.
+func executeStep(fsys platform.FS, session *state.Session, db *state.Database, op plan.Operation, options Options, group *string) error {
 	if err := checkOperation(fsys, op); err != nil {
 		return err
 	}
-	if op.Kind == plan.Record {
-		record(db, desiredTarget(*op.Desired, existingKind(db, op.Path)))
+	if op.Kind == plan.Record || op.Kind == plan.Release {
+		if err := metadata(db, op); err != nil {
+			return err
+		}
 		return session.Save(*db)
 	}
-	step, err := prepareStep(fsys, db, op, options)
+	step, err := prepareStep(fsys, db, op, options, *group)
 	if err != nil {
 		return err
 	}
+	*group = step.Plan
 	db.Pending = step
 	if err = session.Save(*db); err != nil {
 		return err
@@ -120,6 +126,22 @@ func executeStep(fsys platform.FS, session *state.Session, db *state.Database, o
 		return err
 	}
 	return finish(session, db)
+}
+
+// metadata applies an ownership-only operation. Revert records exactly the
+// journaled ownership; Release forgets a target without touching its entry.
+func metadata(db *state.Database, op plan.Operation) error {
+	switch {
+	case op.Kind == plan.Release:
+		release(db, op.Path)
+	case op.Restore != nil && op.Restore.Owner != nil:
+		record(db, *op.Restore.Owner)
+	case op.Desired != nil:
+		record(db, desiredTarget(*op.Desired, existingKind(db, op.Path)))
+	default:
+		return errUsage()
+	}
+	return nil
 }
 
 func checkSource(fsys platform.FS, op plan.Operation) error {
@@ -141,8 +163,11 @@ func checkSource(fsys platform.FS, op plan.Operation) error {
 
 func cancelUnstarted(fsys platform.FS, session *state.Session, db *state.Database, cause error) error {
 	s := db.Pending
-	if s.Backup != "" {
-		if err := check(fsys, s.Backup, state.Entry{}); err != nil {
+	for _, aside := range []string{s.Backup, s.Discard} {
+		if aside == "" {
+			continue
+		}
+		if err := check(fsys, aside, state.Entry{}); err != nil {
 			return cause
 		}
 	}
@@ -167,6 +192,11 @@ func checkOperation(fsys platform.FS, op plan.Operation) error {
 	}
 	if err := check(fsys, op.Path, *op.Expected); err != nil {
 		return err
+	}
+	if op.Restore != nil && op.Restore.Backup != "" {
+		if err := check(fsys, op.Restore.Backup, op.Restore.Entry); err != nil {
+			return err
+		}
 	}
 	return checkSource(fsys, op)
 }

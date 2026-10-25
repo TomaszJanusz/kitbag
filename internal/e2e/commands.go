@@ -1,12 +1,15 @@
 package e2e
 
 import (
+	"crypto/sha256"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/rogpeppe/go-internal/testscript"
 )
@@ -19,16 +22,155 @@ import (
 //	content file text          assert file holds exactly text and a newline
 //	nooutput                   assert the last command wrote no stdout or stderr
 //	hidecmd program...         drop PATH entries holding an executable program
+//	homefixture dir            install $WORK/dir into $HOME (see cmdHomeFixture)
+//	treesnap root file [skip...] record root's entries, contents and mtimes in file
 //
 // The assertions support negation with "!".
 func Commands() map[string]func(ts *testscript.TestScript, neg bool, args []string) {
 	return map[string]func(ts *testscript.TestScript, neg bool, args []string){
-		"agentdirs":  cmdAgentDirs,
-		"gitremote":  cmdGitRemote,
-		"linktarget": cmdLinkTarget,
-		"content":    cmdContent,
-		"nooutput":   cmdNoOutput,
-		"hidecmd":    cmdHideCmd,
+		"agentdirs":   cmdAgentDirs,
+		"gitremote":   cmdGitRemote,
+		"linktarget":  cmdLinkTarget,
+		"content":     cmdContent,
+		"nooutput":    cmdNoOutput,
+		"hidecmd":     cmdHideCmd,
+		"homefixture": cmdHomeFixture,
+		"treesnap":    cmdTreeSnap,
+	}
+}
+
+// cmdHomeFixture installs a recorded HOME: every file below $WORK/dir is copied
+// to the same relative path below $HOME with "@HOME@" replaced by $HOME; each
+// "relative -> target" line of $WORK/dir.links creates a symbolic link (target
+// substituted the same way); $WORK/dir.gitconfig, if present, is appended to
+// $GIT_CONFIG_GLOBAL. Writes are confined to $HOME through os.Root. Files get
+// the modification time 2001-01-01T00:00:00Z.
+func cmdHomeFixture(ts *testscript.TestScript, neg bool, args []string) {
+	if neg || len(args) != 1 {
+		ts.Fatalf("usage: homefixture dir")
+	}
+	realHomes, ok := ts.Value(realHomesKey{}).([]string)
+	if !ok {
+		ts.Fatalf("homefixture: the script was not prepared by e2e.Setup")
+	}
+	home := ts.Getenv("HOME")
+	ts.Check(CheckHome(home, ts.Getenv("WORK"), realHomes))
+	root, err := os.OpenRoot(home)
+	ts.Check(err)
+	defer func() { ts.Check(root.Close()) }()
+	expand := func(text string) string { return strings.ReplaceAll(text, "@HOME@", home) }
+	fixtureFiles(ts, root, ts.MkAbs(args[0]), expand)
+	if text, exists := optionalFile(ts, args[0]+".links"); exists {
+		fixtureLinks(ts, root, expand(text))
+	}
+	if text, exists := optionalFile(ts, args[0]+".gitconfig"); exists {
+		appendGitConfig(ts, expand(text))
+	}
+}
+
+// fixtureUnix is 2001-01-01T00:00:00Z.
+const fixtureUnix = 978307200
+
+// fixtureFiles copies every file below source to root, expanding its text.
+func fixtureFiles(ts *testscript.TestScript, root *os.Root, source string, expand func(string) string) {
+	fixtureTime := time.Unix(fixtureUnix, 0)
+	ts.Check(filepath.WalkDir(source, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() {
+			return err
+		}
+		relative, err := filepath.Rel(source, path)
+		if err != nil {
+			return err
+		}
+		if err = root.MkdirAll(filepath.Dir(relative), privateDir); err != nil {
+			return err
+		}
+		if err = root.WriteFile(relative, []byte(expand(ts.ReadFile(path))), privateFile); err != nil {
+			return err
+		}
+		// An old, fixed time makes any later rewrite visible to treesnap, even
+		// on filesystems with a coarse clock.
+		return root.Chtimes(relative, fixtureTime, fixtureTime)
+	}))
+}
+
+func appendGitConfig(ts *testscript.TestScript, text string) {
+	config, err := os.OpenFile(ts.Getenv("GIT_CONFIG_GLOBAL"), os.O_APPEND|os.O_WRONLY, privateFile)
+	ts.Check(err)
+	_, err = config.WriteString(text)
+	ts.Check(errors.Join(err, config.Close()))
+}
+
+func fixtureLinks(ts *testscript.TestScript, root *os.Root, text string) {
+	for line := range strings.SplitSeq(strings.TrimSpace(text), "\n") {
+		relative, target, found := strings.Cut(line, " -> ")
+		if !found {
+			ts.Fatalf("homefixture: malformed link line %q", line)
+		}
+		ts.Check(root.MkdirAll(filepath.Dir(relative), privateDir))
+		ts.Check(root.Symlink(target, relative))
+	}
+}
+
+func optionalFile(ts *testscript.TestScript, name string) (string, bool) {
+	if _, err := os.Lstat(ts.MkAbs(name)); errors.Is(err, fs.ErrNotExist) {
+		return "", false
+	}
+	return ts.ReadFile(name), true
+}
+
+// cmdTreeSnap writes one line per entry below root, sorted: relative path,
+// type and permissions, then a regular file's size, modification time in
+// nanoseconds and SHA-256, or a link's exact target. Compare two snapshots with
+// cmp to prove that nothing was created, removed, rewritten (even with equal
+// bytes) or retargeted. Relative paths in skip, and everything below them, are
+// left out (for example KitBag's own state directory).
+func cmdTreeSnap(ts *testscript.TestScript, neg bool, args []string) {
+	const minArgs = 2
+	if neg || len(args) < minArgs {
+		ts.Fatalf("usage: treesnap root file [skip...]")
+	}
+	root := ts.MkAbs(args[0])
+	skip := args[2:]
+	var lines []string
+	ts.Check(filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		relative, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		relative = filepath.ToSlash(relative)
+		if slices.ContainsFunc(skip, func(s string) bool { return relative == s || strings.HasPrefix(relative, s+"/") }) {
+			if entry.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		line, err := snapshotLine(path, relative)
+		lines = append(lines, line)
+		return err
+	}))
+	slices.Sort(lines)
+	ts.Check(os.WriteFile(ts.MkAbs(args[1]), []byte(strings.Join(lines, "\n")+"\n"), privateFile))
+}
+
+func snapshotLine(path, relative string) (string, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return "", err
+	}
+	line := fmt.Sprintf("%s %s", relative, info.Mode())
+	switch {
+	case info.Mode()&fs.ModeSymlink != 0:
+		target, linkErr := os.Readlink(path)
+		return line + " -> " + target, linkErr
+	case info.Mode().IsRegular():
+		data, readErr := os.ReadFile(path) //nolint:gosec // G304: the script names a path inside its own $WORK.
+		return fmt.Sprintf("%s %d %d %x", line, info.Size(), info.ModTime().UnixNano(), sha256.Sum256(data)), readErr
+	default:
+		return line, nil
 	}
 }
 

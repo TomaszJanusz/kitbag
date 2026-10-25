@@ -1,0 +1,117 @@
+# unmanage removes everything KitBag created, restores what it backed up and
+# leaves the user's own files alone; a fresh sync then converges again.
+env KITBAG_CONFIG=$WORK/machine.toml
+env KITBAG_HOST=test
+gitremote $WORK/config.git config
+exec git clone --quiet $WORK/config.git $HOME/checkout
+agentdirs .claude/skills/mine .codex
+cp original-claude.md $HOME/.claude/CLAUDE.md
+cp original-settings.json $HOME/.claude/settings.json
+cp original-tool.json $HOME/.tool.json
+cp mine.md $HOME/.claude/skills/mine/SKILL.md
+cp mine.md $HOME/.claude/notes.md
+
+exec kitbag sync --no-pull
+! stderr .
+linktarget $HOME/.claude/skills/review $HOME/checkout/skills/review
+linktarget $HOME/.tool.json $HOME/checkout/tool.json
+grep 'Managed by kitbag' $HOME/.claude/CLAUDE.md
+grep '# kitbag-managed' $HOME/.claude/settings.json
+exec kitbag sync --no-pull
+nooutput
+
+# The dry run shows the plan (also as validated JSON) and changes nothing.
+treesnap $HOME $WORK/before.snap .local/state checkout
+exec kitbag unmanage --dry-run
+stdout '^- discard .*/\.claude/skills/review'
+stdout '^- discard .*/\.codex/AGENTS\.md'
+stdout '^\+ restore .*/\.claude/CLAUDE\.md.*before-kitbag'
+stdout '^\+ restore .*/\.claude/settings\.json.*before-kitbag'
+stdout '^\+ restore .*/\.tool\.json.*before-kitbag'
+! stdout 'mine|notes'
+exec kitbag unmanage --dry-run --json
+planschema stdout
+stdout '"kind": "restore"'
+execstatus 2 kitbag unmanage --json
+stderr 'requires --dry-run'
+treesnap $HOME $WORK/dry.snap .local/state checkout
+cmp $WORK/before.snap $WORK/dry.snap
+
+exec kitbag unmanage
+! stderr .
+stdout '^discard .*/\.claude/skills/review$'
+stdout '^restore .*/\.claude/CLAUDE\.md$'
+! exists $HOME/.claude/skills/review
+! exists $HOME/.agents/skills/review
+! exists $HOME/.codex/AGENTS.md
+cmp $HOME/.claude/CLAUDE.md original-claude.md
+cmp $HOME/.claude/settings.json original-settings.json
+cmp $HOME/.tool.json original-tool.json
+! linktarget $HOME/.tool.json
+cmp $HOME/.claude/skills/mine/SKILL.md mine.md
+cmp $HOME/.claude/notes.md mine.md
+exec sh -c 'ls -a "$HOME"/.claude "$HOME"/.claude/skills "$HOME"/.codex "$HOME"/.agents/skills "$HOME"'
+! stdout 'before-kitbag|kitbag-stage'
+exec kitbag status --json
+stdout '"in sync": 0'
+exec kitbag unmanage
+nooutput
+
+# A fresh sync converges: the same targets, backups taken again, then silence.
+exec kitbag sync --no-pull
+! stderr .
+linktarget $HOME/.claude/skills/review $HOME/checkout/skills/review
+linktarget $HOME/.tool.json $HOME/checkout/tool.json
+grep 'Managed by kitbag' $HOME/.claude/CLAUDE.md
+exec sh -c 'cat "$HOME"/.claude/CLAUDE.md.before-kitbag.*'
+cmp stdout original-claude.md
+exec kitbag sync --no-pull
+nooutput
+exec kitbag status --json
+stdout '"in sync": 6'
+
+# Changed output is never deleted: it is a conflict and stays owned.
+cp edited.md $HOME/.codex/AGENTS.md
+execstatus 3 kitbag unmanage
+stderr 'AGENTS\.md: .*changed since KitBag wrote it'
+cmp $HOME/.codex/AGENTS.md edited.md
+! exists $HOME/.claude/skills/review
+cmp $HOME/.claude/CLAUDE.md original-claude.md
+
+-- machine.toml --
+schema = 1
+[repo]
+url = "local-config"
+path = "~/checkout"
+-- config/kitbag.toml --
+schema = 1
+[instructions]
+source = "global/AGENTS.md"
+[skills]
+dirs = ["skills"]
+[[files]]
+src = "tool.json"
+dest = "~/.tool.json"
+[targets.claude]
+agent = "claude"
+settings = "claude/settings.json"
+[targets.codex]
+agent = "codex"
+-- config/global/AGENTS.md --
+Shared rules.
+-- config/skills/review/SKILL.md --
+Review skill.
+-- config/tool.json --
+{"tool": "managed"}
+-- config/claude/settings.json --
+{"theme": "dark", "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "{repo}/notify"}]}]}}
+-- original-claude.md --
+My own instructions.
+-- original-settings.json --
+{"local": true, "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "foreign notifier"}]}]}}
+-- original-tool.json --
+{"tool": "mine"}
+-- mine.md --
+Mine, not KitBag's.
+-- edited.md --
+Edited by hand.

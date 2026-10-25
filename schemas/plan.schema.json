@@ -28,11 +28,15 @@
           "kind": {
             "enum": [
               "remove",
+              "discard",
               "backup",
               "materialize",
               "write",
               "merge",
+              "unmerge",
+              "restore",
               "record",
+              "release",
               "skip"
             ]
           },
@@ -111,6 +115,20 @@
                     }
                   }
                 }
+              }
+            }
+          },
+          "restore": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "backup": {
+                "type": "string",
+                "minLength": 1
+              },
+              "link": {
+                "type": "string",
+                "minLength": 1
               }
             }
           }

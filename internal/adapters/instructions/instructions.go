@@ -92,12 +92,15 @@ func Declare(fsys manifest.FileSystem, req Request) (Result, error) {
 	switch req.Strategy {
 	case Import:
 		result.Target.Content = renderImport(in.paths)
+		// The script's equivalent output for this same clone stays in sync.
+		result.Target.Legacy = legacy(result.Target.Content, req.Repository)
 	case Concat:
 		parts, err := readAll(fsys, in.paths)
 		if err != nil {
 			return Result{}, err
 		}
 		result.Target.Content = renderConcat(parts)
+		result.Target.Legacy = legacy(result.Target.Content, req.Repository)
 	case Link:
 		if len(in.paths) > 1 {
 			result.Target.Warning = "instructions: link render cannot include host addition " + req.Instructions.Hosts + "; use import or concat"

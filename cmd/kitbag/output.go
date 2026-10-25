@@ -98,6 +98,9 @@ func writeDiff(out io.Writer, p plan.Plan, colour bool) error {
 		if op.Desired != nil && op.Desired.SourcePath != "" {
 			line += " <- " + fmt.Sprintf("%q", op.Desired.SourcePath)
 		}
+		if op.Restore != nil && op.Restore.Backup+op.Restore.Link != "" {
+			line += " <- " + fmt.Sprintf("%q", op.Restore.Backup+op.Restore.Link)
+		}
 		if op.Warning != "" {
 			line += ": " + op.Warning
 		}
@@ -111,13 +114,17 @@ func writeDiff(out io.Writer, p plan.Plan, colour bool) error {
 	return nil
 }
 
+func planOf(operations []plan.Operation) plan.Plan {
+	return plan.Plan{PlanSchema: plan.SchemaVersion, Operations: operations, Observations: []plan.Observation{}}
+}
+
 func diffStyle(kind plan.Kind) (string, string) {
 	switch kind {
-	case plan.Remove:
+	case plan.Remove, plan.Discard:
 		return "-", "\x1b[31m"
-	case plan.Backup, plan.Record:
+	case plan.Backup, plan.Record, plan.Release, plan.Unmerge:
 		return "~", "\x1b[36m"
-	case plan.Materialize, plan.Write, plan.Merge:
+	case plan.Materialize, plan.Write, plan.Merge, plan.Restore:
 		return "+", "\x1b[32m"
 	case plan.Skip:
 		return "!", "\x1b[33m"
