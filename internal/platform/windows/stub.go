@@ -3,8 +3,10 @@
 package windows
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
+	"net"
 
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 )
@@ -85,3 +87,14 @@ func (*Host) Open(string) error { return unsupported("Open") }
 
 // IsTerminal reports false until M6.
 func (*Host) IsTerminal(uintptr) bool { return false }
+
+// RuntimeDir is not implemented on Windows yet.
+func (*Host) RuntimeDir() (string, error) { return "", unsupported("RuntimeDir") }
+
+// ListenLocal is not implemented on Windows yet.
+func (*Host) ListenLocal(string) (net.Listener, error) { return nil, unsupported("ListenLocal") }
+
+// DialLocal is not implemented on Windows yet.
+func (*Host) DialLocal(context.Context, string) (net.Conn, error) {
+	return nil, unsupported("DialLocal")
+}

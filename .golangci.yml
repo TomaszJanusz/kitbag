@@ -126,7 +126,7 @@ linters:
               desc: Command-reference generation is test-only.
         schema-check:
           # The oracle is test-only, including validation of real CLI JSON in testscript.
-          files: ["$all", "!**/internal/schemacheck/*_test.go", "!**/cmd/kitbag/schema_test.go"]
+          files: ["$all", "!**/internal/schemacheck/*_test.go", "!**/cmd/kitbag/schema_test.go", "!**/cmd/kitbag/api_contract_test.go"]
           deny:
             - pkg: github.com/BurntSushi/toml
               desc: TOML decoding is a test-only dependency of internal/schemacheck.

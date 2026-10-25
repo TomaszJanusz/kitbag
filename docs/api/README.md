@@ -70,3 +70,8 @@ source changes between loading a manifest and applying a future plan.
 For a model returned by `Load`, host resolution also checks any existing host
 instruction addition for confinement and regular-file type. A missing addition
 remains optional; the planner reports it and skips it when assembling content.
+
+The internal local client/server contract is [API v1](api-v1.md), defined by
+[JSON Schema](api-v1.schema.json). Its [transport guide](local-api.md) covers
+permissions, token authentication, negotiation, lifecycle hints and CLI fallback.
+It is independent of the public manifest Go API baseline above.

@@ -57,5 +57,9 @@ func classified(err error) error {
 	if err == nil {
 		return nil
 	}
+	var remote interface{ ExitCode() apply.Code }
+	if errors.As(err, &remote) {
+		return &commandError{err: err, code: remote.ExitCode()}
+	}
 	return &commandError{err: err, code: apply.ErrorCode(err)}
 }

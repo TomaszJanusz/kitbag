@@ -72,6 +72,11 @@ func (h *Host) Dirs() (platform.Dirs, error) {
 	return xdg.Dirs(h.lookup)
 }
 
+// RuntimeDir returns the private local socket directory.
+func (h *Host) RuntimeDir() (string, error) {
+	return xdg.RuntimeDir(h.LookupEnv)
+}
+
 // AgentHome resolves an agent's home directory.
 func (h *Host) AgentHome(override, rel string) (string, error) {
 	return xdg.AgentHome(h.lookup, override, rel)

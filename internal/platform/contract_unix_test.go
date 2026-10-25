@@ -49,6 +49,7 @@ func newUnixSubject(t *testing.T, env map[string]string) subject {
 	return subject{
 		host:        h,
 		root:        root,
+		socketRoot:  shortSocketRoot,
 		permissions: os.Geteuid() != 0,
 		// Observed on macOS CI: open(2) through a symbolic link that a
 		// concurrent rename replaces can fail with EINVAL. The entry itself is
@@ -102,4 +103,12 @@ func statT(path string) (*syscall.Stat_t, bool) {
 	}
 	st, ok := fi.Sys().(*syscall.Stat_t)
 	return st, ok
+}
+
+func shortSocketRoot(t *testing.T) string {
+	t.Helper()
+	root, err := os.MkdirTemp("/tmp", "kitbag-sock-")
+	mustNil(t, "short socket directory", err)
+	t.Cleanup(func() { mustNil(t, "remove socket directory", os.RemoveAll(root)) })
+	return root
 }

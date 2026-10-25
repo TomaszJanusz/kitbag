@@ -3,6 +3,7 @@
 package windows_test
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -31,6 +32,9 @@ func TestStubsReportOperation(t *testing.T) {
 		"Remove":        func() error { return h.Remove(`C:\x`) },
 		"Chmod":         func() error { return h.Chmod(`C:\x`, 0o644) },
 		"TryLock":       func() error { _, err := h.TryLock(`C:\x`); return err },
+		"RuntimeDir":    func() error { _, err := h.RuntimeDir(); return err },
+		"ListenLocal":   func() error { _, err := h.ListenLocal(`C:\x`); return err },
+		"DialLocal":     func() error { _, err := h.DialLocal(context.Background(), `C:\x`); return err },
 		"HomeDir":       func() error { _, err := h.HomeDir(); return err },
 		"Dirs":          func() error { _, err := h.Dirs(); return err },
 		"AgentHome":     func() error { _, err := h.AgentHome("CODEX_HOME", ".codex"); return err },

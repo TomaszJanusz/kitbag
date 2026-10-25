@@ -2,6 +2,7 @@ package platform_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io/fs"
 	"path/filepath"
@@ -19,6 +20,8 @@ type subject struct {
 	opened func() []string
 	// root is an empty, writable, absolute directory owned by the test.
 	root string
+	// socketRoot supplies a short path within sockaddr_un limits.
+	socketRoot func(*testing.T) string
 	// otherDevice is a writable directory on another filesystem, or "".
 	otherDevice string
 	// nonTerminal is a file descriptor known not to be a terminal.
@@ -53,6 +56,7 @@ func runContract(t *testing.T, newSubject factory) {
 	s.runPermissions(t)
 	s.runLocks(t)
 	s.runEnv(t)
+	s.runSockets(t)
 }
 
 func (s suite) subject(t *testing.T) subject {
@@ -160,6 +164,8 @@ func fsCalls(h platform.FS, path, valid string) map[string]error {
 		"Remove":             h.Remove(path),
 		"Chmod":              h.Chmod(path, 0o644),
 		"TryLock":            errOf(h.TryLock(path)),
+		"ListenLocal":        errOf(h.ListenLocal(path)),
+		"DialLocal":          errOf(h.DialLocal(context.Background(), path)),
 	}
 }
 

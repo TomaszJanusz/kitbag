@@ -92,3 +92,11 @@ removes what KitBag created and restores what it replaced (`--dry-run`,
 `--dry-run --json`). `kitbag revert` restores the targets from before the latest
 journaled plan, or the latest `--to <n>` (`--force`, `--dry-run`, `--list`).
 None of them fetches. See [adopt.md](adopt.md).
+
+## Local API inspection
+
+Status and plan use the authenticated [local API v1](api/local-api.md) when a
+daemon listens, and run in-process when none is available. Text/JSON renderers
+are shared. Permission, authentication and protocol failures do not fall back.
+Verbose inspection runs locally to preserve backend diagnostics; sync remains
+in-process. KIT-29 supplies the serving boundary without a daemon command.

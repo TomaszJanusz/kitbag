@@ -34,7 +34,9 @@ type Service struct {
 	HostFlag   string
 	ModeFlag   string
 	Now        func() time.Time
-	Config     config.Config
+	// Progress receives coarse phase names synchronously; it must not block.
+	Progress func(string)
+	Config   config.Config
 }
 
 // SyncResult retains only work performed in this single pass.
@@ -84,6 +86,7 @@ func (s Service) syncLocked(ctx context.Context, session *state.Session, noPull,
 		return err
 	}
 	if !noPull {
+		s.progress("pull")
 		pulled, err := vcs.Pull(ctx, s.Backend, s.Repository)
 		result.Pull = pulled.Outcome
 		if err != nil {
@@ -93,6 +96,7 @@ func (s Service) syncLocked(ctx context.Context, session *state.Session, noPull,
 			return nil
 		}
 	}
+	s.progress("plan")
 	m, mode, err := s.intent()
 	if err != nil {
 		return err
@@ -104,10 +108,12 @@ func (s Service) syncLocked(ctx context.Context, session *state.Session, noPull,
 	if err != nil {
 		return err
 	}
+	s.progress("apply")
 	result.Apply, err = apply.Execute(s.Host, session, p, apply.Options{Mode: mode, Force: force, Now: s.Now})
 	if err != nil {
 		return err
 	}
+	s.progress("includes")
 	result.Includes, err = s.includes(ctx, m)
 	return err
 }
@@ -219,4 +225,10 @@ func (s Service) ensureWorkingCopy(ctx context.Context, noPull bool) error {
 		return fmt.Errorf("working copy missing with --no-pull: %w", err)
 	}
 	return s.Backend.Clone(ctx, s.Config.Repo.URL, s.Repository, vcs.CloneOptions{Branch: s.Config.Repo.Branch})
+}
+
+func (s Service) progress(phase string) {
+	if s.Progress != nil {
+		s.Progress(phase)
+	}
 }

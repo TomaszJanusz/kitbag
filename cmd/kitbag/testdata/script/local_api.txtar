@@ -1,0 +1,59 @@
+# Both CLI paths render exactly the same output (including warnings), and sync
+# continues to use the existing local workflow while the socket is available.
+env KITBAG_CONFIG=$WORK/machine.toml
+gitremote $WORK/remote.git seed
+exec git clone --quiet $WORK/remote.git $HOME/repo
+exec kitbag plan
+cp stdout local-plan.txt
+cp stderr local-plan.err
+exec kitbag plan --json
+cp stdout local-plan.json
+exec kitbag status
+cp stdout local-status.txt
+cp stderr local-status.err
+exec kitbag status --json
+cp stdout local-status.json
+localapi start
+exec kitbag plan
+cmp stdout local-plan.txt
+cmp stderr local-plan.err
+exec kitbag plan --json
+cmp stdout local-plan.json
+exec kitbag status
+cmp stdout local-status.txt
+cmp stderr local-status.err
+exec kitbag status --json
+cmp stdout local-status.json
+
+# Token failure cannot silently fall back. Restore it and prove recovery.
+cp $HOME/.local/state/kitbag/api-token saved-token
+exec sh -c 'printf "%064d" 0 > "$HOME/.local/state/kitbag/api-token"'
+execstatus 2 kitbag status
+stderr 'unauthorized'
+! stdout .
+cp saved-token $HOME/.local/state/kitbag/api-token
+exec kitbag status --json
+cmp stdout local-status.json
+exec kitbag sync --no-pull
+stdout '^materialize '
+cmp $HOME/output $HOME/repo/source
+localapi stop
+exec kitbag plan
+stdout '^No changes\.$'
+exec kitbag status --json
+stdout '"result": 0'
+
+-- machine.toml --
+schema=1
+[repo]
+url="local"
+path="~/repo"
+[git]
+backend="embedded"
+-- seed/kitbag.toml --
+schema=1
+[[files]]
+src="source"
+dest="~/output"
+-- seed/source --
+API parity.

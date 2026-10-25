@@ -17,6 +17,10 @@ Follow-up recommendations remain open until accepted:
 
 9. [Preserve skills lock interchange and separate immutable provenance](0009-skill-lock-interchange.md) — Proposed (KIT-2)
 
+Implementation decisions:
+
+10. [Version and authenticate the local API independently](0010-local-api.md) — Accepted (KIT-29)
+
 ## Planning sources and revisions
 
 The source is [KIT-3](https://linear.app/privacybrand/issue/KIT-3/adrs-for-the-decisions-already-taken-plus-licence)

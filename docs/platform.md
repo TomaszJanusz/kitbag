@@ -48,8 +48,7 @@ so it cannot touch the real filesystem.
 state and cache directories), `AgentHome(override, rel)`, `Hostname`,
 `Open(target)` and `IsTerminal(fd)`.
 
-Not in this layer yet: services and keyring (M2), the runtime and log
-directories needed by the daemon socket and LaunchAgent (KIT-28, KIT-29), and
+Not in this layer yet: services, keyring and log directories (M2), and
 Windows filesystem naming constraints, which manifest validation checks
 independently of the OS (KIT-12). Adding a method means adding it to every
 implementation and to the contract suite.
@@ -218,3 +217,15 @@ opener command and terminal detection on a pseudo-terminal (the master on
 Linux; the slave on macOS, whose master is not a terminal). A new
 implementation (M6) adds a factory next to `contract_unix_test.go` and must
 pass the same suite.
+
+## Local API sockets (KIT-29)
+
+`Env.RuntimeDir`, `FS.ListenLocal` and `FS.DialLocal` supply the authenticated
+local transport used by `internal/api`. Runtime paths use XDG runtime or a state
+fallback; listening requires an owned real 0700 directory and creates a 0600
+socket. Unix validates peer credentials on both ends; fake uses in-memory pipes
+and an explicit foreign-user simulation; Windows stubs return ErrUnsupported.
+See [the transport contract](api/local-api.md) for exact security, cleanup and
+fallback behavior. The shared contract suite covers socket modes, exchange,
+unsafe endpoints and directory resolution. A Unix white-box test injects a
+foreign credential result then verifies the accept loop still serves the owner.

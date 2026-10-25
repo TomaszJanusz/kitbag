@@ -1,0 +1,823 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kitbag.sh/docs/api/api-v1.schema.json",
+  "title": "KitBag local API v1",
+  "description": "Authenticated newline-delimited JSON-RPC 2.0. Additional request fields are optional extensions. See local-api.md for framing, negotiation, permissions and drop policy.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/request"
+    },
+    {
+      "$ref": "#/$defs/response"
+    },
+    {
+      "$ref": "#/$defs/notification"
+    }
+  ],
+  "$defs": {
+    "params": {
+      "type": "object",
+      "properties": {
+        "token": {
+          "type": "string",
+          "minLength": 1
+        },
+        "api_version": {
+          "type": "string",
+          "pattern": "^1\\.(0|[1-9][0-9]*)$"
+        },
+        "options": {
+          "type": "object",
+          "properties": {
+            "config": {
+              "type": "string"
+            },
+            "host": {
+              "type": "string"
+            },
+            "mode": {
+              "type": "string"
+            },
+            "git_backend": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "additionalProperties": true
+        },
+        "config": {
+          "type": "string"
+        },
+        "no_pull": {
+          "type": "boolean"
+        },
+        "force": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "token",
+        "api_version"
+      ],
+      "additionalProperties": true
+    },
+    "request": {
+      "type": "object",
+      "properties": {
+        "jsonrpc": {
+          "const": "2.0"
+        },
+        "id": {
+          "type": [
+            "string",
+            "number",
+            "null"
+          ]
+        },
+        "method": {
+          "type": "string",
+          "minLength": 1
+        },
+        "params": {
+          "$ref": "#/$defs/params"
+        }
+      },
+      "required": [
+        "jsonrpc",
+        "method",
+        "params"
+      ],
+      "additionalProperties": true
+    },
+    "error": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "enum": [
+            -32700,
+            -32600,
+            -32601,
+            -32602,
+            -32603,
+            -32000,
+            -32001,
+            -32002,
+            -32003,
+            -32004
+          ]
+        },
+        "message": {
+          "type": "string"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "exit_code": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5
+            },
+            "min_version": {
+              "const": "1.0"
+            },
+            "max_version": {
+              "const": "1.0"
+            }
+          },
+          "required": [
+            "exit_code",
+            "min_version",
+            "max_version"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "data"
+      ],
+      "additionalProperties": false
+    },
+    "syncRecord": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "result": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "changed": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "schema_version",
+        "at",
+        "repository",
+        "result",
+        "changed"
+      ],
+      "additionalProperties": false
+    },
+    "status": {
+      "type": "object",
+      "properties": {
+        "status_schema": {
+          "const": 1
+        },
+        "repository": {
+          "type": "string"
+        },
+        "git": {
+          "type": "object",
+          "properties": {
+            "branch": {
+              "type": "string"
+            },
+            "commit": {
+              "type": "string"
+            },
+            "upstream": {
+              "type": "string"
+            },
+            "ahead": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "behind": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "dirty": {
+              "type": "boolean"
+            },
+            "upstream_gone": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "branch",
+            "commit",
+            "upstream",
+            "ahead",
+            "behind",
+            "dirty",
+            "upstream_gone"
+          ],
+          "additionalProperties": false
+        },
+        "last_sync": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/syncRecord"
+            }
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "drift": {
+          "type": "object",
+          "properties": {
+            "in sync": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "update needed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "local drift": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "conflict": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unmanaged obstacle": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "in sync",
+            "update needed",
+            "local drift",
+            "conflict",
+            "unmanaged obstacle"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "status_schema",
+        "repository",
+        "git",
+        "last_sync",
+        "warnings",
+        "drift"
+      ],
+      "additionalProperties": false
+    },
+    "plan": {
+      "type": "object",
+      "properties": {
+        "plan": {
+          "$ref": "https://kitbag.sh/schemas/plan.schema.json"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "plan",
+        "warnings"
+      ],
+      "additionalProperties": false
+    },
+    "sync": {
+      "type": "object",
+      "properties": {
+        "exit_code": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "changed": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "exit_code",
+        "changed"
+      ],
+      "additionalProperties": false
+    },
+    "drift": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "classification": {
+            "enum": [
+              "in sync",
+              "update needed",
+              "local drift",
+              "conflict",
+              "unmanaged obstacle"
+            ]
+          }
+        },
+        "required": [
+          "path",
+          "classification"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "config": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "config"
+      ],
+      "additionalProperties": false
+    },
+    "subscription": {
+      "type": "object",
+      "properties": {
+        "subscribed": {
+          "const": true
+        }
+      },
+      "required": [
+        "subscribed"
+      ],
+      "additionalProperties": false
+    },
+    "version": {
+      "type": "object",
+      "properties": {
+        "min_version": {
+          "const": "1.0"
+        },
+        "max_version": {
+          "const": "1.0"
+        },
+        "tool_version": {
+          "type": "string"
+        },
+        "methods": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "const": [
+            "status.get",
+            "plan.get",
+            "sync.run",
+            "drift.list",
+            "config.get",
+            "config.set",
+            "events.subscribe",
+            "version.get"
+          ]
+        }
+      },
+      "required": [
+        "min_version",
+        "max_version",
+        "tool_version",
+        "methods"
+      ],
+      "additionalProperties": false
+    },
+    "event": {
+      "type": "object",
+      "properties": {
+        "api_version": {
+          "const": "1.0"
+        },
+        "kind": {
+          "enum": [
+            "sync.started",
+            "sync.finished",
+            "sync.progress",
+            "drift.detected",
+            "update.available"
+          ]
+        },
+        "request_id": {
+          "type": [
+            "string",
+            "number",
+            "null"
+          ]
+        },
+        "phase": {
+          "enum": [
+            "started",
+            "pull",
+            "plan",
+            "apply",
+            "includes",
+            "finished"
+          ]
+        },
+        "exit_code": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "changed": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "api_version",
+        "kind",
+        "exit_code",
+        "changed"
+      ],
+      "additionalProperties": false
+    },
+    "response": {
+      "type": "object",
+      "properties": {
+        "jsonrpc": {
+          "const": "2.0"
+        },
+        "id": {
+          "type": [
+            "string",
+            "number",
+            "null"
+          ]
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "api_version": {
+              "const": "1.0"
+            },
+            "data": {}
+          },
+          "required": [
+            "api_version",
+            "data"
+          ],
+          "additionalProperties": false
+        },
+        "error": {
+          "$ref": "#/$defs/error"
+        }
+      },
+      "required": [
+        "jsonrpc",
+        "id"
+      ],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "result"
+          ],
+          "not": {
+            "required": [
+              "error"
+            ]
+          }
+        },
+        {
+          "required": [
+            "error"
+          ],
+          "not": {
+            "required": [
+              "result"
+            ]
+          }
+        }
+      ]
+    },
+    "notification": {
+      "type": "object",
+      "properties": {
+        "jsonrpc": {
+          "const": "2.0"
+        },
+        "method": {
+          "enum": [
+            "sync.started",
+            "sync.finished",
+            "sync.progress",
+            "drift.detected",
+            "update.available"
+          ]
+        },
+        "params": {
+          "$ref": "#/$defs/event"
+        }
+      },
+      "required": [
+        "jsonrpc",
+        "method",
+        "params"
+      ],
+      "additionalProperties": false
+    },
+    "status_getRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/request"
+        },
+        {
+          "properties": {
+            "method": {
+              "const": "status.get"
+            }
+          }
+        }
+      ]
+    },
+    "plan_getRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/request"
+        },
+        {
+          "properties": {
+            "method": {
+              "const": "plan.get"
+            }
+          }
+        }
+      ]
+    },
+    "sync_runRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/request"
+        },
+        {
+          "properties": {
+            "method": {
+              "const": "sync.run"
+            }
+          }
+        }
+      ]
+    },
+    "drift_listRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/request"
+        },
+        {
+          "properties": {
+            "method": {
+              "const": "drift.list"
+            }
+          }
+        }
+      ]
+    },
+    "config_getRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/request"
+        },
+        {
+          "properties": {
+            "method": {
+              "const": "config.get"
+            }
+          }
+        }
+      ]
+    },
+    "config_setRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/request"
+        },
+        {
+          "properties": {
+            "method": {
+              "const": "config.set"
+            }
+          }
+        }
+      ]
+    },
+    "events_subscribeRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/request"
+        },
+        {
+          "properties": {
+            "method": {
+              "const": "events.subscribe"
+            }
+          }
+        }
+      ]
+    },
+    "version_getRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/request"
+        },
+        {
+          "properties": {
+            "method": {
+              "const": "version.get"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "x-api-version": "1.0",
+  "x-methods": [
+    {
+      "name": "status.get",
+      "summary": "Report local Git status, last sync and drift counts.",
+      "request": "status_getRequest",
+      "result": "status",
+      "valid": {},
+      "invalid": {
+        "api_version": "2.0"
+      },
+      "invalid_error": -32001
+    },
+    {
+      "name": "plan.get",
+      "summary": "Build a safe read-only plan without file contents.",
+      "request": "plan_getRequest",
+      "result": "plan",
+      "valid": {},
+      "invalid": {
+        "token": ""
+      },
+      "invalid_error": -32000
+    },
+    {
+      "name": "sync.run",
+      "summary": "Run the existing pull, plan and apply workflow; progress is coarse phases.",
+      "request": "sync_runRequest",
+      "result": "sync",
+      "valid": {
+        "no_pull": true
+      },
+      "invalid": {
+        "force": "wrong"
+      },
+      "invalid_error": -32602
+    },
+    {
+      "name": "drift.list",
+      "summary": "List observations other than in-sync targets.",
+      "request": "drift_listRequest",
+      "result": "drift",
+      "valid": {},
+      "invalid": {
+        "options": 5
+      },
+      "invalid_error": -32602
+    },
+    {
+      "name": "config.get",
+      "summary": "Read validated machine TOML; never reads agent credentials.",
+      "request": "config_getRequest",
+      "result": "config",
+      "valid": {},
+      "invalid": {
+        "options": 5
+      },
+      "invalid_error": -32602
+    },
+    {
+      "name": "config.set",
+      "summary": "Validate complete machine TOML before atomic replacement; next operation reloads it.",
+      "request": "config_setRequest",
+      "result": "config",
+      "valid": {
+        "config": "schema = 1\n[repo]\nurl = \"https://example.invalid/config.git\"\npath = \"~/repo\"\n"
+      },
+      "invalid": {
+        "config": 5
+      },
+      "invalid_error": -32602
+    },
+    {
+      "name": "events.subscribe",
+      "summary": "Subscribe this connection once; repeat replaces its subscription.",
+      "request": "events_subscribeRequest",
+      "result": "subscription",
+      "valid": {},
+      "invalid": {
+        "options": 5
+      },
+      "invalid_error": -32602
+    },
+    {
+      "name": "version.get",
+      "summary": "Advertise API range, tool version and method names.",
+      "request": "version_getRequest",
+      "result": "version",
+      "valid": {},
+      "invalid": {
+        "options": 5
+      },
+      "invalid_error": -32602
+    }
+  ],
+  "x-errors": [
+    {
+      "code": -32700,
+      "meaning": "Parse error",
+      "exit_code": 2
+    },
+    {
+      "code": -32600,
+      "meaning": "Invalid request or unsupported batch",
+      "exit_code": 2
+    },
+    {
+      "code": -32601,
+      "meaning": "Unknown method; optional extension unavailable",
+      "exit_code": 2
+    },
+    {
+      "code": -32602,
+      "meaning": "Invalid parameter types",
+      "exit_code": 2
+    },
+    {
+      "code": -32603,
+      "meaning": "Internal serialization error",
+      "exit_code": 1
+    },
+    {
+      "code": -32000,
+      "meaning": "Missing or wrong token",
+      "exit_code": 2
+    },
+    {
+      "code": -32001,
+      "meaning": "Unsupported API major/version syntax",
+      "exit_code": 2
+    },
+    {
+      "code": -32002,
+      "meaning": "Core/config operation failed; exit_code classifies the cause",
+      "exit_code": "1\u20135"
+    },
+    {
+      "code": -32003,
+      "meaning": "State/config/token lock busy",
+      "exit_code": 1
+    },
+    {
+      "code": -32004,
+      "meaning": "Request frame exceeds the limit",
+      "exit_code": 2
+    }
+  ],
+  "x-notifications": [
+    {
+      "name": "sync.progress",
+      "summary": "Request connection: started, pull, plan, apply, includes, finished."
+    },
+    {
+      "name": "sync.started",
+      "summary": "Subscribers: a sync was requested."
+    },
+    {
+      "name": "sync.finished",
+      "summary": "Subscribers: sync completed, including failures."
+    },
+    {
+      "name": "drift.detected",
+      "summary": "Subscribers: daemon detected drift; refresh snapshots."
+    },
+    {
+      "name": "update.available",
+      "summary": "Subscribers: daemon detected a tool update."
+    }
+  ]
+}
