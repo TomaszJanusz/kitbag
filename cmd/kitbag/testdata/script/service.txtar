@@ -1,0 +1,72 @@
+[!linux] skip 'systemd CLI commands; launchd is covered by injected-runner tests'
+env KITBAG_CONFIG=
+env KITBAG_MODE=
+env KITBAG_GIT_BACKEND=
+env XDG_CONFIG_HOME=$HOME/.config
+env XDG_STATE_HOME=$HOME/.local/state
+env XDG_DATA_HOME=$HOME/.local/share
+env OPENAI_API_KEY=service-secret-never-copy
+env USER=testing
+env PATH=$WORK/bin:$PATH
+exec chmod +x bin/systemctl bin/loginctl
+gitremote $WORK/config.git seed
+exec kitbag init $WORK/config.git --yes
+exec kitbag service install --mode=timer --interval=5m --no-start
+stdout 'Service installed/updated'
+stderr 'Linger is disabled.*loginctl enable-linger testing'
+exists $HOME/.config/systemd/user/dev.kitbag.agent.service
+exists $HOME/.config/systemd/user/dev.kitbag.agent.timer
+grep 'Type=oneshot' $HOME/.config/systemd/user/dev.kitbag.agent.service
+grep 'OnUnitActiveSec=300s' $HOME/.config/systemd/user/dev.kitbag.agent.timer
+! grep 'service-secret-never-copy' $HOME/.config/systemd/user/dev.kitbag.agent.service
+! exists $HOME/.active
+exec kitbag service install --mode=timer --interval=5m --now
+stdout 'already installed and up to date'
+exists $HOME/.active
+exec kitbag service status --json
+stdout '"installed":true'
+stdout '"active":true'
+stdout '"exit_code":0'
+exec kitbag service install --mode=daemon
+! exists $HOME/.config/systemd/user/dev.kitbag.agent.timer
+grep 'Type=simple' $HOME/.config/systemd/user/dev.kitbag.agent.service
+grep 'Restart=on-failure' $HOME/.config/systemd/user/dev.kitbag.agent.service
+exec kitbag service uninstall
+stdout 'Configuration, working copies and sync state were kept'
+! exists $HOME/.config/systemd/user/dev.kitbag.agent.service
+! exists $HOME/.config/systemd/user/dev.kitbag.agent.timer
+! exists $HOME/.local/state/kitbag/service.json
+exists $HOME/.config/kitbag/config.toml
+exists $HOME/.local/share/kitbag/repos/config/.git
+grep 'systemctl --user daemon-reload' $HOME/commands
+grep 'systemctl --user enable dev.kitbag.agent.timer' $HOME/commands
+grep 'systemctl --user stop dev.kitbag.agent.timer' $HOME/commands
+grep 'systemctl --user disable dev.kitbag.agent.timer' $HOME/commands
+exec kitbag service uninstall
+! exec kitbag service install --mode=bad
+stderr 'service mode must be daemon or timer'
+! exec kitbag service install --interval=0s
+stderr 'service interval must be whole seconds'
+! exec kitbag service install --now --no-start
+stderr 'none of the others can be'
+
+-- seed/kitbag.toml --
+schema=1
+-- bin/loginctl --
+#!/bin/sh
+printf 'Linger=no\n'
+-- bin/systemctl --
+#!/bin/sh
+printf 'systemctl %s\n' "$*" >> "$HOME/commands"
+case "$2" in
+show)
+  if [ ! -f "$HOME/.config/systemd/user/$3" ]; then printf 'LoadState=not-found\n'; exit 1; fi
+  printf 'LoadState=loaded\n'
+  if [ -f "$HOME/.active" ]; then printf 'ActiveState=active\n'; else printf 'ActiveState=inactive\n'; fi
+  if [ -f "$HOME/.enabled" ]; then printf 'UnitFileState=enabled\n'; else printf 'UnitFileState=disabled\n'; fi
+  printf 'ExecMainStartTimestamp=Sun 2026-10-25 12:00:00 UTC\nExecMainStatus=0\n';;
+enable) touch "$HOME/.enabled";;
+disable) rm -f "$HOME/.enabled";;
+start) touch "$HOME/.active";;
+stop) rm -f "$HOME/.active";;
+esac

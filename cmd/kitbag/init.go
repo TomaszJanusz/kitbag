@@ -168,7 +168,7 @@ func (c *commandLine) saveInitial(service initialize.Service) error {
 		}
 		return errors.Join(err, checkErr)
 	}
-	return c.initMessage("Wrote %s\nRun manually: kitbag --config %s sync\nService installation is planned for M2; `kitbag service install` is not available yet.\n", service.Filename, shellQuote(service.Filename))
+	return c.initMessage("Wrote %s\nRun manually: kitbag --config %s sync\nBackground sync: kitbag --config %s service install\n", service.Filename, shellQuote(service.Filename), shellQuote(service.Filename))
 }
 
 func (f initFlags) configuration(host string) config.Config {

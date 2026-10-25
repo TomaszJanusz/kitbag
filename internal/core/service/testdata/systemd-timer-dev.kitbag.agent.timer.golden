@@ -1,0 +1,11 @@
+[Unit]
+Description=KitBag synchronization timer
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=900s
+RandomizedDelaySec=30s
+Unit=dev.kitbag.agent.service
+
+[Install]
+WantedBy=timers.target

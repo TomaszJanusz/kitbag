@@ -13,8 +13,9 @@ import (
 
 // Host is the macOS and Linux platform. Create it with [New].
 type Host struct {
-	lookup xdg.Lookup
-	run    func(name string, args ...string) error
+	lookup     xdg.Lookup
+	serviceRun ServiceRunner
+	run        func(name string, args ...string) error
 	// The durability hooks are replaced only by white-box tests.
 	syncFile func(*os.File) error
 	syncDir  func(dir string) error
@@ -45,11 +46,12 @@ func WithCommandRunner(run func(name string, args ...string) error) Option {
 // New returns a host backed by the process environment and filesystem.
 func New(opts ...Option) *Host {
 	h := &Host{
-		lookup:   os.LookupEnv,
-		run:      runCommand,
-		syncFile: (*os.File).Sync,
-		syncDir:  syncDir,
-		rename:   os.Rename,
+		lookup:     os.LookupEnv,
+		serviceRun: execService,
+		run:        runCommand,
+		syncFile:   (*os.File).Sync,
+		syncDir:    syncDir,
+		rename:     os.Rename,
 	}
 	for _, opt := range opts {
 		opt(h)

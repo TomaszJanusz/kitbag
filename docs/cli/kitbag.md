@@ -28,6 +28,7 @@ kitbag [flags]
 * [kitbag plan](kitbag_plan.md)	 - Show the local synchronization diff without applying it
 * [kitbag revert](kitbag_revert.md)	 - Restore the targets as they were before recent plans
 * [kitbag self-update](kitbag_self-update.md)	 - Verify and install a newer release or show the package manager command
+* [kitbag service](kitbag_service.md)	 - Manage background synchronization for this user
 * [kitbag status](kitbag_status.md)	 - Show upstream relation, last sync and local drift
 * [kitbag sync](kitbag_sync.md)	 - Pull and apply configuration in one pass
 * [kitbag unmanage](kitbag_unmanage.md)	 - Remove everything KitBag created and restore what it replaced

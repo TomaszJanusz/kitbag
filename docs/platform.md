@@ -12,7 +12,7 @@ and the decisions behind it. The package documentation (`go doc
 
 | Package | Builds on | Role |
 | --- | --- | --- |
-| `internal/platform` | all | `Host` = `FS` + `Env`, error sentinels, `CheckOS` |
+| `internal/platform` | all | `Host` = `FS` + `Env` + `Service`, error sentinels, `CheckOS` |
 | `internal/platform/unix` | macOS, Linux | The real v1 host |
 | `internal/platform/windows` | Windows | Stubs returning `ErrUnsupported` until M6 |
 | `internal/platform/fake` | all | In-memory host for core tests |
@@ -48,7 +48,13 @@ so it cannot touch the real filesystem.
 state, cache and log directories), `AgentHome(override, rel)`, `Hostname`,
 `Open(target)` and `IsTerminal(fd)`.
 
-Not in this layer yet: services and keyring (M2), and
+`Service` supplies supervisor layout/executable discovery, bounded injected command
+execution, enable/start/stop/disable/reload, status and linger inspection. Linux
+uses systemd user commands, macOS uses launchctl in the current GUI domain, and
+Windows returns named unsupported errors. Unit/plist generation and install policy
+live in `internal/core/service`; see [service management](service.md).
+
+Not in this layer yet: keyring (M2), and
 Windows filesystem naming constraints, which manifest validation checks
 independently of the OS (KIT-12). Adding a method means adding it to every
 implementation and to the contract suite.

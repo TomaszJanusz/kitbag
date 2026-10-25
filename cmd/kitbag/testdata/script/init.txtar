@@ -16,7 +16,7 @@ stdout 'Detected codex:'
 stdout 'materialize .*init-output'
 stdout 'Wrote .*config.toml'
 stdout 'Run manually: kitbag --config .* sync'
-stdout 'service install.*not available'
+stdout 'Background sync: kitbag --config .* service install'
 ! exists $HOME/init-output
 exists $HOME/.local/share/kitbag/repos/config/.git
 configschema $HOME/.config/kitbag/config.toml

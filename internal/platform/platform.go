@@ -33,6 +33,7 @@ var (
 // Host is the complete set of host operations. Only cmd/kitbag constructs one;
 // other packages accept it, or the narrower [FS] or [Env].
 type Host interface {
+	Service
 	FS
 	Env
 }

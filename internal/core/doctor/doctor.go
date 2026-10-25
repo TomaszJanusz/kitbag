@@ -48,6 +48,7 @@ type Service struct {
 	Open                                    func(context.Context) (vcs.Backend, vcs.Resolution, error)
 	VersionProbe                            func(context.Context, string) (string, error)
 	Repository, Version, HostFlag, ModeFlag string
+	ServiceConfig                           string
 	Config                                  config.Config
 	Offline                                 bool
 }
@@ -64,7 +65,7 @@ func (s Service) Run(ctx context.Context) Report {
 		r.Checks = []Check{result("tool-version", "kitbag "+s.Version+"; min_tool_version "+r.ToolTooOld.Required, "upgrade kitbag to the manifest's min_tool_version", err, Fail)}
 		return r
 	}
-	for _, check := range []func(context.Context) []Check{s.manifestChecks, s.gitChecks, s.sshChecks, s.agentChecks, s.stateChecks, s.legacyChecks} {
+	for _, check := range []func(context.Context) []Check{s.manifestChecks, s.gitChecks, s.sshChecks, s.agentChecks, s.stateChecks, s.serviceChecks, s.legacyChecks} {
 		r.Checks = append(r.Checks, check(ctx)...)
 	}
 	for i := range r.Checks {

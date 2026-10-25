@@ -1,0 +1,12 @@
+[Unit]
+Description=KitBag configuration synchronization
+
+[Service]
+Type=oneshot
+NoNewPrivileges=true
+ExecStart="/opt/Kit Bag/bin/kitbag" "--config" "/home/test/Config & \"files\"/config.toml" "sync"
+Environment="HOME=/home/test"
+Environment="PATH=/opt/Kit Bag/bin:/usr/bin:/bin"
+
+[Install]
+WantedBy=default.target
