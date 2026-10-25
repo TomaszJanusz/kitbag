@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io/fs"
+	"maps"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -16,11 +17,19 @@ import (
 
 func subject(t *testing.T) (Service, *fake.Host) {
 	t.Helper()
+	return subjectWith(t, nil, "schema=1\n")
+}
+
+// subjectWith adds env to HOME and writes manifest as the checkout's kitbag.toml.
+func subjectWith(t *testing.T, env map[string]string, manifest string) (Service, *fake.Host) {
+	t.Helper()
 	home := filepath.FromSlash("/home/doctor")
-	host := fake.New(fake.WithEnv(map[string]string{"HOME": home}))
+	vars := map[string]string{"HOME": home}
+	maps.Copy(vars, env)
+	host := fake.New(fake.WithEnv(vars))
 	repo := filepath.Join(home, "checkout")
 	must(t, host.MkdirAll(repo, probeDirPerm))
-	must(t, host.WriteAtomic(filepath.Join(repo, "kitbag.toml"), []byte("schema=1\n"), probeFilePerm))
+	must(t, host.WriteAtomic(filepath.Join(repo, "kitbag.toml"), []byte(manifest), probeFilePerm))
 	store, err := state.New(host, host, state.Options{})
 	must(t, err)
 	backend := &diagnosticBackend{cfg: vcs.CommitConfig{Identity: true}}
@@ -38,9 +47,10 @@ func must(t *testing.T, err error) {
 
 type diagnosticBackend struct {
 	vcs.Backend
-	remoteErr error
-	cfg       vcs.CommitConfig
-	calls     int
+	remoteErr  error
+	inspectErr error
+	cfg        vcs.CommitConfig
+	calls      int
 }
 
 // Kind identifies the fake diagnostic backend.
@@ -51,7 +61,7 @@ func (b *diagnosticBackend) ProbeRemote(context.Context, string) error { b.calls
 
 // InspectCommit returns configured presence flags.
 func (b *diagnosticBackend) InspectCommit(context.Context, string) (vcs.CommitConfig, error) {
-	return b.cfg, nil
+	return b.cfg, b.inspectErr
 }
 
 func find(t *testing.T, r Report, id string) Check {
