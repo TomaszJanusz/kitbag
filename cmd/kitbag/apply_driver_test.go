@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/TomaszJanusz/kitbag/internal/adapters/codex"
 	"github.com/TomaszJanusz/kitbag/internal/core/apply"
 	"github.com/TomaszJanusz/kitbag/internal/core/plan"
 	"github.com/TomaszJanusz/kitbag/internal/core/state"
@@ -29,22 +30,20 @@ func testKitbagMain() {
 }
 
 func applyDriver(args []string, stdout, stderr io.Writer) int {
-	flags := flag.NewFlagSet("__e2e_apply", flag.ContinueOnError)
-	flags.SetOutput(stderr)
-	mode := flags.String("mode", "", "machine mode")
-	force := flags.Bool("force", false, "discard copy drift after backup")
-	if err := flags.Parse(args); err != nil {
-		return int(apply.Usage)
-	}
-	if flags.NArg() < 2 {
+	options, ok := parseDriver(args, stderr)
+	if !ok {
 		return int(apply.Usage)
 	}
 	host := unix.New()
-	m, err := fixtureManifest(host, flags.Arg(0))
+	adapter, err := driverAdapter(host, options.adapter, options.args[1:])
 	if err != nil {
 		return driverError(stderr, err)
 	}
-	machineMode, err := apply.ResolveMode("", *mode, "", "", "")
+	m, err := fixtureManifest(host, options.args[0])
+	if err != nil {
+		return driverError(stderr, err)
+	}
+	machineMode, err := apply.ResolveMode("", options.mode, "", "", "")
 	if err != nil {
 		return driverError(stderr, err)
 	}
@@ -52,13 +51,13 @@ func applyDriver(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return driverError(stderr, err)
 	}
-	req := plan.Request{Repository: flags.Arg(0), Manifest: m, Adapters: []target.Adapter{fixtureAdapter(flags.Args()[1:])}}
+	req := plan.Request{Repository: options.args[0], Manifest: m, Adapters: []target.Adapter{adapter}}
 	home, err := host.HomeDir()
 	if err != nil {
 		return driverError(stderr, err)
 	}
 	req.LegacyRoots = []string{req.Repository, filepath.Join(home, ".agents", "skills")}
-	result, err := apply.Run(host, store, req, apply.Options{Mode: machineMode, Force: *force, Now: time.Now})
+	result, err := apply.Run(host, store, req, apply.Options{Mode: machineMode, Force: options.force, Now: time.Now})
 	if printErr := printApply(stdout, stderr, result); printErr != nil {
 		return driverError(stderr, printErr)
 	}
@@ -66,6 +65,29 @@ func applyDriver(args []string, stdout, stderr io.Writer) int {
 		return max(int(result.Code()), driverError(stderr, err))
 	}
 	return int(result.Code())
+}
+
+type driverOptions struct {
+	mode    string
+	adapter string
+	args    []string
+	force   bool
+}
+
+// parseDriver accepts [-mode m] [-force] [-adapter kind] repo instance...;
+// instances are required only for the fixture adapter.
+func parseDriver(args []string, stderr io.Writer) (driverOptions, bool) {
+	var options driverOptions
+	flags := flag.NewFlagSet("__e2e_apply", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	flags.StringVar(&options.mode, "mode", "", "machine mode")
+	flags.BoolVar(&options.force, "force", false, "discard copy drift after backup")
+	flags.StringVar(&options.adapter, "adapter", "", "real adapter instead of the fixture")
+	if err := flags.Parse(args); err != nil {
+		return options, false
+	}
+	options.args = flags.Args()
+	return options, len(options.args) >= 1 && (options.adapter != "" || len(options.args) >= 2)
 }
 
 func fixtureManifest(host platform.Host, repo string) (*manifest.Manifest, error) {
@@ -77,6 +99,19 @@ func fixtureManifest(host platform.Host, repo string) (*manifest.Manifest, error
 		return nil, err
 	}
 	return m.ResolveHost(host, "test")
+}
+
+// driverAdapter selects a real adapter by agent kind, or the fixture adapter
+// for the listed instance directories.
+func driverAdapter(host platform.Host, name string, instances []string) (target.Adapter, error) {
+	switch name {
+	case "":
+		return fixtureAdapter(instances), nil
+	case codex.Agent:
+		adapter, err := codex.New(host)
+		return adapter, err
+	}
+	return nil, fmt.Errorf("unknown adapter %q", name)
 }
 
 type fixtureAdapter []string

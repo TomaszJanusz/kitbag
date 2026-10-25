@@ -1,0 +1,108 @@
+# Codex adapter through the test-only apply entry (public CLI wiring is KIT-23):
+# default ~/.codex, AGENTS.md concatenated with the marker, skills linked into
+# the shared ~/.agents/skills, commands copied as prompts, silent repeat.
+env CODEX_HOME=
+gitremote $WORK/config.git config
+exec git clone --quiet $WORK/config.git $WORK/checkout
+exec kitbag __e2e_apply -adapter=codex $WORK/checkout
+stdout '^write .*/home/\.codex/AGENTS\.md$'
+stdout '^materialize .*/home/\.agents/skills/alpha$'
+stdout '^materialize .*/home/\.codex/prompts/review\.md$'
+! stderr .
+cmp $HOME/.codex/AGENTS.md agents.md
+linktarget $HOME/.agents/skills/alpha $WORK/checkout/skills/alpha
+! linktarget $HOME/.codex/prompts/review.md
+cmp $HOME/.codex/prompts/review.md config/commands/review.md
+! exists $HOME/.codex/skills
+! exists $HOME/.codex/config.toml
+! exists $HOME/.agents/skills/README.md
+exec kitbag __e2e_apply -adapter=codex $WORK/checkout
+nooutput
+
+# A source edit reaches the next run; the linked skill needs no new operation.
+cp host-edit.md $WORK/checkout/hosts/test.md
+exec kitbag __e2e_apply -adapter=codex $WORK/checkout
+stdout -count=1 '^write .*/home/\.codex/AGENTS\.md$'
+! stdout skills
+cmp $HOME/.codex/AGENTS.md agents-edit.md
+
+# Declared settings are reported unsupported and local settings stay unchanged.
+cp settings.toml $WORK/checkout/kitbag.toml
+cp local-config.toml $HOME/.codex/config.toml
+execstatus 3 kitbag __e2e_apply -adapter=codex $WORK/checkout
+stderr 'codex: settings are not synchronized'
+! stdout .
+cmp $HOME/.codex/config.toml local-config.toml
+
+-- config/kitbag.toml --
+schema = 1
+[instructions]
+source = "global/AGENTS.md"
+hosts = "hosts/{host}.md"
+[skills]
+dirs = ["skills"]
+[commands]
+dir = "commands"
+[targets.codex]
+agent = "codex"
+-- config/global/AGENTS.md --
+# Shared rules
+
+Keep changes small.
+-- config/hosts/test.md --
+# Host: test
+
+Low parallelism.
+
+-- config/skills/alpha/SKILL.md --
+---
+name: alpha
+---
+Alpha skill.
+-- config/skills/README.md --
+Not a skill.
+-- config/commands/review.md --
+---
+description: Review a change
+---
+Review the change.
+-- host-edit.md --
+# Host: test
+
+High parallelism.
+-- agents.md --
+<!-- Managed by kitbag. Edit the source in the configuration repository, not this file. -->
+
+# Shared rules
+
+Keep changes small.
+
+# Host: test
+
+Low parallelism.
+-- agents-edit.md --
+<!-- Managed by kitbag. Edit the source in the configuration repository, not this file. -->
+
+# Shared rules
+
+Keep changes small.
+
+# Host: test
+
+High parallelism.
+-- config/codex/config.toml --
+model = "repository-model"
+-- local-config.toml --
+model = "local-model"
+-- settings.toml --
+schema = 1
+[instructions]
+source = "global/AGENTS.md"
+hosts = "hosts/{host}.md"
+[skills]
+dirs = ["skills"]
+[commands]
+dir = "commands"
+[targets.codex]
+agent = "codex"
+settings = "codex/config.toml"
