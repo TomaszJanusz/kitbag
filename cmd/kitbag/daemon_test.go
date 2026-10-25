@@ -355,6 +355,11 @@ func TestDaemonContextCancellation(t *testing.T) {
 		assertDaemonReleased(t, f)
 	})
 	waitDaemonFile(t, f, "first")
+	// Cancel only after the initial sync, its watch scan and one remote poll
+	// succeeded, so the in-process run deterministically covers each cycle.
+	for _, action := range []string{"sync", "scan", "poll"} {
+		waitDaemonLog(t, f, action, false, 1)
+	}
 }
 
 func TestDaemonBrokenRemoteBackoff(t *testing.T) {
@@ -365,14 +370,16 @@ func TestDaemonBrokenRemoteBackoff(t *testing.T) {
 	if err := f.host.Rename(f.remote, f.remote+".offline"); err != nil {
 		t.Fatal(err)
 	}
-	failures := waitFailedPolls(t, f)
+	failures := waitDaemonLog(t, f, "poll", true, 2)
 	if gap := failures[1].Sub(failures[0]); gap < 1800*time.Millisecond {
 		t.Fatalf("broken remote did not back off: %v", gap)
 	}
 	stopDaemonProcess(t, f, command, output)
 }
 
-func waitFailedPolls(t *testing.T, f daemonFixture) []time.Time {
+// waitDaemonLog returns the times of at least count daemon log records with
+// the given action and failure state.
+func waitDaemonLog(t *testing.T, f daemonFixture, action string, failed bool, count int) []time.Time {
 	t.Helper()
 	dirs, err := f.host.Dirs()
 	if err != nil {
@@ -384,17 +391,17 @@ func waitFailedPolls(t *testing.T, f daemonFixture) []time.Time {
 		if readErr != nil {
 			t.Fatal(readErr)
 		}
-		times := failedPollTimes(t, data)
-		if len(times) >= 2 {
+		times := daemonLogTimes(t, data, action, failed)
+		if len(times) >= count {
 			return times
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	t.Fatal("broken remote did not produce two failed polls")
+	t.Fatalf("daemon did not log %d %s records with failed=%t", count, action, failed)
 	return nil
 }
 
-func failedPollTimes(t *testing.T, data []byte) []time.Time {
+func daemonLogTimes(t *testing.T, data []byte, action string, failed bool) []time.Time {
 	t.Helper()
 	times := []time.Time{}
 	decoder := json.NewDecoder(bytes.NewReader(data))
@@ -407,7 +414,7 @@ func failedPollTimes(t *testing.T, data []byte) []time.Time {
 		if err := decoder.Decode(&record); err != nil {
 			t.Fatal(err)
 		}
-		if record.Action == "poll" && record.Failed {
+		if record.Action == action && record.Failed == failed {
 			times = append(times, record.At)
 		}
 	}
