@@ -119,6 +119,51 @@ installed. JSON syntax was checked; app extraction and behavior remain unverifie
 
 ## Workflows and verification
 
+### Coverage ratchet
+
+Run `mise run coverage` locally and in CI (the existing "Core coverage" step
+on Ubuntu and macOS invokes this same command). It prints a statement-weighted
+per-package table and fails if **any group** is below its floor. Packages within
+a group share its budget; individual packages do not have separate floors.
+Missing groups fail rather than disabling a gate. Packages containing only
+declarations or documentation have no executable statements to measure.
+
+Baseline measured on Linux, 2026-10-25, at main commit
+`2550d7ef8ec29be00ae619903c5817363e6c1ee4`:
+
+| Group | Covered / total statements | Baseline | Floor |
+| --- | ---: | ---: | ---: |
+| `internal/core/...` | 2490 / 2775 | 89.73% | 85% (unchanged) |
+| `internal/adapters/...` | 1000 / 1110 | 90.09% | 88% |
+| `internal/vcs/...` | 1458 / 1765 | 82.61% | 80% |
+| `cmd/kitbag` | 745 / 920 | 80.98% | 78% |
+| `pkg/manifest` | 538 / 597 | 90.12% | 88% |
+
+New floors are the integer part of the baseline minus two percentage points.
+Core keeps its existing 85% floor and is measured separately from its own
+in-package tests; CLI tests cannot inflate it. The other four groups combine
+their unit tests and CLI testscript runs using `-coverpkg`. The existing
+`testscript.Main` harness executes the instrumented test binary in subprocesses
+and forwards `GOCOVERDIR`, so Go collects their hits without a separate build.
+The harness retains its throwaway HOME and isolated Git configuration. Repeated
+blocks from different test binaries count once, with hits unioned. Percentages
+use executable statements, not an average of package percentages; comparisons
+use unrounded values. Test-only `internal/e2e`, `internal/schemacheck` and
+`internal/plancheck` are excluded. Other production packages outside these five
+groups are not gated by this policy.
+
+Floors in `scripts/coverage-report.awk` are a ratchet: **never lower them**.
+To raise one, measure with `mise run coverage`, include the new covered/total
+counts and Linux/macOS CI evidence in the PR, update this baseline table and
+raise the corresponding floor. Keep the passing boundary fixtures in
+`scripts/coverage-test.sh` consistent with the new floor. These controls run in
+`mise run check` and prove each group fails independently, duplicate blocks are
+unioned, and missing data and rounding cannot bypass a floor. For an end-to-end
+negative control, temporarily raise a floor above measured coverage, run
+`mise run coverage`, confirm `FAIL group <name>` and nonzero exit, then revert
+the temporary increase before committing. Do not add contrived tests to meet
+a number.
+
 `pr-title` runs on PR open, title edits, pushes, reopen and ready-for-review.
 Its shell regex accepts the types listed in [CONTRIBUTING.md](../CONTRIBUTING.md),
 optional scopes such as `feat(manifest):`, and optional breaking-change `!`.
