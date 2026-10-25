@@ -21,7 +21,8 @@ BEGIN {
 END {
     for (block in statements) {
         package = block
-        sub(/\/[^/]*$/, "", package)
+        # Dynamic regex strings avoid slash-delimiter differences across awks.
+        sub("/[^/]*$", "", package)
         if (index(package, prefix) != 1) {
             print "ERROR: unexpected coverage path: " package
             failed = 1
@@ -29,7 +30,7 @@ END {
         }
         package = substr(package, length(prefix) + 1)
         group = package
-        if (package ~ /^internal\/(core|adapters|vcs)(\/|$)/) {
+        if (package ~ "^internal/(core|adapters|vcs)(/|$)") {
             split(package, parts, "/")
             group = parts[2]
         }
