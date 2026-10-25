@@ -5,16 +5,19 @@ cd "$(git rev-parse --show-toplevel)"
 
 scratch=$(mktemp -d /tmp/kitbag-coverage.XXXXXX)
 trap 'rm -rf "$scratch"' EXIT
-profile="$scratch/core.out"
-
 # Include packages without tests so new, untested core code cannot escape the gate.
+# Keep core independent: CLI/integration tests must not inflate its existing floor.
 go test -count=1 -covermode=atomic -coverpkg=./internal/core/... \
-  -coverprofile="$profile" ./internal/core/...
+  -coverprofile="$scratch/core.out" ./internal/core/...
 
-threshold=85
-if ! awk 'NR > 1 { statements += $2 } END { exit !(statements > 0) }' "$profile"; then
-  printf '%s\n' 'Core has no executable statements; coverage reports only (future threshold: 85%).'
-  threshold=0
-fi
+# testscript.Main runs the instrumented test binary as the CLI and forwards
+# GOCOVERDIR, so go test includes subprocess coverage without a second build.
+# Test-only internal/e2e, internal/schemacheck and internal/plancheck are excluded.
+go test -count=1 -covermode=atomic \
+  -coverpkg=./internal/adapters/...,./internal/vcs/...,./cmd/kitbag,./pkg/manifest \
+  -coverprofile="$scratch/groups.out" \
+  ./internal/adapters/... ./internal/vcs/... ./cmd/kitbag ./pkg/manifest
 
-go-test-coverage --profile "$profile" --threshold-total "$threshold"
+LC_ALL=C awk -f scripts/coverage-report.awk "$scratch/core.out" "$scratch/groups.out"
+# Retain the existing core tool as a cross-check of the statement aggregation.
+go-test-coverage --profile "$scratch/core.out" --threshold-total 85

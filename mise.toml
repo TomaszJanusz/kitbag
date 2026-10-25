@@ -40,6 +40,7 @@ run = "golangci-lint config verify && golangci-lint run ./..."
 description = "Run the complete local quality gate (read-only)"
 run = [
   "bash scripts/quality.sh format-check",
+  "bash scripts/coverage-test.sh",
   "golangci-lint config verify",
   "golangci-lint run ./...",
   "go vet ./...",
@@ -55,7 +56,7 @@ description = "Install the repository's pre-commit hook"
 run = "lefthook install"
 
 [tasks.coverage]
-description = "Report core coverage; enforce 85% once core has statements"
+description = "Report per-package coverage and enforce group floors"
 run = "bash scripts/coverage.sh"
 
 [tasks."check:modules"]
