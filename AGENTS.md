@@ -29,6 +29,8 @@
   `vcs.Backend`. See [docs/vcs.md](docs/vcs.md).
 - `internal/ui/model`: shared view models, independent of UI renderers; the
   API adapter is `internal/ui/apiclient`. See [docs/ui.md](docs/ui.md).
+- `internal/ui/tui`: the terminal renderer (`kitbag tui`); it renders models only,
+  with texts from `internal/ui/model/text`. See [docs/tui.md](docs/tui.md).
 - `pkg/manifest`: the only public library package; treat its API as a contract.
 - `internal/e2e`: test-only testscript harness; prove CLI behaviour with scripts
   in `cmd/kitbag/testdata/script` (see README), never against the real HOME.

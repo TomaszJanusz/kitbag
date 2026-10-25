@@ -1,7 +1,8 @@
 # Shared view models
 
 `internal/ui/model` holds the models that the terminal UI and the later
-settings window both render ([ADR 5](adr/0005-ui-layers.md)). Behavior,
+settings window both render ([ADR 5](adr/0005-ui-layers.md)). The terminal
+renderer is `internal/ui/tui` ([`kitbag tui`](tui.md)). Behavior,
 validation and text live there once; a renderer only draws views and forwards
 user input. The package is pure Go: no UI toolkit, no `os`, `net` or process
 access, no `internal/api`, `internal/core` or `internal/platform` import. The
