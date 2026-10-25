@@ -229,6 +229,38 @@ linters:
               desc: Core reaches the host only through internal/platform; use io/fs for types.
             - pkg: io/ioutil
               desc: Core reaches the host only through internal/platform.
+        ui-model:
+          # KIT-51/ADR 5: view models are pure state machines shared by every
+          # renderer. No UI toolkit, host access, process, network or transport;
+          # data arrives through model.Client (adapter: internal/ui/apiclient).
+          files: ["**/internal/ui/model/*.go", "**/internal/ui/model/**/*.go"]
+          deny:
+            - pkg: github.com/charmbracelet/
+              desc: Terminal toolkits belong in renderers, not shared view models.
+            - pkg: fyne.io/
+              desc: Window toolkits belong in renderers, not shared view models.
+            - pkg: gioui.org/
+              desc: Window toolkits belong in renderers, not shared view models.
+            - pkg: github.com/gdamore/
+              desc: Terminal toolkits belong in renderers, not shared view models.
+            - pkg: github.com/rivo/
+              desc: Terminal toolkits belong in renderers, not shared view models.
+            - pkg: os
+              desc: View models never reach the host; renderers and adapters do.
+            - pkg: io/ioutil
+              desc: View models never reach the host; renderers and adapters do.
+            - pkg: net
+              desc: View models never use the network; internal/ui/apiclient does.
+            - pkg: syscall
+              desc: View models never reach the host.
+            - pkg: github.com/TomaszJanusz/kitbag/internal/api
+              desc: Use model.Client; the API adapter lives in internal/ui/apiclient.
+            - pkg: github.com/TomaszJanusz/kitbag/internal/core/
+              desc: Use model.Client; core types stay behind internal/ui/apiclient.
+            - pkg: github.com/TomaszJanusz/kitbag/internal/platform
+              desc: View models never reach the host.
+            - pkg: github.com/TomaszJanusz/kitbag/cmd/
+              desc: Commands render models, never the reverse.
         platform-implementations:
           # Only the binary wires a real host; everything else, tests included,
           # accepts the platform interfaces (tests use the in-memory fake).
