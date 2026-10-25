@@ -1,8 +1,10 @@
 # 9. Preserve skills lock interchange and separate immutable provenance
 
-- Status: Proposed
-- Date: 2026-10-24
+- Status: Accepted
+- Date: 2026-10-25
+- Proposed: 2026-10-24
 - Origin: KIT-2
+- Accepted by the maintainer on 2026-10-25; acceptance does not mean implemented.
 
 ## Context and Problem Statement
 
@@ -16,7 +18,8 @@ literal `apm.lock`. KIT-2 explicitly asks which direction to recommend. The
 [accepted ADR index](README.md#planning-sources-and-revisions) and
 [ADR 2](0002-git-source-of-truth.md) leave the lock schema undecided. Treat the
 plan examples as provisional, not acceptance of exact bytes or semantics. This
-proposal does not supersede an Accepted ADR or authorize implementation.
+decision does not supersede an Accepted ADR or authorize implementation
+before the conditions below are met.
 
 ## Decision Drivers
 
@@ -101,7 +104,7 @@ but would discard the plan's interoperability objective. APM's lock is stronger
 for APM package replay; that is a reason to preserve an integration boundary,
 not to claim it is an inadequate package-manager lock.
 
-## Conditions Before Acceptance and Implementation
+## Conditions Before Implementation
 
 1. Define the supported skills v1 fields/source kinds and same-name collision
    policy, plus explicit loss/error reporting for imports and exports.
@@ -119,7 +122,7 @@ not to claim it is an inadequate package-manager lock.
    discovery failures independent of already pinned, locally available content.
 
 No parser, schema, dependency adoption or runtime experiment is included in
-KIT-2. This proposal remains open for architecture review.
+KIT-2. The conditions above must be met before implementation begins.
 
 ## Links
 
