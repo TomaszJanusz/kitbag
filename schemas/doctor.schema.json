@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kitbag.sh/schemas/doctor.schema.json",
+  "title": "KitBag doctor report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["doctor_schema", "checks"],
+  "properties": {
+    "doctor_schema": {"const": 1},
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status", "message", "fix"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "status": {"enum": ["OK", "WARN", "FAIL"]},
+          "message": {"type": "string", "minLength": 1},
+          "fix": {"type": "string"}
+        },
+        "if": {"properties": {"status": {"enum": ["WARN", "FAIL"]}}},
+        "then": {"properties": {"fix": {"minLength": 1}}}
+      }
+    }
+  }
+}

@@ -74,3 +74,10 @@ service or daemon command is introduced.
 See [last-sync persistence](state.md#last-sync-attempt-kit-23),
 [explicit migration roots](manifest.md#configtoml-reference), and
 [Git include safety](generic.md).
+
+## Doctor
+
+`kitbag doctor` diagnoses local prerequisites and remote reachability, grouping
+OK/WARN/FAIL results with fix hints. `--json`, `--strict` and a local, redacted
+`--report <path>` are described in [doctor.md](doctor.md). Report mode skips
+network probes and never uploads data.

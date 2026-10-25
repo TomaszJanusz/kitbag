@@ -11,7 +11,12 @@ import (
 
 func planSchema(t *testing.T) *jsonschema.Schema {
 	t.Helper()
-	data, err := os.ReadFile("../../schemas/plan.schema.json")
+	return namedSchema(t, "plan")
+}
+
+func namedSchema(t *testing.T, name string) *jsonschema.Schema {
+	t.Helper()
+	data, err := os.ReadFile("../../schemas/" + name + ".schema.json") //nolint:gosec // G304: name is a fixed test-owned schema name, never user input.
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,7 +25,7 @@ func planSchema(t *testing.T) *jsonschema.Schema {
 		t.Fatal(err)
 	}
 	compiler := jsonschema.NewCompiler()
-	const url = "https://kitbag.sh/schemas/plan.schema.json"
+	url := "https://kitbag.sh/schemas/" + name + ".schema.json"
 	if err = compiler.AddResource(url, doc); err != nil {
 		t.Fatal(err)
 	}
@@ -52,6 +57,26 @@ func TestPlanSchemaRejectsDrift(t *testing.T) {
 		}
 		if err = schema.Validate(doc); err == nil {
 			t.Fatalf("accepted invalid plan: %s", data)
+		}
+	}
+}
+
+func TestDoctorSchemaRejectsDrift(t *testing.T) {
+	t.Parallel()
+	schema := namedSchema(t, "doctor")
+	for _, data := range []string{
+		`{"doctor_schema":2,"checks":[]}`,
+		`{"doctor_schema":1,"checks":null}`,
+		`{"doctor_schema":1,"checks":[],"contents":"secret"}`,
+		`{"doctor_schema":1,"checks":[{"id":"remote","status":"FAIL","message":"broken","fix":""}]}`,
+		`{"doctor_schema":1,"checks":[{"id":"remote","status":"INFO","message":"broken","fix":"fix"}]}`,
+	} {
+		doc, err := jsonschema.UnmarshalJSON(bytes.NewBufferString(data))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = schema.Validate(doc); err == nil {
+			t.Fatalf("accepted invalid doctor report: %s", data)
 		}
 	}
 }

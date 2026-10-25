@@ -22,6 +22,9 @@ import (
 // testKitbagMain adds an entry only to the test binary. Installed kitbag has no
 // fixture apply entry; public sync/plan/status use production adapters.
 func testKitbagMain() {
+	if len(os.Args) > 1 && os.Args[1] == "__e2e_doctor_locked" {
+		os.Exit(doctorLockedDriver(os.Args[2:]))
+	}
 	if len(os.Args) > 1 && os.Args[1] == "__e2e_apply" {
 		os.Exit(applyDriver(os.Args[2:], os.Stdout, os.Stderr))
 	}

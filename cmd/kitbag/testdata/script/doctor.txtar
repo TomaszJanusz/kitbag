@@ -1,0 +1,152 @@
+# All probes run against isolated HOME/config and a local file remote.
+[windows] stop 'Windows refuses commands before 1.x'
+env KITBAG_CONFIG=$WORK/machine.toml
+env KITBAG_HOST=test
+env CODEX_HOME=
+env CLAUDE_CONFIG_DIR=
+env SSH_AUTH_SOCK=
+gitremote $WORK/config.git seed
+exec git clone --quiet $WORK/config.git $HOME/checkout
+exec git -C $HOME/checkout config user.name 'Doctor Test'
+exec git -C $HOME/checkout config user.email test@example.invalid
+exec git -C $HOME/checkout config commit.gpgsign false
+hidecmd claude codex
+exec kitbag doctor
+stdout '^OK:$'
+stdout '^WARN:$'
+stdout '^FAIL:$'
+stdout 'ssh-agent: .*fix: start an SSH agent and export SSH_AUTH_SOCK'
+stdout 'agent-claude: .*fix: install claude'
+stdout 'agent-codex: .*fix: install codex'
+stdout 'instance-codex/first: .*fix: create or correct instance directory'
+execstatus 1 kitbag doctor --strict
+exec kitbag doctor --json
+doctorschema stdout
+stdout '"status": "WARN"'
+
+# Both missing and regular-file socket paths warn.
+env SSH_AUTH_SOCK=$WORK/plain
+exec kitbag doctor
+stdout 'SSH_AUTH_SOCK does not name a socket; fix: start an SSH agent'
+
+# Remote failure is a FAIL, not a WARN or successful cached status.
+exec git -C $HOME/checkout remote set-url origin $WORK/absent.git
+execstatus 1 kitbag doctor
+stdout 'remote: .*fix: check origin URL, connectivity and authentication'
+exec git -C $HOME/checkout remote set-url origin $WORK/config.git
+
+# Identity and signing are independent named checks and never print values.
+exec git -C $HOME/checkout config user.name ''
+exec git -C $HOME/checkout config commit.gpgsign true
+exec git -C $HOME/checkout config user.signingkey ''
+exec kitbag doctor
+stdout 'commit-identity: .*fix: set git config user.name and user.email'
+stdout 'commit-signing: .*fix: set git config user.signingkey'
+! stdout 'test@example.invalid'
+
+# A malformed Git boolean fails config inspection without exposing raw values.
+exec git -C $HOME/checkout config commit.gpgsign invalid
+exec kitbag doctor
+stdout 'commit-config: .*fix: repair the working copy and Git config'
+exec git -C $HOME/checkout config commit.gpgsign false
+
+# Default instances honor relocation and explain invalid overrides.
+cp default $HOME/checkout/kitbag.toml
+env CODEX_HOME=relative
+execstatus 1 kitbag doctor
+stdout 'instances: .*fix: use absolute CODEX_HOME/CLAUDE_CONFIG_DIR'
+env CODEX_HOME=
+cp seed/kitbag.toml $HOME/checkout/kitbag.toml
+
+# Invalid/future state cannot be silently replaced.
+cp bad-state $HOME/.local/state/kitbag/state.json
+execstatus 1 kitbag doctor
+stdout 'state-health: .*fix: restore a valid state backup'
+cmp bad-state $HOME/.local/state/kitbag/state.json
+rm $HOME/.local/state/kitbag/state.json
+# The test-only driver holds a real kernel lock while running public doctor.
+execstatus 1 kitbag __e2e_doctor_locked doctor
+stdout 'state-lock: .*another sync is running.*fix: wait for the running sync to exit'
+cp plain $HOME/.local/state/kitbag/state.lock
+# A leftover file is not a held lock.
+exec kitbag doctor
+stdout 'state-lock: state lock available'
+rm $HOME/.local/state/kitbag/state.lock
+mkdir $HOME/.local/state/kitbag/state.lock
+execstatus 1 kitbag doctor
+stdout 'state-lock: .*fix: wait for the running sync to exit'
+rm $HOME/.local/state/kitbag/state.lock
+
+# Cache filesystem failure exercises both materialization fix hints.
+env XDG_CACHE_HOME=$WORK/plain
+execstatus 1 kitbag doctor
+stdout 'copy: .*fix: make the cache directory writable'
+stdout 'link: .*fix: use --mode=copy'
+env XDG_CACHE_HOME=
+execstatus 1 kitbag --mode=invalid doctor
+stdout 'materialization-mode: .*fix: select --mode=link or --mode=copy'
+
+# Legacy detection is opt-in and never deletes or edits leftovers.
+agentdirs legacy .codex skills .config/systemd/user Library/LaunchAgents
+exec ln -s $HOME/legacy/source $HOME/.codex/skills
+# skills was not precreated under .codex.
+cp marker $HOME/.codex/AGENTS.md
+cp plain $HOME/.config/systemd/user/agent-config-sync.timer
+cp plain $HOME/Library/LaunchAgents/com.example.agent-config-sync.plist
+exec kitbag --config=$WORK/legacy.toml doctor
+stdout 'legacy-links: .*fix: review old links and migrate/adopt'
+stdout 'legacy-markers: .*fix: review legacy managed instructions'
+stdout 'legacy-units: .*fix: review and disable old agent-config-sync timers/services manually'
+linktarget $HOME/.codex/skills $HOME/legacy/source
+cmp marker $HOME/.codex/AGENTS.md
+exists $HOME/.config/systemd/user/agent-config-sync.timer
+
+# Tool version failure uses documented code 4, while other checks still run.
+cp future $HOME/checkout/kitbag.toml
+execstatus 4 kitbag doctor
+stdout 'tool-version: .*fix: upgrade kitbag'
+stdout 'state-lock:'
+cp invalid $HOME/checkout/kitbag.toml
+execstatus 1 kitbag doctor
+stdout 'manifest: .*fix: configure repo.path and repair kitbag.toml'
+
+# Backend failures are grouped diagnostics, not an early Cobra error.
+hidecmd git
+execstatus 1 kitbag --git-backend=system doctor
+stdout 'git-backend: .*requested by --git-backend.*fix: install Git 2.30 or newer'
+! stderr .
+
+-- machine.toml --
+schema=1
+[repo]
+url="local"
+path="~/checkout"
+-- legacy.toml --
+schema=1
+[repo]
+url="local"
+path="~/checkout"
+[migration]
+legacy_roots=["~/legacy"]
+-- seed/kitbag.toml --
+schema=1
+[targets.codex]
+agent="codex"
+[targets.codex.instances.first]
+dir="~/.codex"
+-- default --
+schema=1
+[targets.codex]
+agent="codex"
+-- future --
+schema=1
+min_tool_version="99.0.0"
+-- invalid --
+this is not valid TOML
+-- bad-state --
+{"schema_version":99,"targets":[],"history":[]}
+-- marker --
+<!-- Managed by agent-config-sync -->
+# agent-config-managed
+-- plain --
+plain

@@ -47,7 +47,7 @@ func (c *commandLine) root() *cobra.Command {
 	flags.BoolVar(&c.flags.verbose, "verbose", false, "Show backend selection and working copy diagnostics")
 	flags.BoolVar(&c.flags.quiet, "quiet", false, "Suppress successful sync change output")
 	root.MarkFlagsMutuallyExclusive("verbose", "quiet")
-	root.AddCommand(c.syncCommand(), c.planCommand(), c.statusCommand(), c.versionCommand())
+	root.AddCommand(c.syncCommand(), c.planCommand(), c.statusCommand(), c.doctorCommand(), c.versionCommand())
 	return root
 }
 
