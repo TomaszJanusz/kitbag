@@ -1,9 +1,11 @@
 # Release automation
 
 The release pipeline builds the CLI for darwin/linux × amd64/arm64 using the
-versions pinned in [mise.toml](../mise.toml). Windows and distribution channels
-(Homebrew, deb/rpm, AUR, install script) belong to later tickets. No tap,
-registry, package repository or long-lived signing credential is used here.
+versions pinned in [mise.toml](../mise.toml), plus Linux deb/rpm packages and the
+install script. Stable releases then update the Homebrew tap and AUR package when
+their maintainer-provided secrets exist ([channels](#distribution-channels);
+user guide: [install.md](install.md)). Windows belongs to a later milestone. No
+package repository or long-lived signing credential is used here.
 
 ## Approval and triggers
 
@@ -40,9 +42,15 @@ root entries `kitbag`, `LICENSE`, `README.md`, and `kitbag.install-source` with
 there are no completion files to package. Archive names, root executable and
 stamp follow [the direct-install protocol](self-update.md#direct-installation-protocol).
 
+nfpm (through GoReleaser) builds `kitbag_<version>_<arch>.deb` and
+`kitbag-<version>-1.<arch>.rpm` for amd64/arm64 (prerelease versions use `~`).
+They install `/usr/lib/kitbag/kitbag`, a `deb` or `rpm` stamp beside it from
+`packaging/`, the license, and a `/usr/bin/kitbag` link, and recommend `git`.
+`install.sh` is copied unchanged from the tagged commit.
+
 Syft produces an SPDX JSON SBOM for each archive. `checksums.txt` uses SHA-256
-with two spaces before the filename and covers archives, SBOMs and
-`kitbag-update.json` discovery metadata. Cosign keylessly signs that manifest
+with two spaces before the filename and covers archives, packages, SBOMs,
+`install.sh` and `kitbag-update.json` discovery metadata. Cosign keylessly signs that manifest
 with GitHub OIDC; `checksums.txt.sigstore.json` carries the certificate,
 signature and transparency-log proof. Authenticating the manifest authenticates
 each listed artifact. SLSA's isolated generic generator binds all of these files
@@ -95,6 +103,26 @@ identity; never accept arbitrary workflows using a broad identity regex. On
 macOS, `shasum -a 256 --check checksums.txt` replaces `sha256sum`.
 Run the provenance command for each file you intend to consume. A fork must use
 its own repository and workflow identities and can only prove that fork's build.
+
+## Distribution channels
+
+After `publish` succeeds for a stable tag, the `channels` job runs
+`scripts/release-channels.sh publish`. It first re-validates GoReleaser's AUR
+PKGBUILD/.SRCINFO against the verified checksums and the package-owned `aur`
+stamp, and renders the Homebrew formula with `scripts/homebrew-formula.sh`. It
+then pushes `Formula/kitbag.rb` to `TomaszJanusz/homebrew-tap` with
+`HOMEBREW_TAP_TOKEN`, and `PKGBUILD`/`.SRCINFO` to `kitbag-bin` on the AUR over
+SSH with `AUR_SSH_PRIVATE_KEY` and a pinned host key. A missing secret skips that
+channel with a job-summary line instead of failing the release. Release Please
+passes these two optional secrets explicitly; nightly runs pass none and skip
+the job. The tap, token, AUR account and key are maintainer setup
+([install.md](install.md#maintainer-setup)).
+
+The `verify-linux`, `verify-fedora` and `verify-macos` jobs then install the
+published release through install.sh (with cosign on macOS), the `.deb`, the
+`.rpm` and, when it was updated, the tap. They cannot run before the first real
+release; the Release snapshot workflow runs the same `scripts/package-check.sh`
+checks against local snapshot payloads on every relevant PR.
 
 ## Nightly channel
 
@@ -178,7 +206,10 @@ SHA-256 hashes. SBOM generation timestamps are intentionally not compared.
 This proves repeatability on the same runner/toolchain, not independent-host or
 bit-for-bit SBOM reproducibility.
 
-The snapshot check runs on main and release-related PR paths. Locally use
+The snapshot check runs on main and release-related PR paths. Its follow-up
+jobs install the snapshot's `.deb` and install.sh in Ubuntu containers, its
+`.rpm` in Fedora, its PKGBUILD with makepkg in Arch Linux, and install.sh plus
+the formula from a local tap on macOS ([details](install.md#how-channels-are-tested)). Locally use
 `mise exec -- goreleaser release --snapshot --clean --parallelism 2` for the bare
 GoReleaser dry run, or `mise run release:snapshot` for the complete check. Neither
 signs nor publishes. `scripts/release-build.sh` adds discovery metadata and its

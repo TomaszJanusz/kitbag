@@ -24,7 +24,11 @@ esac
 version=$(jq -r .version dist/metadata.json)
 jq -n --arg version "$version" --arg channel "$channel" \
   '{version: $version, channel: $channel}' >dist/kitbag-update.json
+# GoReleaser hashed install.sh (checksum.extra_files) but publishes nothing;
+# ship the exact signed copy beside the archives.
+cp install.sh dist/install.sh
 # Include discovery metadata in the authenticated manifest, along with every
-# archive and SBOM. GoReleaser has already hashed its artifacts.
+# archive, package and SBOM. GoReleaser has already hashed its artifacts.
 (cd dist && sha256sum kitbag-update.json >>checksums.txt && sha256sum --check checksums.txt)
 bash scripts/release-verify.sh dist
+bash scripts/release-channels.sh verify dist

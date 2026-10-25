@@ -16,7 +16,7 @@ else
   test "$GITHUB_REF" = refs/heads/main
   source+=(--source-branch main)
 fi
-for artifact in ./*.tar.gz ./*.sbom.json kitbag-update.json checksums.txt checksums.txt.sigstore.json; do
+for artifact in ./*.tar.gz ./*.deb ./*.rpm ./*.sbom.json install.sh kitbag-update.json checksums.txt checksums.txt.sigstore.json; do
   slsa-verifier verify-artifact "$artifact" --provenance-path kitbag.intoto.jsonl "${source[@]}" --print-provenance |
     jq -e --arg sha "$SOURCE_SHA" '.predicate.invocation.configSource.digest.sha1 == $sha' >/dev/null
 done
@@ -36,7 +36,7 @@ if [[ "$NIGHTLY" == true ]]; then
   fi
   # Only the mutable nightly alias moves. Stable version tags are never edited.
   gh api --method PATCH "repos/$GH_REPO/git/refs/tags/nightly" -f sha="$SOURCE_SHA" -F force=true >/dev/null
-  gh release upload nightly ./*.tar.gz ./*.sbom.json kitbag-update.json checksums.txt checksums.txt.sigstore.json kitbag.intoto.jsonl --clobber
+  gh release upload nightly ./*.tar.gz ./*.deb ./*.rpm ./*.sbom.json install.sh kitbag-update.json checksums.txt checksums.txt.sigstore.json kitbag.intoto.jsonl --clobber
 else
   [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
   jq -e --arg version "${TAG#v}" '.channel == "stable" and .version == $version' kitbag-update.json >/dev/null
@@ -44,5 +44,5 @@ else
   if [[ -z "$existing" ]]; then
     gh release create "$TAG" --verify-tag --latest --generate-notes
   fi
-  gh release upload "$TAG" ./*.tar.gz ./*.sbom.json kitbag-update.json checksums.txt checksums.txt.sigstore.json kitbag.intoto.jsonl
+  gh release upload "$TAG" ./*.tar.gz ./*.deb ./*.rpm ./*.sbom.json install.sh kitbag-update.json checksums.txt checksums.txt.sigstore.json kitbag.intoto.jsonl
 fi

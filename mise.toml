@@ -9,6 +9,7 @@
 "aqua:orhun/git-cliff" = "2.14.2"
 "aqua:slsa-framework/slsa-verifier" = "2.7.1"
 "aqua:mvdan/sh" = "3.14.1"
+"aqua:koalaman/shellcheck" = "0.11.0"
 "aqua:crate-ci/typos" = "1.51.1"
 "aqua:gitleaks/gitleaks" = "8.30.1"
 "aqua:google/osv-scanner" = "2.7.0"
@@ -43,6 +44,9 @@ run = [
   "bash scripts/quality.sh format-check",
   "bash scripts/coverage-test.sh",
   "bash scripts/quality-test.sh",
+  "shfmt -d install.sh scripts",
+  "shellcheck install.sh scripts/install-test.sh scripts/package-check.sh scripts/release-channels.sh scripts/homebrew-formula.sh",
+  "bash scripts/install-test.sh",
   "golangci-lint config verify",
   "golangci-lint run ./...",
   "go vet ./...",
