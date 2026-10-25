@@ -211,6 +211,7 @@ const (
 	HelpSave         Key = "help.save"
 	HelpChoices      Key = "help.choices"
 	HelpFollow       Key = "help.follow"
+	HelpMouse        Key = "help.mouse"
 	HelpToggle       Key = "help.toggle"
 	HelpQuit         Key = "help.quit"
 )
@@ -377,7 +378,7 @@ func formText() []entry {
 func terminalText() []entry {
 	return []entry{
 		{TerminalTooSmall, "Enlarge the terminal to at least %s×%s (now %s×%s)"},
-		{TerminalFooter, "? help · q quit"},
+		{TerminalFooter, "? help · q quit · mouse: click, wheel"},
 		{TerminalWarnings, "Warnings"},
 		{ControlHint, "[%s] %s"},
 		{ControlDisabled, "%s (unavailable)"},
@@ -399,6 +400,7 @@ func terminalText() []entry {
 		{HelpSave, "w: save a kept draft; u: remove the value from config.toml"},
 		{HelpChoices, "←/→ while editing: cycle allowed values"},
 		{HelpFollow, "f: follow new activity; ↑/↓, PgUp/PgDn: scroll"},
+		{HelpMouse, "Mouse: click a tab or row, click a target again for details; wheel: scroll"},
 		{HelpToggle, "?: show or hide this help"},
 		{HelpQuit, "q or Ctrl-C: quit"},
 	}

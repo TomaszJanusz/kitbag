@@ -7,4 +7,4 @@ Following new entries · 3 older entries dropped
 12:00:00 warn The daemon detected drift
 12:00:00 warn A sync finished with warnings, 7 changed
 12:00:00 info A newer kitbag release is available
-? help · q quit
+? help · q quit · mouse: click, wheel
