@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kitbag.sh/schemas/history.schema.json",
+  "title": "KitBag journaled plans, newest first (history_schema 1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "history_schema",
+    "plans"
+  ],
+  "properties": {
+    "history_schema": {
+      "type": "integer",
+      "const": 1
+    },
+    "plans": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "number",
+          "id",
+          "applied_at",
+          "adopted",
+          "paths"
+        ],
+        "properties": {
+          "number": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "applied_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "adopted": {
+            "type": "boolean"
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    }
+  }
+}

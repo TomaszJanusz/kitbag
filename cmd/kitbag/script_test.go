@@ -18,7 +18,9 @@ func TestScripts(t *testing.T) {
 	t.Parallel()
 
 	params := e2e.Params("testdata/script")
+	params.Cmds["adoptschema"] = validatePlanCommand(namedSchema(t, "adopt"))
 	params.Cmds["doctorschema"] = validatePlanCommand(namedSchema(t, "doctor"))
+	params.Cmds["historyschema"] = validatePlanCommand(namedSchema(t, "history"))
 	params.Cmds["execstatus"] = execStatus
 	params.Cmds["planschema"] = validatePlanCommand(planSchema(t))
 	testscript.Run(t, params)

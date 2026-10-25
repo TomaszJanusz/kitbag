@@ -68,8 +68,8 @@ Exit codes remain 0 success, 1 warning/operational failure, 2 usage/configuratio
 3 conflict, 4 tool too old and 5 unsupported OS. Read-only inspection exits 0 when
 it succeeds even when it describes drift. A development build reports `dev` and
 checks minimum versions as `0.0.0-dev`; it cannot bypass a newer-tool requirement.
-Windows is refused before any command runs. No init, doctor, adopt, revert,
-service or daemon command is introduced.
+Windows is refused before any command runs. No init, service or daemon command
+is introduced.
 
 See [last-sync persistence](state.md#last-sync-attempt-kit-23),
 [explicit migration roots](manifest.md#configtoml-reference), and
@@ -81,3 +81,13 @@ See [last-sync persistence](state.md#last-sync-attempt-kit-23),
 OK/WARN/FAIL results with fix hints. `--json`, `--strict` and a local, redacted
 `--report <path>` are described in [doctor.md](doctor.md). Report mode skips
 network probes and never uploads data.
+
+## Adopt, unmanage and revert
+
+`kitbag adopt` takes over destinations that agent-config-sync already manages
+with zero file changes (`--dry-run`, `--json` with adopt_schema 1,
+`--move-real-dirs`); it requires `migration.legacy_roots`. `kitbag unmanage`
+removes what KitBag created and restores what it replaced (`--dry-run`,
+`--dry-run --json`). `kitbag revert` restores the targets from before the latest
+journaled plan, or the latest `--to <n>` (`--force`, `--dry-run`, `--list`).
+None of them fetches. See [adopt.md](adopt.md).

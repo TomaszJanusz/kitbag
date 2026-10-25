@@ -230,7 +230,9 @@ into the instance's settings file follows today's `agent-config-sync` rules:
    backup, as recorded in local state.
 
 Marker migration: hooks carrying the previous `# agent-config-managed` marker
-are not recognized as managed; remove them before the first KitBag sync.
+are recognized as managed and replaced by the current groups on the next merge.
+An adopted settings file whose only difference is that marker stays untouched
+until the fragment changes ([adopt.md](adopt.md)).
 
 ### `[hosts.<name>]`
 

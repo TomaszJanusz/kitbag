@@ -29,11 +29,30 @@ func namedSchema(t *testing.T, name string) *jsonschema.Schema {
 	if err = compiler.AddResource(url, doc); err != nil {
 		t.Fatal(err)
 	}
+	if name == "adopt" {
+		// Remaining operations reuse the plan schema's operation definition.
+		addSchemaResource(t, compiler, "plan")
+	}
 	schema, err := compiler.Compile(url)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return schema
+}
+
+func addSchemaResource(t *testing.T, compiler *jsonschema.Compiler, name string) {
+	t.Helper()
+	data, err := os.ReadFile("../../schemas/" + name + ".schema.json") //nolint:gosec // G304: name is a fixed test-owned schema name, never user input.
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = compiler.AddResource("https://kitbag.sh/schemas/"+name+".schema.json", doc); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func validatePlanCommand(schema *jsonschema.Schema) func(*testscript.TestScript, bool, []string) {
@@ -57,6 +76,33 @@ func TestPlanSchemaRejectsDrift(t *testing.T) {
 		}
 		if err = schema.Validate(doc); err == nil {
 			t.Fatalf("accepted invalid plan: %s", data)
+		}
+	}
+}
+
+func TestLifecycleSchemasRejectDrift(t *testing.T) {
+	t.Parallel()
+	for name, documents := range map[string][]string{
+		"adopt": {
+			`{"adopt_schema":2,"dry_run":false,"adopted":[],"moved":[],"remaining":[],"undeclared":[]}`,
+			`{"adopt_schema":1,"dry_run":false,"adopted":null,"moved":[],"remaining":[],"undeclared":[]}`,
+			`{"adopt_schema":1,"dry_run":false,"adopted":[{"path":"/a","kind":"other","legacy":false}],"moved":[],"remaining":[],"undeclared":[]}`,
+			`{"adopt_schema":1,"dry_run":false,"adopted":[],"moved":[],"remaining":[{"kind":"unknown","path":"/a","classification":"in sync"}],"undeclared":[]}`,
+		},
+		"history": {
+			`{"history_schema":2,"plans":[]}`,
+			`{"history_schema":1,"plans":[{"number":0,"id":"x","applied_at":"2026-01-01T00:00:00Z","adopted":false,"paths":[]}]}`,
+		},
+	} {
+		schema := namedSchema(t, name)
+		for _, data := range documents {
+			doc, err := jsonschema.UnmarshalJSON(bytes.NewBufferString(data))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err = schema.Validate(doc); err == nil {
+				t.Fatalf("accepted invalid %s document: %s", name, data)
+			}
 		}
 	}
 }

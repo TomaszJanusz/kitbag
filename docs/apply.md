@@ -74,7 +74,10 @@ renamed, never overwritten. Recovery storage may not overlap managed targets. Ap
 overlapping the state directory or its ancestors, protecting state and its lock.
 
 Owned replacements/removals also retain the prior entry in a uniquely named
-backup for the state journal. No backup is automatically pruned when history
+backup for the state journal. Unmanage and revert plans instead *discard*
+unchanged owned output: it moves to a reserved `.kitbag-stage.<step ID>` sibling
+that is deleted once the step completes, so no backup sibling blocks a later
+one-time backup. A forced revert moves a changed destination to a backup. No backup is automatically pruned when history
 rotates. Existing permissions are retained by rename. New directories and files
 use 0700/0600; copies also retain source executable bits. Generated content is
 always a regular private file. Directory copies are staged as complete trees;
@@ -84,15 +87,23 @@ source links/special files and changing source content are refused.
 
 Before each host step, Save atomically records one `Database.Pending` intent
 containing the expected entry, intended target, owned staging sibling, backup
-sibling and prior metadata. It contains hashes/paths, never file bytes. Outputs
+or discard sibling, plan group and prior metadata. It contains hashes/paths,
+never file bytes. Step actions are `output` (optionally `release`: the written
+settings become unowned, used by unmerge), `remove`, `backup` (an adoption move
+may name `~/.agents/skills-before-kitbag/...` instead of a sibling) and
+`restore` (rename a journaled backup `from` back, or recreate a `restored` link,
+then record or drop the journaled ownership). Each Execute groups its journal
+entries under the first step's ID. Outputs
 are built under `<destination>.kitbag-stage.<step ID>`, checked, the old entry is
 renamed aside, then the staging entry is renamed into place. Successful steps
 immediately Save ownership/removal plus a history entry and clear Pending before
-the next step. Metadata-only records Save immediately. History entries currently
-represent completed steps; the state history limit counts those entries.
+the next step. Metadata-only records Save immediately. History entries
+represent completed steps grouped into plans; the state history limit counts
+plans.
 
-Recovery recognizes complete intended output and records its ownership, or
-restores the original entry and discards incomplete staging before replanning.
+Recovery recognizes complete intended output (or the restored entry) and
+records its ownership, or restores the original entry from its backup or discard
+sibling and discards incomplete staging before replanning.
 An interrupted backup/remove is finalized when its destination is absent. A
 changed external destination blocks recovery rather than discarding local edits.
 Recovery never needs old source bytes or a serialized executable plan. Backups
@@ -112,7 +123,8 @@ recovery on every filesystem is not claimed.
 ## Reports and exit codes
 
 `Result` contains successful `Changed` operations, skipped `Warnings`, and
-`Conflicts`. `Result.Code()` gives conflicts priority. `ErrorCode(err)` handles
+`Conflicts`. `record` and `release` operations change ownership only; a
+`record` carrying a restoration owner records exactly that journaled target. `Result.Code()` gives conflicts priority. `ErrorCode(err)` handles
 operational, usage, tool-version and unsupported-OS errors; callers combine codes
 with `max`. Empty successful results render nothing to either stream, exit 0,
 and do not rewrite state. An error stops execution and requires recovery/replan.

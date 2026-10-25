@@ -62,11 +62,15 @@ stand-in with `exec kitbag <command>` and keeps all four scenarios: first run,
 repeat run prints nothing, a listed instance directory is missing, and the
 case the change is about.
 
-Real-adapter acceptance scripts run public `sync`, `plan` and `status`; see
+Real-adapter acceptance scripts run public `sync`, `plan`, `status`, `adopt`,
+`unmanage` and `revert`; see
 [everyday commands](docs/commands.md) and the [generated reference](docs/cli/kitbag.md).
 Fixture-only apply cases retain the test-binary-only `__e2e_apply` entry.
 `execstatus code command ...` asserts exact process exits.
-`planschema file` validates actual `plan --json` output against its JSON Schema.
+`planschema file` validates actual `plan --json` output against its JSON Schema
+(`adoptschema` and `historyschema` likewise). `homefixture dir` installs a
+recorded HOME and `treesnap root file` fingerprints a tree, including
+modification times, to prove that a command changed nothing.
 
 **HOME guard.** The harness refuses to run, and `kitbag` started by a script
 exits with status 125, when `HOME` is the real home directory or is not a

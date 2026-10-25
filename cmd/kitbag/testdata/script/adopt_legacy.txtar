@@ -25,6 +25,7 @@ stderr 'legacy_roots'
 treesnap $HOME $WORK/before.snap .local/state checkout
 cp $WORK/.gitconfig $WORK/gitconfig.before
 exec kitbag adopt --dry-run --json
+adoptschema stdout
 stdout '"adopt_schema": 1'
 stdout '"dry_run": true'
 ! exists $HOME/.local/state/kitbag/state.json

@@ -27,6 +27,7 @@ exec kitbag revert --list
 stdout '^1  .*  applied 4 path\(s\)'
 stdout '^2  .*  applied 3 path\(s\)'
 exec kitbag revert --list --json
+historyschema stdout
 stdout '"history_schema": 1'
 
 # The dry run is a validated plan and changes nothing.
