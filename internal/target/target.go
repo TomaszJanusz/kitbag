@@ -51,6 +51,9 @@ type Target struct {
 	Warning     string
 	Content     []byte
 	Owners      []state.Owner
+	// Preserve leaves this path and previous ownership untouched without reading
+	// a source or producing an operation (for instance settings=off).
+	Preserve bool
 }
 
 // Adapter declares all its enabled targets from an already validated and

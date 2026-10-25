@@ -1,0 +1,23 @@
+{
+  "local": "{repo}",
+  "path": "/fixture/config repo/hook.sh",
+  "nested": [
+    "/fixture/config repo/legacy.sh",
+    {
+      "@REPO@": "/fixture/config repo"
+    }
+  ],
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/fixture/config repo/hook.sh\" # kitbag-managed"
+          }
+        ]
+      }
+    ]
+  }
+}

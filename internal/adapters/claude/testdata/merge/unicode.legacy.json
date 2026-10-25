@@ -1,0 +1,6 @@
+{
+  "z": "<local>&",
+  "empty": [],
+  "unicode": "zażółć  \u007f\n\t",
+  "object": {}
+}

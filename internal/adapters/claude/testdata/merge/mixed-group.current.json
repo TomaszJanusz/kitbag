@@ -1,0 +1,1 @@
+{"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "mine # agent-config-managed"}, {"type": "command", "command": "also removed"}]}, {"matcher": "", "hooks": [{"type": "command", "command": "contains # agent-config-managed but not trailing"}]}]}}

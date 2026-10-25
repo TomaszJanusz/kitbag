@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/TomaszJanusz/kitbag/internal/adapters/claude"
 	"github.com/TomaszJanusz/kitbag/internal/adapters/codex"
 	"github.com/TomaszJanusz/kitbag/internal/core/apply"
 	"github.com/TomaszJanusz/kitbag/internal/core/plan"
@@ -109,6 +110,8 @@ func driverAdapter(host platform.Host, name string, instances []string) (target.
 	switch name {
 	case "":
 		return fixtureAdapter(instances), nil
+	case "claude":
+		return claudeDriver(host)
 	case codex.Agent:
 		adapter, err := codex.New(host)
 		return adapter, err
@@ -151,4 +154,16 @@ func driverError(stderr io.Writer, err error) int {
 		return int(apply.Warnings)
 	}
 	return int(apply.ErrorCode(err))
+}
+
+func claudeDriver(host platform.Host) (target.Adapter, error) {
+	home, err := host.HomeDir()
+	if err != nil {
+		return nil, err
+	}
+	directory, err := host.AgentHome("CLAUDE_CONFIG_DIR", ".claude")
+	if err != nil {
+		return nil, err
+	}
+	return claude.New(home, directory)
 }

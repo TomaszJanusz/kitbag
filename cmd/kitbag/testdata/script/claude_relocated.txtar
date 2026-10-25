@@ -1,0 +1,44 @@
+# Default instance uses CLAUDE_CONFIG_DIR; an explicit instance ignores it.
+gitremote $WORK/config.git config
+exec git clone --quiet $WORK/config.git $WORK/checkout
+env CLAUDE_CONFIG_DIR=$HOME/relocated
+exec kitbag __e2e_apply --adapter claude $WORK/checkout
+! stderr .
+! exists $HOME/.claude
+grep '^@.*/checkout/global/AGENTS.md$' $HOME/relocated/CLAUDE.md
+exec kitbag __e2e_apply --adapter claude $WORK/checkout
+nooutput
+
+# Copy policy still writes generated imports and private settings as regular files.
+cp listed.toml $WORK/checkout/kitbag.toml
+agentdirs .listed
+exec kitbag __e2e_apply --adapter claude --mode copy $WORK/checkout
+! stderr .
+! linktarget $HOME/.listed/skills/tool
+content $HOME/.listed/skills/tool/SKILL.md 'Tool skill.'
+! exists $HOME/.claude
+exec kitbag __e2e_apply --adapter claude --mode copy $WORK/checkout
+nooutput
+
+-- config/kitbag.toml --
+schema = 1
+[instructions]
+source = "global/AGENTS.md"
+[skills]
+dirs = ["skills"]
+[targets.claude]
+agent = "claude"
+-- listed.toml --
+schema = 1
+[instructions]
+source = "global/AGENTS.md"
+[skills]
+dirs = ["skills"]
+[targets.claude]
+agent = "claude"
+[targets.claude.instances.main]
+dir = "~/.listed"
+-- config/global/AGENTS.md --
+Shared rules.
+-- config/skills/tool/SKILL.md --
+Tool skill.
