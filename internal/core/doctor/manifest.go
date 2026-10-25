@@ -58,7 +58,7 @@ func (s Service) manifestChecks(context.Context) []Check {
 	return checks
 }
 
-type instance struct{ name, path string }
+type instance struct{ name, path, agent string }
 
 func (s Service) instances(m *manifest.Manifest) ([]instance, error) {
 	home, err := s.Host.HomeDir()
@@ -77,7 +77,7 @@ func (s Service) instances(m *manifest.Manifest) ([]instance, error) {
 				return nil, err
 			}
 			if dir != "" {
-				dirs = append(dirs, instance{name + "/default", dir})
+				dirs = append(dirs, instance{name + "/default", dir, target.Agent})
 			}
 		}
 		dirs = append(dirs, listedInstances(home, name, target)...)
@@ -103,7 +103,7 @@ func listedInstances(home, name string, target manifest.Target) []instance {
 	for _, key := range slices.Sorted(maps.Keys(target.Instances)) {
 		in := target.Instances[key]
 		if in.Enabled == nil || *in.Enabled {
-			dirs = append(dirs, instance{name + "/" + key, config.Expand(home, in.Dir)})
+			dirs = append(dirs, instance{name + "/" + key, config.Expand(home, in.Dir), target.Agent})
 		}
 	}
 	return dirs
