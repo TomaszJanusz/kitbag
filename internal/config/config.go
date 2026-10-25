@@ -25,7 +25,8 @@ type Config struct {
 		Path   string `toml:"path"`
 	} `toml:"repo"`
 	Git struct {
-		Backend string `toml:"backend"`
+		Backend  string       `toml:"backend"`
+		Identity vcs.Identity `toml:"identity"`
 	} `toml:"git"`
 	Sync struct {
 		PollInterval string `toml:"poll_interval"`
@@ -99,6 +100,9 @@ func (c Config) validate() error {
 		{"host", optional(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$`, c.Host)},
 		{"repo.branch", optional(`^[A-Za-z0-9][A-Za-z0-9/_.-]{0,254}$`, c.Repo.Branch)},
 		{"repo.path", c.Repo.Path == "" || homePath(c.Repo.Path)},
+		{"git.identity.name", optional(`^[^<>\r\n\x00]+$`, c.Git.Identity.Name)},
+		{"git.identity.email", optional(`^[^<>\s\x00]+@[^<>\s\x00]+$`, c.Git.Identity.Email)},
+		{"git.identity", (c.Git.Identity.Name == "") == (c.Git.Identity.Email == "")},
 		{"git.backend", oneOf(c.Git.Backend, "auto", "system", "embedded")},
 		{"sync.mode", oneOf(c.Sync.Mode, "link", "copy")},
 		{"sync.poll_interval", optional(`^([0-9]+(ms|s|m|h))+$`, c.Sync.PollInterval)},
@@ -178,6 +182,9 @@ func checkPresent(data []byte) error {
 }
 
 func nonemptyTable(prefix string, tree map[string]any) error {
+	if prefix == "git.identity." && (tree["name"] == nil || tree["email"] == nil) {
+		return invalid("git.identity (name and email required)")
+	}
 	for key, value := range tree {
 		switch typed := value.(type) {
 		case string:

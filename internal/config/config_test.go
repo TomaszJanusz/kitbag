@@ -75,3 +75,28 @@ func TestEmptyOptionalValuesRejected(t *testing.T) {
 		})
 	}
 }
+
+func TestCommitIdentity(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		identity string
+		valid    bool
+	}{
+		{"name='Publisher'\nemail='publisher@example.com'", true},
+		{"name='Publisher'", false},
+		{"email='publisher@example.com'", false},
+		{"name='Publisher'\nemail='not-an-email'", false},
+		{"name='Publisher <Other>'\nemail='publisher@example.com'", false},
+	} {
+		t.Run(tc.identity, func(t *testing.T) {
+			t.Parallel()
+			c, err := config.Parse([]byte("schema=1\n[repo]\nurl='local'\n[git.identity]\n" + tc.identity))
+			if (err == nil) != tc.valid {
+				t.Fatalf("parse identity %+v, %v; valid %v", c.Git.Identity, err, tc.valid)
+			}
+			if tc.valid && (c.Git.Identity.Name != "Publisher" || c.Git.Identity.Email != "publisher@example.com") {
+				t.Fatalf("identity %+v", c.Git.Identity)
+			}
+		})
+	}
+}

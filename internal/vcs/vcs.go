@@ -60,6 +60,8 @@ type Backend interface {
 	// Diff lists the files that differ between the trees of two revisions,
 	// without rename detection.
 	Diff(ctx context.Context, dir, from, to string) ([]Change, error)
+	// Preview renders a unified diff of committed trees with no external tools.
+	Preview(ctx context.Context, dir, from, to string) (string, error)
 	// Commit records every change in the working tree, including new and
 	// deleted files, and returns the new commit. A clean working tree fails
 	// with [ErrNothingToCommit].
@@ -85,6 +87,8 @@ type Backend interface {
 type CloneOptions struct {
 	// Branch is the branch to check out; empty selects the remote's default.
 	Branch string
+	// Depth limits history to this many commits; zero clones full history.
+	Depth int
 }
 
 // CommitOptions configure [Backend.Commit].

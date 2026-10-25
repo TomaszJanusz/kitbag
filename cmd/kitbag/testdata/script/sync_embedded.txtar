@@ -1,0 +1,54 @@
+# Build local fixtures before removing Git. Clone, fetch and apply must all
+# work without git, git-upload-pack or git-receive-pack on PATH.
+env KITBAG_HOST=test
+env CODEX_HOME=
+gitremote $WORK/config.git seed
+exec git clone --quiet $WORK/config.git $WORK/upstream
+cp second $WORK/upstream/source
+exec git -C $WORK/upstream add --all
+exec git -C $WORK/upstream commit --quiet -m Second
+exec git -C $WORK/upstream push --quiet
+hidecmd git git-upload-pack git-receive-pack
+
+# Explicit embedded selection clones and applies, then is silent.
+env KITBAG_CONFIG=$WORK/embedded.toml
+exec kitbag --git-backend=embedded sync
+stdout '^materialize .*/embedded-output$'
+! stderr .
+content $HOME/embedded-output second
+exec kitbag --git-backend=embedded sync
+nooutput
+exec kitbag --git-backend=embedded --verbose status
+stderr 'embedded \(go-git v5.19.3\), selected by --git-backend'
+
+# Automatic selection falls back to embedded, independently cloning/applying.
+env KITBAG_CONFIG=$WORK/auto.toml
+exec kitbag --git-backend=auto sync
+stdout '^materialize .*/embedded-output$'
+! stderr .
+exec kitbag --git-backend=auto sync
+nooutput
+exec kitbag --verbose status
+stderr 'embedded \(go-git v5.19.3\), selected by default'
+
+-- embedded.toml --
+schema=1
+[repo]
+url="./config.git"
+path="~/embedded-clone"
+branch="main"
+-- auto.toml --
+schema=1
+[repo]
+url="./config.git"
+path="~/auto-clone"
+branch="main"
+-- seed/kitbag.toml --
+schema=1
+[[files]]
+src="source"
+dest="~/embedded-output"
+-- seed/source --
+first
+-- second --
+second

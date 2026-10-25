@@ -11,9 +11,6 @@ import (
 const (
 	systemMissing = `kitbag: Git backend "system" (selected by %s) is unavailable: ` +
 		`git was not found in PATH; install Git 2.30 or newer (https://git-scm.com/downloads)` + "\n"
-	embeddedMissing = `kitbag: Git backend "embedded" (selected by %s) is unavailable: ` +
-		`the embedded Git backend is not available in this version of kitbag; ` +
-		`use --git-backend=system and install Git 2.30 or newer (https://git-scm.com/downloads)` + "\n"
 	invalidBackend = `kitbag: %s: invalid Git backend "bogus": want auto, system or embedded` + "\n"
 	missingValue   = "kitbag: flag needs an argument: --git-backend\n"
 )
@@ -48,8 +45,7 @@ func TestRunGitBackend(t *testing.T) {
 		},
 		{name: "last flag wins", args: []string{"--git-backend=system", "--git-backend=auto", "version"}},
 		{
-			name: "forced embedded", args: []string{"--git-backend", "embedded", "version"}, code: 1,
-			err: sprintf(embeddedMissing, "--git-backend"),
+			name: "forced embedded", args: []string{"--git-backend", "embedded", "version"},
 		},
 		{
 			name: "invalid flag", args: []string{"--git-backend=bogus", "version"}, code: 2,

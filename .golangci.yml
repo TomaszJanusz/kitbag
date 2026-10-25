@@ -80,6 +80,10 @@ linters:
             - $gostd
             - github.com/TomaszJanusz/kitbag/
             - golang.org/x/sys/
+            # KIT-22: Go Git operations and SSH agent authentication, confined below.
+            - github.com/go-git/go-git/v5/
+            - github.com/go-git/go-git/v5$
+            - golang.org/x/crypto/ssh/agent$
             # Schema-gate test dependencies; the schema-check rule confines them.
             - github.com/BurntSushi/toml$
             # KIT-12: positioned TOML parsing is confined to pkg/manifest.
@@ -91,6 +95,13 @@ linters:
             - github.com/santhosh-tekuri/jsonschema/v6$
             # Test-only: the end-to-end harness (see test-only below).
             - github.com/rogpeppe/go-internal/testscript$
+        embedded-git:
+          files: ["$all", "!**/internal/vcs/embedded/*.go"]
+          deny:
+            - pkg: github.com/go-git/go-git/v5
+              desc: go-git belongs only in internal/vcs/embedded; system uses its shared tree renderer.
+            - pkg: golang.org/x/crypto/ssh/agent
+              desc: SSH agent authentication belongs in the embedded Git backend.
         cli-cobra:
           # Cobra belongs to the binary; core policy remains renderer-independent.
           files: ["$all", "!**/cmd/kitbag/*.go"]

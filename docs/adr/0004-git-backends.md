@@ -27,7 +27,9 @@ Git or GitHub CLI installed before they can synchronize.
 
 Provide `system` and `embedded` implementations behind the Git backend boundary.
 In automatic mode, prefer system Git when a suitable version (at least 2.30) is
-available; otherwise use embedded go-git. Select explicitly through
+available; use embedded go-git when the executable is absent. An installed Git
+that is too old or broken is an explicit diagnostic, not an automatic fallback
+(KIT-22). Select explicitly through
 `--git-backend=system|embedded`, then `KITBAG_GIT_BACKEND`, then the tool's
 `git.backend` configuration (`auto`, `system`, or `embedded`), in that precedence.
 Forcing system Git when it is missing is an error, not a silent fallback.

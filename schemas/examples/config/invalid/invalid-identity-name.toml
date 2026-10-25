@@ -1,0 +1,7 @@
+# expect: name
+schema = 1
+[repo]
+url = "https://example.com/config.git"
+[git.identity]
+name = "Publisher\nInjected"
+email = "publisher@example.com"

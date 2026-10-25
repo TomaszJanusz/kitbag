@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/TomaszJanusz/kitbag/internal/vcs"
 )
 
 // The minimum supported Git version, 2.30 (ADR 4).
@@ -17,7 +19,7 @@ const (
 // Errors from [New].
 var (
 	// ErrGitNotFound reports that no git executable is on PATH.
-	ErrGitNotFound = errors.New("git was not found in PATH")
+	ErrGitNotFound = vcs.ErrSystemGitNotFound
 	// ErrGitTooOld reports a Git older than 2.30. It is wrapped in a
 	// [*VersionError].
 	ErrGitTooOld = errors.New("git is too old")

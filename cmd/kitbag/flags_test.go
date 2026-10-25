@@ -16,7 +16,7 @@ func TestConfigBackendAndGlobalFlags(t *testing.T) {
 	if err := h.MkdirAll(home, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := h.WriteAtomic(filename, []byte("schema=1\n[repo]\nurl='local'\n[git]\nbackend='embedded'"), 0o600); err != nil {
+	if err := h.WriteAtomic(filename, []byte("schema=1\n[repo]\nurl='local'\n[git]\nbackend='system'"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	var stdout, stderr bytes.Buffer

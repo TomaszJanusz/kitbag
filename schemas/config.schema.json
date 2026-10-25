@@ -46,9 +46,28 @@
       "additionalProperties": false,
       "properties": {
         "backend": {
-          "description": "auto prefers system Git 2.30+ and falls back to embedded go-git; system and embedded force one backend and fail when it is unavailable.",
+          "description": "auto prefers system Git 2.30+ and falls back to embedded go-git only when git is absent; system and embedded force one backend and fail when it is unavailable.",
           "type": "string",
           "enum": ["auto", "system", "embedded"]
+        },
+        "identity": {
+          "description": "Fallback unsigned commit identity for embedded Git when Git configuration supplies none. Both name and email are required when this table is present.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "email"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "pattern": "^[^<>\\r\\n\\x00]+$"
+            },
+            "email": {
+              "type": "string",
+              "pattern": "^[^<>\\s\\x00]+@[^<>\\s\\x00]+$"
+            }
+          }
         }
       }
     },

@@ -442,6 +442,8 @@ configuration repository.
 | `repo.url` | string without whitespace | yes | — | Clone URL (`https://`, `ssh://`, `git@host:path`). No credentials. |
 | `repo.branch` | Git ref | no | remote default branch | Branch to follow. |
 | `repo.path` | home path | no | platform data directory, for example `~/.local/share/kitbag/repos/<name>` | Working copy location. An existing clone can be reused. |
+| `git.identity.name` | nonempty string without angle brackets or line breaks | no | Git configuration | Fallback unsigned commit author name for embedded Git; supply name and email together. |
+| `git.identity.email` | email string without whitespace or angle brackets | no | Git configuration | Fallback unsigned commit author email for embedded Git. |
 | `git.backend` | `auto` \| `system` \| `embedded` | no | `auto` | Git backend selection (ADR 4). |
 | `sync.poll_interval` | duration | no | `60s` | Daemon fetch interval. |
 | `sync.mode` | `link` \| `copy` | no | platform default | Machine default where the manifest leaves mode unset. |
@@ -449,6 +451,23 @@ configuration repository.
 | `ui.color` | `auto` \| `always` \| `never` | no | `auto` | Terminal color output. |
 | `ui.notifications` | boolean | no | `true` | System notification after changes are applied. |
 | `migration.legacy_roots` | unique array of home paths | no | `[]` (strict) | Explicit old agent-config clone/shared-skill roots eligible for legacy link replacement. No locations are guessed. |
+
+`git.identity` is an additive schema-1 setting. Embedded Git reads the ordinary
+Git configuration first and uses this fallback when fields are missing; a
+missing complete identity stops publishing before staging. It does not edit
+`.gitconfig`. System Git continues using its own identity, hooks and signing.
+
+<!-- example: schemas/examples/config/valid/identity.toml -->
+```toml
+schema = 1
+[repo]
+url = "https://example.com/config.git"
+[git]
+backend = "embedded"
+[git.identity]
+name = "KitBag Publisher"
+email = "publisher@example.com"
+```
 
 `migration.legacy_roots` is an additive schema-1 machine setting introduced
 before the first release. Supply the actual old clone and shared-skill roots
