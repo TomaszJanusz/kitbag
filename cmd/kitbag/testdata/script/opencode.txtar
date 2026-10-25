@@ -1,0 +1,86 @@
+env KITBAG_CONFIG=$WORK/machine.toml
+env KITBAG_HOST=test
+env GEMINI_CLI_HOME=
+env XDG_CONFIG_HOME=
+gitremote $WORK/config.git config
+exec git clone --quiet $WORK/config.git $HOME/checkout
+exec kitbag sync --no-pull
+! stderr .
+stdout 'write .*/AGENTS.md'
+cmp $HOME/.config/opencode/AGENTS.md expected.md
+cmp $HOME/.config/opencode/commands/review.md config/native/review.md
+! linktarget $HOME/.config/opencode/commands/review.md
+! linktarget $HOME/.config/opencode/skills/alpha
+cmp $HOME/.config/opencode/skills/alpha/SKILL.md config/skills/alpha/SKILL.md
+cmp $HOME/.config/opencode/agents/reviewer.md config/native-agents/reviewer.md
+! linktarget $HOME/.config/opencode/agents/reviewer.md
+! exists $HOME/.config/opencode/hooks
+! exists $HOME/.config/opencode/rules
+! exists $HOME/.config/opencode/settings.json
+! exists $HOME/.config/opencode/opencode.json
+exec kitbag sync --no-pull
+nooutput
+
+# Explicit relocation through platform.Env, never the real home.
+env XDG_CONFIG_HOME=$WORK/relocated
+exec kitbag sync --no-pull
+! stderr .
+cmp $WORK/relocated/opencode/AGENTS.md expected.md
+! exists $WORK/relocated/AGENTS.md
+exec kitbag sync --no-pull
+nooutput
+
+# A missing explicit instance warns and is never created.
+cp listed.toml $HOME/checkout/kitbag.toml
+execstatus 1 kitbag sync --no-pull
+stderr 'instance directory is missing; skipped'
+! exists $HOME/.missing
+
+-- config/kitbag.toml --
+schema = 1
+[instructions]
+source = "global/AGENTS.md"
+per_agent.opencode = "override.md"
+[skills]
+dirs = ["skills"]
+[commands]
+per_agent.opencode = "native"
+[agents]
+per_agent.opencode = "native-agents"
+[targets.opencode]
+agent = "opencode"
+-- listed.toml --
+schema = 1
+[instructions]
+source = "global/AGENTS.md"
+per_agent.opencode = "override.md"
+[targets.opencode]
+agent = "opencode"
+[targets.opencode.instances.missing]
+dir = "~/.missing"
+-- config/global/AGENTS.md --
+Shared rules must be replaced.
+-- config/override.md --
+Override rules.
+-- config/skills/alpha/SKILL.md --
+Alpha skill.
+-- config/native/review.md --
+---
+description: Review
+---
+Review.
+-- expected.md --
+<!-- Managed by kitbag. Edit the source in the configuration repository, not this file. -->
+
+Override rules.
+-- machine.toml --
+schema = 1
+[repo]
+url = "local-config"
+path = "~/checkout"
+-- config/native-agents/reviewer.md --
+---
+description: Reviewer
+mode: subagent
+---
+Review changes.

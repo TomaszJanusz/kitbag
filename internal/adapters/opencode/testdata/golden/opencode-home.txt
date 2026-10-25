@@ -1,0 +1,51 @@
+/srv/custom/opencode/AGENTS.md
+  kind: generated
+  backup: once
+  owner: instructions opencode:opencode/default
+  content: <!-- Managed by kitbag. Edit the source in the configuration repository, not this file. -->
+  | 
+  | # Shared instructions
+  | 
+  | Rules every coding agent follows on every machine.
+  | 
+  | - Keep changes small and focused.
+  | - Run the project checks before opening a pull request.
+  | 
+  | # Host: example
+  | 
+  | A shared build machine; keep parallelism low.
+/srv/custom/opencode/skills/alpha
+  kind: materialized
+  mode: copy
+  source: /repo/skills/alpha
+  owner: skills opencode:opencode/default
+/srv/custom/opencode/skills/beta
+  kind: materialized
+  mode: copy
+  source: /repo/skills/beta
+  owner: skills opencode:opencode/default
+/srv/custom/opencode/skills/gamma
+  kind: materialized
+  mode: copy
+  source: /repo/vendor/gamma
+  owner: skills opencode:opencode/default
+/srv/custom/opencode/commands/build.toml
+  kind: materialized
+  mode: copy
+  warning: opencode: commands entry build.toml is not a Markdown file; not supported
+  owner: commands opencode:opencode/default
+/srv/custom/opencode/commands/nested
+  kind: materialized
+  mode: copy
+  warning: opencode: commands entry nested is not a Markdown file; not supported
+  owner: commands opencode:opencode/default
+/srv/custom/opencode/commands/review.md
+  kind: materialized
+  mode: copy
+  source: /repo/commands/review.md
+  owner: commands opencode:opencode/default
+/srv/custom/opencode/commands/shared.md
+  kind: materialized
+  mode: copy
+  source: /repo/opencode-commands/shared.md
+  owner: commands opencode:opencode/default
