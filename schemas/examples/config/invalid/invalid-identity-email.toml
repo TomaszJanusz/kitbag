@@ -1,0 +1,7 @@
+# expect: email
+schema = 1
+[repo]
+url = "https://example.com/config.git"
+[git.identity]
+name = "Publisher"
+email = "not an email"

@@ -10,6 +10,7 @@ import (
 
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 	"github.com/TomaszJanusz/kitbag/internal/vcs"
+	"github.com/TomaszJanusz/kitbag/internal/vcs/embedded"
 )
 
 // passThrough lists the only variables of kitbag's environment that Git sees,
@@ -135,6 +136,12 @@ func (b *Backend) Clone(ctx context.Context, url, dir string, opts vcs.CloneOpti
 		return fmt.Errorf("clone: empty URL: %w", vcs.ErrInvalidArgument)
 	}
 	args := []string{"clone", "--quiet", "--origin=" + vcs.DefaultRemote}
+	if opts.Depth < 0 {
+		return vcs.ErrInvalidArgument
+	}
+	if opts.Depth > 0 {
+		args = append(args, fmt.Sprintf("--depth=%d", opts.Depth), "--no-local")
+	}
 	if opts.Branch != "" {
 		args = append(args, "--branch="+opts.Branch)
 	}
@@ -209,17 +216,14 @@ func (b *Backend) unbornBehind(ctx context.Context, dir string, s *vcs.Status) e
 	return nil
 }
 
-// Diff runs git diff --name-status between two revisions.
-func (b *Backend) Diff(ctx context.Context, dir, from, to string) ([]vcs.Change, error) {
-	if err := checkRevisions(from, to); err != nil {
-		return nil, err
-	}
-	res, err := b.repo(ctx, dir, "diff", "--name-status", "-z", "--no-renames", "--no-relative",
-		"--no-color", "--no-ext-diff", "--no-textconv", "--end-of-options", from, to, "--")
-	if err != nil {
-		return nil, err
-	}
-	return parseDiff(res.Stdout)
+// Diff compares committed trees using the same Go implementation as embedded.
+func (*Backend) Diff(ctx context.Context, dir, from, to string) ([]vcs.Change, error) {
+	return embedded.TreeDiff(ctx, dir, from, to)
+}
+
+// Preview renders the same unified tree diff as the embedded backend.
+func (*Backend) Preview(ctx context.Context, dir, from, to string) (string, error) {
+	return embedded.TreePreview(ctx, dir, from, to)
 }
 
 // Commit stages everything with git add --all and runs git commit. The

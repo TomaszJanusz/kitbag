@@ -5,6 +5,7 @@ import (
 
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 	"github.com/TomaszJanusz/kitbag/internal/vcs"
+	"github.com/TomaszJanusz/kitbag/internal/vcs/embedded"
 	"github.com/TomaszJanusz/kitbag/internal/vcs/system"
 )
 
@@ -16,14 +17,17 @@ func checkGitBackend(ctx context.Context, sel vcs.Selection, env platform.Env) e
 	if !sel.Explicit() {
 		return nil
 	}
-	_, _, err := vcs.Open(ctx, sel, gitFactories(env))
+	_, _, err := vcs.Open(ctx, sel, gitFactories(env, vcs.Identity{}))
 	return err
 }
 
-// gitFactories returns the backends this build provides; the embedded one is
-// not implemented yet.
-func gitFactories(env platform.Env) vcs.Factories {
+// gitFactories wires the two backends; identity is the embedded backend's
+// fallback commit author from git.identity in config.toml.
+func gitFactories(env platform.Env, identity vcs.Identity) vcs.Factories {
 	return vcs.Factories{
+		Embedded: func(context.Context) (vcs.Backend, error) {
+			return embedded.New(embedded.Options{Env: env, Identity: identity}), nil
+		},
 		System: func(ctx context.Context) (vcs.Backend, error) {
 			b, err := system.New(ctx, system.Options{Env: env})
 			if err != nil {

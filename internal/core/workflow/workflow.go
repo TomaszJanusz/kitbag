@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"path/filepath"
 	"time"
 
@@ -76,6 +77,9 @@ func (s Service) Sync(ctx context.Context, noPull, force bool) (SyncResult, erro
 }
 
 func (s Service) syncLocked(ctx context.Context, session *state.Session, noPull, force bool, result *SyncResult) error {
+	if err := s.ensureWorkingCopy(ctx, noPull); err != nil {
+		return err
+	}
 	if err := s.checkBranch(ctx); err != nil {
 		return err
 	}
@@ -189,4 +193,16 @@ func (s Service) checkBranch(ctx context.Context) error {
 		return fmt.Errorf("working copy branch %q differs from repo.branch %q; switch it explicitly: %w", status.Branch, s.Config.Repo.Branch, invalidInput())
 	}
 	return nil
+}
+
+// A first sync owns clone creation; --no-pull requires an existing worktree.
+func (s Service) ensureWorkingCopy(ctx context.Context, noPull bool) error {
+	_, err := s.Host.Lstat(s.Repository)
+	if !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	if noPull {
+		return fmt.Errorf("working copy missing with --no-pull: %w", err)
+	}
+	return s.Backend.Clone(ctx, s.Config.Repo.URL, s.Repository, vcs.CloneOptions{Branch: s.Config.Repo.Branch})
 }

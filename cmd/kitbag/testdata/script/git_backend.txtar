@@ -25,9 +25,10 @@ exec kitbag --git-backend=auto version
 stdout '^kitbag dev$'
 env KITBAG_GIT_BACKEND=
 
-# The embedded backend is not available yet; selecting it says so.
-! exec kitbag --git-backend=embedded version
-stderr '^kitbag: Git backend "embedded" \(selected by --git-backend\) is unavailable: the embedded Git backend is not available in this version of kitbag; '
+# The embedded backend is available even with Git hidden.
+exec kitbag --git-backend=embedded version
+stdout '^kitbag dev$'
+! stderr .
 
 # An unknown backend is a usage error.
 ! exec kitbag --git-backend=libgit2 version

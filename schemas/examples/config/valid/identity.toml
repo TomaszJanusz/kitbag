@@ -1,0 +1,8 @@
+schema = 1
+[repo]
+url = "https://example.com/config.git"
+[git]
+backend = "embedded"
+[git.identity]
+name = "KitBag Publisher"
+email = "publisher@example.com"

@@ -37,6 +37,7 @@ func runContract(t *testing.T, newSubject factory) {
 	t.Helper()
 	s := suite{newSubject: newSubject}
 	t.Run("CloneEmptyIsUnborn", s.testCloneEmptyIsUnborn)
+	t.Run("ShallowClone", s.testShallowClone)
 	t.Run("CommitPushClone", s.testCommitPushClone)
 	t.Run("NothingToCommit", s.testNothingToCommit)
 	t.Run("StatusChanges", s.testStatusChanges)

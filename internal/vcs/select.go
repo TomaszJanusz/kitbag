@@ -31,12 +31,11 @@ var (
 	// ErrInvalidKind reports a backend name other than auto, system and
 	// embedded.
 	ErrInvalidKind = errors.New("invalid Git backend")
+	// ErrSystemGitNotFound permits automatic fallback only when Git is absent.
+	ErrSystemGitNotFound = errors.New("git was not found in PATH")
 	// ErrUnavailable reports that the selected backend cannot be used. It is
 	// always wrapped in an [*UnavailableError].
 	ErrUnavailable = errors.New("git backend unavailable")
-	// ErrEmbeddedNotAvailable reports that this build has no embedded backend
-	// yet; it is never replaced silently by another backend.
-	ErrEmbeddedNotAvailable = errors.New("the embedded Git backend is not available in this version of kitbag")
 )
 
 // ParseKind parses a backend name exactly as the user wrote it.
@@ -181,7 +180,10 @@ func openAuto(ctx context.Context, sel Selection, f Factories) (b Backend, syste
 	if systemErr == nil {
 		return b, nil, nil
 	}
-	b, embeddedErr := build(ctx, f.Embedded, ErrEmbeddedNotAvailable)
+	if !errors.Is(systemErr, ErrSystemGitNotFound) {
+		return nil, systemErr, &UnavailableError{Selection: sel, Err: systemErr, Hint: SystemHint}
+	}
+	b, embeddedErr := build(ctx, f.Embedded, errors.ErrUnsupported)
 	if embeddedErr != nil {
 		cause := fmt.Errorf("system Git: %w; embedded: %w", systemErr, embeddedErr)
 		return nil, systemErr, &UnavailableError{Selection: sel, Err: cause, Hint: SystemHint}
@@ -198,7 +200,7 @@ func openSystem(ctx context.Context, sel Selection, f Factories) (Backend, error
 }
 
 func openEmbedded(ctx context.Context, sel Selection, f Factories) (Backend, error) {
-	b, err := build(ctx, f.Embedded, ErrEmbeddedNotAvailable)
+	b, err := build(ctx, f.Embedded, errors.ErrUnsupported)
 	if err != nil {
 		return nil, &UnavailableError{Selection: sel, Err: err, Hint: "use --git-backend=system and " + SystemHint}
 	}

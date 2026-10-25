@@ -84,7 +84,7 @@ type stubBackend struct {
 func (b stubBackend) Kind() vcs.Kind { return b.kind }
 func (stubBackend) Version() string  { return "stub 1.0" }
 
-var errNoGit = errors.New("git was not found in PATH")
+var errNoGit = vcs.ErrSystemGitNotFound
 
 func stubFactory(kind vcs.Kind, err error) func(context.Context) (vcs.Backend, error) {
 	return func(context.Context) (vcs.Backend, error) {
@@ -118,7 +118,7 @@ func TestOpenForcedNeverFallsBack(t *testing.T) {
 	}
 }
 
-func TestOpenEmbeddedNotAvailable(t *testing.T) {
+func TestOpenMissingFactory(t *testing.T) {
 	t.Parallel()
 
 	for _, sel := range []vcs.Selection{
@@ -131,12 +131,11 @@ func TestOpenEmbeddedNotAvailable(t *testing.T) {
 			f.System = stubFactory(vcs.System, nil)
 		}
 		b, _, err := vcs.Open(t.Context(), sel, f)
-		if b != nil || !errors.Is(err, vcs.ErrEmbeddedNotAvailable) || !errors.Is(err, vcs.ErrUnavailable) {
-			t.Errorf("Open(%+v) = %v, %v; want ErrEmbeddedNotAvailable", sel, b, err)
+		if b != nil || !errors.Is(err, errors.ErrUnsupported) || !errors.Is(err, vcs.ErrUnavailable) {
+			t.Errorf("Open(%+v) = %v, %v; want errors.ErrUnsupported", sel, b, err)
 		}
 		const autoMessage = `Git backend "auto" (selected by default) is unavailable: ` +
-			`system Git: git was not found in PATH; embedded: the embedded Git backend is not available ` +
-			`in this version of kitbag; install Git 2.30 or newer (https://git-scm.com/downloads)`
+			`system Git: git was not found in PATH; embedded: unsupported operation; install Git 2.30 or newer (https://git-scm.com/downloads)`
 		if sel.Kind == vcs.Auto && (!errors.Is(err, errNoGit) || err.Error() != autoMessage) {
 			t.Errorf("auto error = %q, want %q", err, autoMessage)
 		}
@@ -184,5 +183,16 @@ func TestOpenForcedSystem(t *testing.T) {
 	}
 	if got, want := res.String(), "none (system requested by git.backend in config.toml)"; got != want {
 		t.Errorf("String() = %q, want %q", got, want)
+	}
+}
+
+func TestOpenAutoRejectsBrokenSystem(t *testing.T) {
+	t.Parallel()
+	broken := errors.New("installed Git is too old or failed to start")
+	_, res, err := vcs.Open(t.Context(), vcs.Selection{Kind: vcs.Auto, Source: vcs.SourceDefault}, vcs.Factories{
+		System: stubFactory(vcs.System, broken), Embedded: stubFactory(vcs.Embedded, nil),
+	})
+	if !errors.Is(err, broken) || res.Active != "" {
+		t.Fatalf("broken installed Git fell back: %+v, %v", res, err)
 	}
 }
