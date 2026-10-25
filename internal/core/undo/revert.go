@@ -92,7 +92,7 @@ func Revert(fsys platform.FS, session *state.Session, to int, options Options) (
 	p := newPlan(options.Force)
 	for _, path := range paths {
 		owner, isOwned := owners[path]
-		op, opErr := revertPath(fsys, path, oldest[path], newer[path], ownerPointer(owner, isOwned), options.Force)
+		op, opErr := revertPath(fsys, path, oldest[path], newer[path], ownerPointer(owner, isOwned), options)
 		if opErr != nil {
 			return Outcome{Plan: p}, opErr
 		}
@@ -144,7 +144,7 @@ func ownerPointer(t state.Target, ok bool) *state.Target {
 	return &t
 }
 
-func revertPath(fsys platform.FS, path string, oldest state.Change, newer *state.Change, owner *state.Target, force bool) (*plan.Operation, error) {
+func revertPath(fsys platform.FS, path string, oldest state.Change, newer *state.Change, owner *state.Target, options Options) (*plan.Operation, error) {
 	entry, warning, err := inspect(fsys, path)
 	if err != nil {
 		return nil, err
@@ -163,8 +163,13 @@ func revertPath(fsys platform.FS, path string, oldest state.Change, newer *state
 		// The adopted bytes are what the next journaled change displaced.
 		previous = withoutOwner(newer.Previous)
 	}
-	unchanged := (owner == nil && entry.Kind == "") || (owner != nil && owned(entry, *owner))
-	if !unchanged && !force {
+	unchanged := owner == nil && entry.Kind == ""
+	if owner != nil {
+		if unchanged, err = owned(fsys, entry, *owner, options.LegacyRoots); err != nil {
+			return nil, err
+		}
+	}
+	if !unchanged && !options.Force {
 		op := skip(path, "changed since the reverted plan; left alone (use --force to move it aside)")
 		return &op, nil
 	}

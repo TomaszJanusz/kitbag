@@ -14,8 +14,10 @@ manifest first.
 
 1. **Stop the old timer.** Both tools running would fight over a file once
    kitbag writes its own marker. `kitbag doctor` lists units whose names contain
-   `agent-config`. Disable the systemd user timer or the LaunchAgent you created for
-   the script, for example `systemctl --user disable --now <name>.timer`.
+   `agent-config` that are still loaded or enabled. Disable the systemd user timer
+   or the LaunchAgent you created for the script, for example
+   `systemctl --user disable --now <name>.timer`, or `launchctl bootout` and
+   `launchctl disable gui/$(id -u)/<label>` (booted out alone, it loads again at login).
 2. **Connect the repository.** `kitbag init <git-url>` clones it into kitbag's
    own working copy. To keep using the clone the script ran from, set it as
    `repo.path` instead (`kitbag config set repo.path ~/src/agent-config` after
@@ -28,6 +30,11 @@ manifest first.
    ```sh
    kitbag config set migration.legacy_roots '["~/src/agent-config", "~/.agents/skills"]'
    ```
+
+4. **Set the host the script used** when it is not the machine's short
+   hostname (for example the script's `hosts/mac.md` on a Mac named `MBP-TJ`):
+   `kitbag config set host mac`. Otherwise the host addition is missing; every
+   command warns and names the repository's host files.
 
 ## Adopt
 

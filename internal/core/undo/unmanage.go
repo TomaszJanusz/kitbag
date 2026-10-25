@@ -31,7 +31,7 @@ func Unmanage(fsys platform.FS, session *state.Session, declarations []target.Ta
 	}
 	p := newPlan(false)
 	for _, t := range db.Targets {
-		op, opErr := unmanageTarget(fsys, db, t, byPath[t.Path])
+		op, opErr := unmanageTarget(fsys, db, t, byPath[t.Path], options.LegacyRoots)
 		if opErr != nil {
 			return Outcome{Plan: p}, opErr
 		}
@@ -40,17 +40,10 @@ func Unmanage(fsys platform.FS, session *state.Session, declarations []target.Ta
 	return execute(fsys, session, p, options)
 }
 
-func unmanageTarget(fsys platform.FS, db state.Database, t state.Target, d target.Target) (plan.Operation, error) {
-	entry, warning, err := inspect(fsys, t.Path)
-	switch {
-	case err != nil:
-		return plan.Operation{}, err
-	case warning != "":
-		return skip(t.Path, warning), nil
-	case entry.Kind == "":
-		return record(t.Path, nil, entry), nil
-	case !owned(entry, t):
-		return skip(t.Path, "changed since KitBag wrote it; left alone"), nil
+func unmanageTarget(fsys platform.FS, db state.Database, t state.Target, d target.Target, roots []string) (plan.Operation, error) {
+	entry, settled, err := ownedEntry(fsys, t, roots)
+	if err != nil || settled != nil {
+		return *settled, err
 	}
 	history := append([]state.AppliedPlan{{Changes: db.Backups}}, db.History...)
 	original, found, err := originalBackup(fsys, history, t.Path)
@@ -64,6 +57,28 @@ func unmanageTarget(fsys platform.FS, db state.Database, t state.Target, d targe
 		return restoreOriginal(t.Path, entry, original), nil
 	}
 	return plan.Operation{Kind: plan.Discard, Path: t.Path, Classification: plan.UpdateNeeded, Expected: &entry}, nil
+}
+
+// ownedEntry returns t's destination when it is exactly KitBag's output;
+// otherwise settled releases a missing one or skips an unsafe or changed one.
+func ownedEntry(fsys platform.FS, t state.Target, roots []string) (state.Entry, *plan.Operation, error) {
+	entry, warning, err := inspect(fsys, t.Path)
+	var settled plan.Operation
+	switch {
+	case err != nil:
+		return entry, &settled, err
+	case warning != "":
+		settled = skip(t.Path, warning)
+	case entry.Kind == "":
+		settled = record(t.Path, nil, entry)
+	default:
+		unchanged, ownedErr := owned(fsys, entry, t, roots)
+		if ownedErr != nil || unchanged {
+			return entry, nil, ownedErr
+		}
+		settled = skip(t.Path, "changed since KitBag wrote it; left alone")
+	}
+	return entry, &settled, nil
 }
 
 func restoreOriginal(path string, entry state.Entry, original plan.Restoration) plan.Operation {

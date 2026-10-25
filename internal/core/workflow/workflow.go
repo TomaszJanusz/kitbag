@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/TomaszJanusz/kitbag/internal/adapters/instructions"
 	"github.com/TomaszJanusz/kitbag/internal/config"
 	"github.com/TomaszJanusz/kitbag/internal/core/apply"
 	"github.com/TomaszJanusz/kitbag/internal/core/compatibility"
@@ -103,7 +104,7 @@ func (s Service) syncLocked(ctx context.Context, session *state.Session, noPull,
 		}
 	}
 	s.progress("plan")
-	m, mode, err := s.intent()
+	m, mode, err := s.intent(&result.Warnings)
 	if err != nil {
 		return err
 	}
@@ -143,7 +144,9 @@ func (s Service) includes(ctx context.Context, m *manifest.Manifest) (vcs.Includ
 	return vcs.EnsureIncludes(ctx, cfg, s.Host, home, paths)
 }
 
-func (s Service) intent() (*manifest.Manifest, string, error) {
+// intent loads and host-resolves the manifest; warnings receives a host taken
+// from the system hostname that misses its instructions addition.
+func (s Service) intent(warnings *[]string) (*manifest.Manifest, string, error) {
 	m, err := manifest.Load(s.Host, filepath.Join(s.Repository, "kitbag.toml"))
 	if err != nil {
 		return nil, "", err
@@ -154,8 +157,11 @@ func (s Service) intent() (*manifest.Manifest, string, error) {
 		}
 		return nil, "", err
 	}
-	host, _, err := config.Resolve(s.Host, config.Values{"host": s.Config.Host}, "host", s.HostFlag)
+	host, source, err := config.Resolve(s.Host, config.Values{"host": s.Config.Host}, "host", s.HostFlag)
 	if err != nil {
+		return nil, "", err
+	}
+	if err = s.hostWarning(m, host, source, warnings); err != nil {
 		return nil, "", err
 	}
 	m, err = m.ResolveHost(hostEnvironment{s.Host, host}, host)
@@ -164,6 +170,19 @@ func (s Service) intent() (*manifest.Manifest, string, error) {
 	}
 	mode, _, err := config.Resolve(s.Host, config.Values{"sync.mode": s.Config.Sync.Mode}, "sync.mode", s.ModeFlag)
 	return m, mode, err
+}
+
+// hostWarning appends instructions.HostMismatch for a host taken from the
+// system hostname (source "default"); a chosen host is the maintainer's call.
+func (s Service) hostWarning(m *manifest.Manifest, host, source string, warnings *[]string) error {
+	if source != "default" || m.Instructions == nil {
+		return nil
+	}
+	mismatch, err := instructions.HostMismatch(s.Host, s.Repository, m.Instructions.Hosts, host)
+	if mismatch != "" {
+		*warnings = append(*warnings, mismatch)
+	}
+	return err
 }
 
 func (s Service) build(session *state.Session, m *manifest.Manifest, mode string, force bool, warnings *[]string) (plan.Plan, error) {
@@ -186,15 +205,27 @@ func (s Service) request(m *manifest.Manifest, mode string, warnings *[]string) 
 	if err != nil {
 		return plan.Request{}, err
 	}
-	home, err := s.Host.HomeDir()
+	roots, err := s.legacyRoots()
 	if err != nil {
 		return plan.Request{}, err
 	}
+	return plan.Request{Repository: s.Repository, Manifest: m, Mode: mode, State: state.Database{SchemaVersion: state.CurrentVersion}, Adapters: adapters, LegacyRoots: roots}, nil
+}
+
+// legacyRoots expands the explicitly configured legacy roots through HOME.
+func (s Service) legacyRoots() ([]string, error) {
 	roots := make([]string, 0, len(s.Config.Migration.LegacyRoots))
+	if len(s.Config.Migration.LegacyRoots) == 0 {
+		return roots, nil
+	}
+	home, err := s.Host.HomeDir()
+	if err != nil {
+		return nil, err
+	}
 	for _, root := range s.Config.Migration.LegacyRoots {
 		roots = append(roots, config.Expand(home, root))
 	}
-	return plan.Request{Repository: s.Repository, Manifest: m, Mode: mode, State: state.Database{SchemaVersion: state.CurrentVersion}, Adapters: adapters, LegacyRoots: roots}, nil
+	return roots, nil
 }
 
 type hostEnvironment struct {

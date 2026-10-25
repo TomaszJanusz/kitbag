@@ -51,7 +51,12 @@ state, cache and log directories), `AgentHome(override, rel)`, `Hostname`,
 `Service` supplies supervisor layout/executable discovery, bounded injected command
 execution, enable/start/stop/disable/reload, status and linger inspection. Linux
 uses systemd user commands, macOS uses launchctl in the current GUI domain, and
-Windows returns named unsupported errors. Unit/plist generation and install policy
+Windows returns named unsupported errors. `UnitInspect(name)` reads another user
+unit's state (a systemd unit file name or a launchd label; one plain name, never
+a path or option) without loading or changing it: `Loaded` (systemd active or
+activating; launchd bootstrapped) and `Enabled` (systemd unit file state other
+than disabled, masked, static or bad; launchd not disabled in the override
+database, which prints `true` or `disabled`). Doctor uses it for legacy units. Unit/plist generation and install policy
 live in `internal/core/service`; see [service management](service.md).
 
 Not in this layer yet: keyring (M2), and

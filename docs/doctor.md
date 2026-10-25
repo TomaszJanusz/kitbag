@@ -13,7 +13,7 @@ checks; it does not assert that they passed.
 
 | Check | Evidence and fix |
 | --- | --- |
-| Manifest/host | Load the local `kitbag.toml` and resolve the selected host; correct the working-copy path, manifest or host. |
+| Manifest/host | Load the local `kitbag.toml` and resolve the selected host; correct the working-copy path, manifest or host. The `host` check shows the host and its source; it WARNs when the host is the unconfigured system hostname, has no instructions addition and other hosts have one, naming their files: set the host with `kitbag config set host <name>` (never guessed). |
 | Tool version | Compare the running semantic version with `min_tool_version`; upgrade kitbag. Development builds use `0.0.0-dev`. |
 | Git backend | Requested/active backend, version and selection source from `vcs.Open`; install suitable Git or select an available backend. An automatic fallback warns with its reason. |
 | Remote | Read origin refs through the backend's optional `vcs.RemoteProber`; check URL, connectivity and authentication. No fetch, ref update, or commit. Embedded SSH reports the successful credential source (agent or identity filename only); unsupported backends warn. |
@@ -24,14 +24,15 @@ checks; it does not assert that they passed.
 | Instances | Check every enabled, host-resolved listed instance and native default directory. Explicit dirs override agent home variables. Missing/non-directory instances WARN; create/correct the directory. A missing default is allowed to be created by sync. |
 | Copy/link | Create unpredictable scratch names in the kitbag cache; verify atomic bytes and a symbolic link, then remove them. Repair cache permissions/filesystem support or use copy mode. Link failure WARNs when machine mode is copy, FAILs otherwise. This tests the cache filesystem, not all destination mounts or native agent loading. |
 | State | Read and validate state and last-sync schemas through the state store while holding its nonblocking lock. Release immediately; never save/recover state. Restore a valid backup/use a compatible tool for corrupt or newer data. Wait for an active sync or correct lock/directory permissions. A leftover unlocked lock file is healthy. |
-| Legacy links | With `migration.legacy_roots`, inspect shared/instance skills, instructions, old executable and agent-browser links into those roots or `~/.agents/skills`; review them, then run `kitbag adopt` ([adopt.md](adopt.md)). Dangling links count. |
-| Legacy markers | Inspect instruction files for `agent-config-managed` or `Managed by agent-config-sync`; review/migrate them. |
+| Legacy links | With `migration.legacy_roots`, inspect shared/instance skills, instructions, old executable and agent-browser links into those roots or `~/.agents/skills`; review them, then run `kitbag adopt` ([adopt.md](adopt.md)). Dangling links count. Destinations KitBag owns (adopted or synced) are not legacy and are skipped; their drift is `plan`/`status` output. Without readable state nothing is skipped. |
+| Legacy markers | Inspect instruction files for `agent-config-managed` or `Managed by agent-config-sync`; review/migrate them. Owned files, such as adopted ones that keep the script's marker until their output changes, are skipped. |
 | Legacy settings markers | `legacy-settings-markers`: for every enabled Claude instance, a bounded byte search of `<dir>/settings.json` for the hook marker `# agent-config-managed`. It reports only the instance, the path and the number of occurrences; run `kitbag adopt`, then `kitbag sync` ([adopt.md](adopt.md)). A missing file is OK; an unreadable file, or one larger than 4 MiB (not read at all), WARNs with a permission/size hint. |
 | Service | Optional background service: OK when absent; WARN when unloaded, inactive, disabled, stale, the last supervisor exit code is nonzero, or the executable the definition runs no longer exists (for example after a package upgrade). Shows supervisor run/exit observations; reinstall with `kitbag service install` and inspect `kitbag service status`. |
-| Legacy units | Detect filenames containing `agent-config` under XDG `systemd/user` and `~/Library/LaunchAgents`; review/disable old timers/services manually. Presence does not prove activation. No service manager is invoked. |
+| Legacy units | Detect filenames containing `agent-config` under XDG `systemd/user` and `~/Library/LaunchAgents`. Definitions of the host's own manager (systemd units on Linux, `<label>.plist` on macOS, label from the filename) are inspected read-only with `platform.UnitInspect` (`systemctl --user show`, `launchctl print`/`print-disabled`; nothing is loaded, started or changed): a unit neither loaded nor enabled is counted as ignored, anything else WARNs with `loaded=`/`enabled=`. A booted-out LaunchAgent that is not disabled still WARNs, as launchd loads it again at login. Other definitions and failed inspections WARN by presence. Disable and unload old timers/services manually. |
 
 Legacy checks skip when `migration.legacy_roots` is empty. They only detect;
-no link, instruction, setting, timer, or service is changed. Agent settings
+no link, instruction, setting, timer, or service is changed; the only commands
+they run are the read-only unit inspections above. Agent settings
 are read in exactly one place: the `legacy-settings-markers` byte search above,
 through the platform filesystem, only for Claude instances' `settings.json`.
 Nothing is parsed or interpreted, no settings content is ever displayed, stored

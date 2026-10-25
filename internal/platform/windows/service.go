@@ -25,3 +25,8 @@ func (*Host) ServiceInspect(context.Context, bool) (platform.ServiceStatus, erro
 
 // ServiceLinger is not implemented on Windows yet.
 func (*Host) ServiceLinger(context.Context) (bool, error) { return false, unsupported("ServiceLinger") }
+
+// UnitInspect is not implemented on Windows yet.
+func (*Host) UnitInspect(context.Context, string) (platform.UnitStatus, error) {
+	return platform.UnitStatus{}, unsupported("UnitInspect")
+}

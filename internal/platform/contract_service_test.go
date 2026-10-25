@@ -34,6 +34,7 @@ func serviceContract(t *testing.T, h platform.Service) {
 	if err = h.ServiceControl(t.Context(), "arbitrary-command", false); !errors.Is(err, fs.ErrInvalid) {
 		t.Fatal(err)
 	}
+	unitNameContract(t, h)
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if err = h.ServiceControl(ctx, "start", false); !errors.Is(err, context.Canceled) {
@@ -41,7 +42,30 @@ func serviceContract(t *testing.T, h platform.Service) {
 	}
 }
 
+// unitNameContract rejects every name that is not one plain path element
+// before any manager is asked.
+func unitNameContract(t *testing.T, h platform.Service) {
+	t.Helper()
+	for _, name := range []string{"", ".", "..", "-x", "a/b", `a\b`, "a b", "a\x00b"} {
+		if _, err := h.UnitInspect(t.Context(), name); !errors.Is(err, fs.ErrInvalid) {
+			t.Fatalf("UnitInspect(%q) = %v", name, err)
+		}
+	}
+}
+
 func TestFakeServiceContract(t *testing.T) {
 	t.Parallel()
 	serviceContract(t, fake.New(fake.WithEnv(map[string]string{"HOME": "/home/test"})))
+}
+
+func TestFakeUnitInspect(t *testing.T) {
+	t.Parallel()
+	h := fake.New()
+	h.SetUnit("old.timer", platform.UnitStatus{Loaded: true})
+	if status, err := h.UnitInspect(t.Context(), "old.timer"); err != nil || !status.Loaded || status.Enabled {
+		t.Fatal(status, err)
+	}
+	if status, err := h.UnitInspect(t.Context(), "unknown.timer"); err != nil || status != (platform.UnitStatus{}) {
+		t.Fatal(status, err)
+	}
 }

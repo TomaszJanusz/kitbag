@@ -17,6 +17,7 @@ var (
 	errBadPerm     = errors.New("mode has bits other than permissions")
 	errBadTarget   = errors.New("target is neither an absolute path nor an http(s) URL")
 	errEmptyTarget = errors.New("link target is empty")
+	errBadUnit     = errors.New("unit name is not a single plain name")
 )
 
 // invalid wraps a reason so that it matches fs.ErrInvalid.
@@ -120,6 +121,18 @@ func Roots(roots []string) error {
 		if err := Path("managedlink", root); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// Unit accepts a user unit name (a systemd unit file name or a launchd label):
+// one non-empty path element of printable characters other than spaces, not
+// starting with "-", so it can name neither another domain nor an option.
+func Unit(name string) error {
+	bad := name == "" || name == "." || name == ".." || strings.HasPrefix(name, "-") ||
+		strings.ContainsFunc(name, func(r rune) bool { return r <= ' ' || r == 0x7f || r == '/' || r == '\\' })
+	if bad {
+		return Invalid("unit", name, errBadUnit)
 	}
 	return nil
 }

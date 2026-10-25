@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/TomaszJanusz/kitbag/internal/platform"
+	"github.com/TomaszJanusz/kitbag/internal/platform/internal/check"
 )
 
 // ServiceLayout resolves the per-user LaunchAgents directory and executable.
@@ -55,22 +56,18 @@ func (h *Host) ServiceControl(ctx context.Context, operation string, _ bool) err
 	}
 }
 
-// ServiceInspect parses launchctl print; exit 113 means the job is not loaded.
+// ServiceInspect parses launchctl print.
 func (h *Host) ServiceInspect(ctx context.Context, timer bool) (platform.ServiceStatus, error) {
-	data, code, err := h.serviceCommand(ctx, "launchctl", "print", serviceDomain()+"/"+platform.ServiceLabel)
+	data, loaded, err := h.launchdPrint(ctx, platform.ServiceLabel)
 	if err != nil {
 		return platform.ServiceStatus{}, err
 	}
-	const missingService = 113
-	if code != 0 && code != missingService {
-		return platform.ServiceStatus{}, fmt.Errorf("launchctl print failed (exit %d)", code)
-	}
-	enabled, err := h.launchdEnabled(ctx)
+	enabled, err := h.launchdEnabled(ctx, platform.ServiceLabel)
 	if err != nil {
 		return platform.ServiceStatus{}, err
 	}
 	status := platform.ServiceStatus{Enabled: enabled}
-	if code == missingService {
+	if !loaded {
 		return status, nil
 	}
 	status.Loaded = true
@@ -102,12 +99,43 @@ func launchdExit(data string) (*int, error) {
 	return exit, nil
 }
 
+// UnitInspect reads another job's state in this user's GUI domain without
+// loading or starting it: loaded when launchctl print finds the label, enabled
+// unless the domain's override database disables it.
+func (h *Host) UnitInspect(ctx context.Context, label string) (platform.UnitStatus, error) {
+	if err := check.Unit(label); err != nil {
+		return platform.UnitStatus{}, err
+	}
+	_, loaded, err := h.launchdPrint(ctx, label)
+	if err != nil {
+		return platform.UnitStatus{}, err
+	}
+	enabled, err := h.launchdEnabled(ctx, label)
+	return platform.UnitStatus{Loaded: loaded, Enabled: enabled}, err
+}
+
+// launchdPrint describes a job in this user's GUI domain; exit 113 means the
+// job is not loaded.
+func (h *Host) launchdPrint(ctx context.Context, label string) (string, bool, error) {
+	data, code, err := h.serviceCommand(ctx, "launchctl", "print", serviceDomain()+"/"+label)
+	if err != nil {
+		return "", false, err
+	}
+	const missingService = 113
+	if code != 0 && code != missingService {
+		return "", false, fmt.Errorf("launchctl print failed (exit %d)", code)
+	}
+	return data, code == 0, nil
+}
+
 // ServiceLinger is always true: launchd has no systemd linger setting.
 func (*Host) ServiceLinger(context.Context) (bool, error) { return true, nil }
 
 func serviceDomain() string { return "gui/" + strconv.Itoa(os.Getuid()) }
 
-func (h *Host) launchdEnabled(ctx context.Context) (bool, error) {
+// launchdEnabled reads the override database. Older macOS prints "true" for a
+// disabled label, newer releases "disabled".
+func (h *Host) launchdEnabled(ctx context.Context, label string) (bool, error) {
 	data, code, err := h.serviceCommand(ctx, "launchctl", "print-disabled", serviceDomain())
 	if err != nil {
 		return false, err
@@ -116,9 +144,10 @@ func (h *Host) launchdEnabled(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("launchctl print-disabled failed (exit %d)", code)
 	}
 	for line := range strings.SplitSeq(data, "\n") {
-		label, value, ok := strings.Cut(strings.TrimSpace(line), " => ")
-		if ok && label == `"`+platform.ServiceLabel+`"` {
-			return strings.TrimSpace(value) != "true", nil
+		name, value, ok := strings.Cut(strings.TrimSpace(line), " => ")
+		if ok && name == `"`+label+`"` {
+			value = strings.TrimSpace(value)
+			return value != "true" && value != "disabled", nil
 		}
 	}
 	return true, nil
