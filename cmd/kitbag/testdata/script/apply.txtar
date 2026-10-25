@@ -1,4 +1,4 @@
-# Test-only apply entry runs the real engine; public CLI wiring belongs to KIT-23.
+# Fixture-only apply entry exercises the engine independently of agent formats.
 # First run and a silent repeat, isolated HOME and local-only Git.
 gitremote $WORK/config.git config
 exec git clone --quiet $WORK/config.git $WORK/checkout

@@ -1,31 +1,33 @@
+env KITBAG_CONFIG=$WORK/machine.toml
+env KITBAG_HOST=test
 # CODEX_HOME replaces ~/.codex for the default instance but never relocates
 # the shared ~/.agents/skills root; a relative CODEX_HOME is a usage error (2).
 gitremote $WORK/config.git config
-exec git clone --quiet $WORK/config.git $WORK/checkout
+exec git clone --quiet $WORK/config.git $HOME/checkout
 env CODEX_HOME=$WORK/codex-home
-exec kitbag __e2e_apply -adapter=codex $WORK/checkout
+exec kitbag sync --no-pull
 stdout '^write .*/codex-home/AGENTS\.md$'
 stdout '^materialize .*/codex-home/prompts/review\.md$'
 stdout '^materialize .*/home/\.agents/skills/alpha$'
 ! stderr .
 cmp $WORK/codex-home/AGENTS.md agents.md
-linktarget $HOME/.agents/skills/alpha $WORK/checkout/skills/alpha
+linktarget $HOME/.agents/skills/alpha $HOME/checkout/skills/alpha
 ! exists $HOME/.codex
 ! exists $WORK/codex-home/skills
-exec kitbag __e2e_apply -adapter=codex $WORK/checkout
+exec kitbag sync --no-pull
 nooutput
 
 # An explicitly listed instance names its directory; CODEX_HOME does not move it.
-cp listed.toml $WORK/checkout/kitbag.toml
+cp listed.toml $HOME/checkout/kitbag.toml
 agentdirs .codex-listed
-exec kitbag __e2e_apply -adapter=codex $WORK/checkout
+exec kitbag sync --no-pull
 stdout '^write .*/home/\.codex-listed/AGENTS\.md$'
 stdout '^remove .*/codex-home/AGENTS\.md$'
 ! exists $WORK/codex-home/AGENTS.md
 cmp $HOME/.codex-listed/AGENTS.md agents.md
 
 env CODEX_HOME=relative/codex
-execstatus 2 kitbag __e2e_apply -adapter=codex $WORK/checkout
+execstatus 2 kitbag sync --no-pull
 stderr 'CODEX_HOME="relative/codex"'
 ! stdout .
 
@@ -65,3 +67,8 @@ dir = "~/.codex-listed"
 # Shared rules
 
 Keep changes small.
+-- machine.toml --
+schema=1
+[repo]
+url="local-config"
+path="~/checkout"

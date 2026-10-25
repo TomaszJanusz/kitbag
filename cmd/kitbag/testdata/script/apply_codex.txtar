@@ -1,35 +1,37 @@
-# Codex adapter through the test-only apply entry (public CLI wiring is KIT-23):
+env KITBAG_CONFIG=$WORK/machine.toml
+env KITBAG_HOST=test
+# Codex adapter through public sync:
 # default ~/.codex, AGENTS.md concatenated with the marker, skills linked into
 # the shared ~/.agents/skills, commands copied as prompts, silent repeat.
 env CODEX_HOME=
 gitremote $WORK/config.git config
-exec git clone --quiet $WORK/config.git $WORK/checkout
-exec kitbag __e2e_apply -adapter=codex $WORK/checkout
+exec git clone --quiet $WORK/config.git $HOME/checkout
+exec kitbag sync --no-pull
 stdout '^write .*/home/\.codex/AGENTS\.md$'
 stdout '^materialize .*/home/\.agents/skills/alpha$'
 stdout '^materialize .*/home/\.codex/prompts/review\.md$'
 ! stderr .
 cmp $HOME/.codex/AGENTS.md agents.md
-linktarget $HOME/.agents/skills/alpha $WORK/checkout/skills/alpha
+linktarget $HOME/.agents/skills/alpha $HOME/checkout/skills/alpha
 ! linktarget $HOME/.codex/prompts/review.md
 cmp $HOME/.codex/prompts/review.md config/commands/review.md
 ! exists $HOME/.codex/skills
 ! exists $HOME/.codex/config.toml
 ! exists $HOME/.agents/skills/README.md
-exec kitbag __e2e_apply -adapter=codex $WORK/checkout
+exec kitbag sync --no-pull
 nooutput
 
 # A source edit reaches the next run; the linked skill needs no new operation.
-cp host-edit.md $WORK/checkout/hosts/test.md
-exec kitbag __e2e_apply -adapter=codex $WORK/checkout
+cp host-edit.md $HOME/checkout/hosts/test.md
+exec kitbag sync --no-pull
 stdout -count=1 '^write .*/home/\.codex/AGENTS\.md$'
 ! stdout skills
 cmp $HOME/.codex/AGENTS.md agents-edit.md
 
 # Declared settings are reported unsupported and local settings stay unchanged.
-cp settings.toml $WORK/checkout/kitbag.toml
+cp settings.toml $HOME/checkout/kitbag.toml
 cp local-config.toml $HOME/.codex/config.toml
-execstatus 3 kitbag __e2e_apply -adapter=codex $WORK/checkout
+execstatus 3 kitbag sync --no-pull
 stderr 'codex: settings are not synchronized'
 ! stdout .
 cmp $HOME/.codex/config.toml local-config.toml
@@ -106,3 +108,8 @@ dir = "commands"
 [targets.codex]
 agent = "codex"
 settings = "codex/config.toml"
+-- machine.toml --
+schema=1
+[repo]
+url="local-config"
+path="~/checkout"

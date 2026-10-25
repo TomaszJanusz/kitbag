@@ -1,0 +1,50 @@
+# Cached upstream counts and divergence, using a local remote only.
+env KITBAG_CONFIG=$WORK/machine.toml
+gitremote $WORK/config.git seed
+exec git clone --quiet $WORK/config.git $HOME/checkout
+exec git clone --quiet $WORK/config.git $WORK/upstream
+cp changed $WORK/upstream/source
+exec git -C $WORK/upstream commit --quiet -am 'Remote edit'
+exec git -C $WORK/upstream push --quiet
+exec git -C $HOME/checkout fetch --quiet
+exec kitbag status --json
+stdout '"ahead": 0'
+stdout '"behind": 1'
+stdout '"last_sync": null'
+cp changed $HOME/checkout/local
+exec git -C $HOME/checkout add local
+exec git -C $HOME/checkout commit --quiet -m 'Local edit'
+exec kitbag status --json
+stdout '"ahead": 1'
+stdout '"behind": 1'
+cp stdout first-status.json
+exec kitbag status --json
+cmp stdout first-status.json
+execstatus 3 kitbag sync
+stderr 'branch has diverged'
+! stdout .
+! exists $HOME/output
+exec kitbag status --json
+stdout '"result": 3'
+
+# A configured branch mismatch fails before pulling or applying.
+exec git -C $HOME/checkout switch --quiet -c other
+execstatus 2 kitbag sync --no-pull
+stderr 'differs from repo.branch'
+! exists $HOME/output
+
+-- machine.toml --
+schema=1
+[repo]
+url="local"
+path="~/checkout"
+branch="main"
+-- seed/kitbag.toml --
+schema=1
+[[files]]
+src="source"
+dest="~/output"
+-- seed/source --
+first
+-- changed --
+second

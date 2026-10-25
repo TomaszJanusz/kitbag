@@ -15,7 +15,7 @@ const (
 		`the embedded Git backend is not available in this version of kitbag; ` +
 		`use --git-backend=system and install Git 2.30 or newer (https://git-scm.com/downloads)` + "\n"
 	invalidBackend = `kitbag: %s: invalid Git backend "bogus": want auto, system or embedded` + "\n"
-	missingValue   = "kitbag: --git-backend needs a value: auto, system or embedded\n" + usage + "\n"
+	missingValue   = "kitbag: flag needs an argument: --git-backend\n"
 )
 
 func TestRunGitBackend(t *testing.T) {
@@ -60,9 +60,9 @@ func TestRunGitBackend(t *testing.T) {
 			code: 2, err: sprintf(invalidBackend, "KITBAG_GIT_BACKEND"),
 		},
 		{name: "missing value", args: []string{"version", "--git-backend"}, code: 2, err: missingValue},
-		{name: "empty value", args: []string{"--git-backend=", "version"}, code: 2, err: missingValue},
-		{name: "similar flag is no flag", args: []string{"--git-backends=auto", "version"}, code: 2, err: usage + "\n"},
-		{name: "after --", args: []string{"--", "--git-backend=system", "version"}, code: 2, err: usage + "\n"},
+		{name: "empty value is unset", args: []string{"--git-backend=", "version"}},
+		{name: "similar flag is no flag", args: []string{"--git-backends=auto", "version"}, code: 2, err: "kitbag: unknown flag: --git-backends\n"},
+		{name: "after --", args: []string{"--", "--git-backend=system", "version"}, code: 2, err: "kitbag: " + usage + "\n"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()

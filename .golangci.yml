@@ -84,23 +84,37 @@ linters:
             - github.com/BurntSushi/toml$
             # KIT-12: positioned TOML parsing is confined to pkg/manifest.
             - github.com/pelletier/go-toml/v2$
+            # KIT-23: Cobra command tree and test-only Markdown reference generation.
+            - github.com/spf13/cobra$
+            - github.com/spf13/cobra/doc$
             - github.com/pelletier/go-toml/v2/unstable$
             - github.com/santhosh-tekuri/jsonschema/v6$
             # Test-only: the end-to-end harness (see test-only below).
             - github.com/rogpeppe/go-internal/testscript$
+        cli-cobra:
+          # Cobra belongs to the binary; core policy remains renderer-independent.
+          files: ["$all", "!**/cmd/kitbag/*.go"]
+          deny:
+            - pkg: github.com/spf13/cobra
+              desc: Cobra belongs in cmd/kitbag.
+        cli-docs:
+          files: ["$all", "!**/cmd/kitbag/docs_test.go"]
+          deny:
+            - pkg: github.com/spf13/cobra/doc
+              desc: Command-reference generation is test-only.
         schema-check:
-          # The schema oracle remains test-only; production parsing uses pelletier.
-          files: ["$all", "!**/internal/schemacheck/*_test.go"]
+          # The oracle is test-only, including validation of real CLI JSON in testscript.
+          files: ["$all", "!**/internal/schemacheck/*_test.go", "!**/cmd/kitbag/schema_test.go"]
           deny:
             - pkg: github.com/BurntSushi/toml
               desc: TOML decoding is a test-only dependency of internal/schemacheck.
             - pkg: github.com/santhosh-tekuri/jsonschema/v6
               desc: JSON Schema validation is a test-only dependency of internal/schemacheck.
         manifest-toml:
-          files: ["$all", "!**/pkg/manifest/*.go"]
+          files: ["$all", "!**/pkg/manifest/*.go", "!**/internal/config/*.go"]
           deny:
             - pkg: github.com/pelletier/go-toml/v2
-              desc: TOML parsing belongs in pkg/manifest.
+              desc: TOML parsing belongs in pkg/manifest or internal/config.
         manifest-host:
           # Public parsing code and its tests use injected platform contracts.
           files: ["**/pkg/manifest/*.go", "**/pkg/manifest/**/*.go"]

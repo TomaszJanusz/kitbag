@@ -11,7 +11,7 @@ import (
 )
 
 // noGit is an environment whose PATH holds no git.
-func noGit(extra ...string) platform.Env {
+func noGit(extra ...string) platform.Host {
 	env := map[string]string{"HOME": "/home/me", "PATH": ""}
 	for i := 0; i+1 < len(extra); i += 2 {
 		env[extra[i]] = extra[i+1]
@@ -30,10 +30,10 @@ func TestRun(t *testing.T) {
 		code int
 	}{
 		{name: "version", args: []string{"version"}, out: "kitbag dev\n"},
-		{name: "missing command", code: 2, err: usage + "\n"},
-		{name: "unknown command", args: []string{"sync"}, code: 2, err: usage + "\n"},
-		{name: "extra argument", args: []string{"version", "extra"}, code: 2, err: usage + "\n"},
-		{name: "flag is not a command", args: []string{"--version"}, code: 2, err: usage + "\n"},
+		{name: "missing command", code: 2, err: "kitbag: " + usage + "\n"},
+		{name: "unknown command", args: []string{"bogus"}, code: 2, err: "kitbag: unknown command \"bogus\" for \"kitbag\"\n"},
+		{name: "extra argument", args: []string{"version", "extra"}, code: 2, err: "kitbag: unknown command \"extra\" for \"kitbag version\"\n"},
+		{name: "flag is not a command", args: []string{"--version"}, code: 2, err: "kitbag: unknown flag: --version\n"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()

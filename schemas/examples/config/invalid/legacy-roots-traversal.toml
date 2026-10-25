@@ -1,0 +1,6 @@
+# expect: does not match pattern
+schema = 1
+[repo]
+url = "git@github.com:example/config.git"
+[migration]
+legacy_roots = ["~/../agent-config"]

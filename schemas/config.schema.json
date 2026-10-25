@@ -5,7 +5,10 @@
   "description": "Schema version 1 of the machine-local tool configuration, normally ~/.config/kitbag/config.toml. It describes this machine only: which repository to follow, how to reach Git, how often to poll, the materialization default and UI preferences. Nothing in it is shared through the repository. See docs/manifest.md.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "repo"],
+  "required": [
+    "schema",
+    "repo"
+  ],
   "properties": {
     "schema": {
       "description": "Configuration schema version. A tool that knows version N reads N and N-1 and rejects everything else.",
@@ -20,7 +23,9 @@
     "repo": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["url"],
+      "required": [
+        "url"
+      ],
       "properties": {
         "url": {
           "description": "Clone URL of the configuration repository (https://, ssh:// or git@host:path). Credentials never belong here.",
@@ -48,7 +53,11 @@
         "backend": {
           "description": "auto prefers system Git 2.30+ and falls back to embedded go-git; system and embedded force one backend and fail when it is unavailable.",
           "type": "string",
-          "enum": ["auto", "system", "embedded"]
+          "enum": [
+            "auto",
+            "system",
+            "embedded"
+          ]
         }
       }
     },
@@ -64,7 +73,10 @@
         "mode": {
           "description": "Machine default materialization mode where the manifest leaves it unset. Default: link on macOS and Linux, copy on Windows.",
           "type": "string",
-          "enum": ["link", "copy"]
+          "enum": [
+            "link",
+            "copy"
+          ]
         }
       }
     },
@@ -74,16 +86,41 @@
       "properties": {
         "theme": {
           "type": "string",
-          "enum": ["auto", "dark", "light"]
+          "enum": [
+            "auto",
+            "dark",
+            "light"
+          ]
         },
         "color": {
           "description": "Terminal color output. Default: auto.",
           "type": "string",
-          "enum": ["auto", "always", "never"]
+          "enum": [
+            "auto",
+            "always",
+            "never"
+          ]
         },
         "notifications": {
           "description": "Show a system notification after changes are applied. Default: true.",
           "type": "boolean"
+        }
+      }
+    },
+    "migration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "legacy_roots": {
+          "description": "Explicit old configuration clone and shared-skill roots, relative to HOME. Empty or absent means strict foreign-link protection. No locations are guessed.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "description": "Working copy location. Default: the platform data directory, for example ~/.local/share/kitbag/repos/<name>.",
+            "type": "string",
+            "maxLength": 4096,
+            "pattern": "^~/([^./\\\\][^/\\\\]*|\\.[^./\\\\][^/\\\\]*|\\.\\.[^/\\\\]+)(/([^./\\\\][^/\\\\]*|\\.[^./\\\\][^/\\\\]*|\\.\\.[^/\\\\]+))*$"
+          }
         }
       }
     }

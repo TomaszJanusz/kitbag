@@ -12,8 +12,8 @@ machine-readable form (JSON Schema draft 2020-12), and the TOML files under
 
 Nothing here claims observed runtime behavior of any agent application. Where
 a key refers to an agent's default directory or file format, the source is the
-documentation inventory in [agents.md](agents.md); the adapters that implement
-those defaults arrive with later tickets. The parser is KIT-12 (`pkg/manifest`).
+documentation inventory in [agents.md](agents.md); the implemented adapters and their remaining unknowns are documented separately.
+The repository parser is `pkg/manifest`; machine configuration is `internal/config`.
 
 ## Three contracts, three lifecycles
 
@@ -428,9 +428,10 @@ agent = "claude"
 ## `config.toml` reference
 
 Location: `~/.config/kitbag/config.toml` on macOS and Linux (the Windows
-location follows the platform work in M6). Every key has a `KITBAG_*`
-environment variable and a flag counterpart; flag, then variable, then file,
-then default is the precedence ([ADR 4](adr/0004-git-backends.md) fixes it for
+location follows the platform work in M6). The everyday CLI supports
+`--config`/`KITBAG_CONFIG`, `--host`/`KITBAG_HOST`,
+`--git-backend`/`KITBAG_GIT_BACKEND` and `--mode`/`KITBAG_MODE`;
+flag, then variable, then file, then default is the precedence ([ADR 4](adr/0004-git-backends.md) fixes it for
 `git.backend`). The file is machine-local and never committed to the
 configuration repository.
 
@@ -447,6 +448,27 @@ configuration repository.
 | `ui.theme` | `auto` \| `dark` \| `light` | no | `auto` | TUI and window theme. |
 | `ui.color` | `auto` \| `always` \| `never` | no | `auto` | Terminal color output. |
 | `ui.notifications` | boolean | no | `true` | System notification after changes are applied. |
+| `migration.legacy_roots` | unique array of home paths | no | `[]` (strict) | Explicit old agent-config clone/shared-skill roots eligible for legacy link replacement. No locations are guessed. |
+
+`migration.legacy_roots` is an additive schema-1 machine setting introduced
+before the first release. Supply the actual old clone and shared-skill roots
+only after reviewing them; the default is no migration roots. Each `~/` path
+uses the home-path grammar above. The CLI expands it through platform HOME and
+passes it to planning/apply. With roots configured, the existing legacy policy
+also permits dangling links; live links outside those roots stay protected.
+
+<!-- example: schemas/examples/config/valid/legacy-roots.toml -->
+```toml
+schema = 1
+[repo]
+url = "git@github.com:example/config.git"
+[migration]
+legacy_roots = ["~/src/agent-config", "~/.agents/skills"]
+```
+
+The paths above are examples, not inferred defaults. The maintainer's actual
+migration paths are still an open deployment question. Other UI and polling
+settings remain reserved for their respective features; no daemon is implemented.
 
 Publication policy is deliberately not in `config.toml`: it is the repository
 owner's rule per host and lives in the manifest.

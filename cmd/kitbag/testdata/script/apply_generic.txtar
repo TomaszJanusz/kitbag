@@ -1,4 +1,6 @@
-# KIT-20 through the test-only driver (KIT-23 owns the public CLI): a generic
+env KITBAG_CONFIG=$WORK/machine.toml
+env KITBAG_HOST=test
+# Public sync: a generic
 # agent, a [[files]] entry and the separate Git include step. HOME and
 # GIT_CONFIG_GLOBAL are the harness's throwaway ones; the repository lives
 # below HOME so a "~/" include can name it.
@@ -6,7 +8,7 @@ agentdirs .amp .agent-browser
 cp $WORK/.gitconfig $HOME/.gitconfig
 env GIT_CONFIG_GLOBAL=$HOME/.gitconfig
 cp $WORK/local.json $HOME/.agent-browser/config.json
-exec kitbag __e2e_apply -adapters generic,files,git $HOME/src/config
+exec kitbag sync --no-pull
 ! stderr .
 stdout '^write .*/home/\.amp/AGENTS\.md$'
 stdout '^materialize .*/home/\.amp/skills/review$'
@@ -28,7 +30,7 @@ exec git config --global --get-all include.path
 stdout -count=1 'agent\.gitconfig'
 
 # Repeat: nothing to do, no second backup and no duplicate include.
-exec kitbag __e2e_apply -adapters generic,files,git $HOME/src/config
+exec kitbag sync --no-pull
 nooutput
 exec sh -c 'cp "$HOME"/.agent-browser/config.json.before-kitbag.* "$WORK"/original'
 exec git config --global --get-all include.path
@@ -37,7 +39,7 @@ stdout -count=1 'agent\.gitconfig'
 # A dotfile-managed (chezmoi) config already including "~/..." is left alone.
 exec ln -s $HOME/dotfiles/tilde.gitconfig $HOME/chezmoi.gitconfig
 env GIT_CONFIG_GLOBAL=$HOME/chezmoi.gitconfig
-exec kitbag __e2e_apply -adapters generic,files,git $HOME/src/config
+exec kitbag sync --no-pull
 nooutput
 cmp $HOME/dotfiles/tilde.gitconfig $WORK/want-tilde.gitconfig
 
@@ -46,7 +48,7 @@ linktarget $HOME/chezmoi.gitconfig $HOME/dotfiles/tilde.gitconfig
 # A linked config without the include is never rewritten through the link.
 exec ln -s $HOME/dotfiles/plain.gitconfig $HOME/linked.gitconfig
 env GIT_CONFIG_GLOBAL=$HOME/linked.gitconfig
-execstatus 1 kitbag __e2e_apply -adapters generic,files,git $HOME/src/config
+execstatus 1 kitbag sync --no-pull
 stderr 'linked\.gitconfig is a symbolic link .*add include\.path .*/agent\.gitconfig there'
 ! stdout .
 linktarget $HOME/linked.gitconfig $HOME/dotfiles/plain.gitconfig
@@ -55,20 +57,20 @@ cmp $HOME/dotfiles/plain.gitconfig $WORK/want-plain.gitconfig
 # Nor is a read-only one.
 env GIT_CONFIG_GLOBAL=$HOME/dotfiles/plain.gitconfig
 chmod 0444 $HOME/dotfiles/plain.gitconfig
-execstatus 1 kitbag __e2e_apply -adapters generic,files,git $HOME/src/config
+execstatus 1 kitbag sync --no-pull
 stderr 'plain\.gitconfig is read-only'
 cmp $HOME/dotfiles/plain.gitconfig $WORK/want-plain.gitconfig
 
 # Machine copy policy applies to generic skills/commands and arbitrary files.
 env GIT_CONFIG_GLOBAL=$HOME/.gitconfig
-exec kitbag __e2e_apply -mode copy -adapters generic,files,git $HOME/src/config
+exec kitbag sync --no-pull --mode copy
 ! stderr .
 cmp $HOME/.amp/skills/review/SKILL.md $HOME/src/config/skills/review/SKILL.md
 cmp $HOME/.agent-browser/config.json $HOME/src/config/agent-browser/config.json
 exec test ! -L $HOME/.amp/skills/review
 exec test ! -L $HOME/.amp/commands/deploy.md
 exec test ! -L $HOME/.agent-browser/config.json
-exec kitbag __e2e_apply -mode copy -adapters generic,files,git $HOME/src/config
+exec kitbag sync --no-pull --mode copy
 nooutput
 
 -- home/src/config/kitbag.toml --
@@ -132,3 +134,8 @@ Host rules.
 -- want-plain.gitconfig --
 [user]
 	name = Dotfiles
+-- machine.toml --
+schema=1
+[repo]
+url="local-config"
+path="~/src/config"

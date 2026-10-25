@@ -4,6 +4,6 @@ stdout '^kitbag dev$'
 ! stderr .
 
 # Anything else prints usage to stderr and fails.
-! exec kitbag sync
-stderr '^usage: kitbag \[--git-backend=auto\|system\|embedded\] version$'
+! exec kitbag bogus
+stderr '^kitbag: unknown command'
 ! stdout .
