@@ -71,6 +71,30 @@ func TestSyncNowShowsLiveProgress(t *testing.T) {
 	s.waitFor("info Sync: pulling the repository", "info Sync succeeded, 3 changed")
 }
 
+// The in-process services share the state lock: loads, syncs and writes must
+// never overlap, and a burst of reloads collapses into the newest request.
+func TestCommandsRunOneAtATime(t *testing.T) {
+	t.Parallel()
+	client := newFake()
+	client.delay = 10 * time.Millisecond
+	s := start(t, client)
+	s.waitFor("2 targets changed locally")
+	for range 5 {
+		s.press(keyRefresh)
+	}
+	s.press(keySync)
+	close(client.phases)
+	s.waitFor("Last sync from here: succeeded, 3 changed")
+	s.press("3")
+	s.waitFor("host  laptop · config.toml")
+	if client.overlapped.Load() {
+		t.Fatal("client calls overlapped")
+	}
+	if calls := client.statusCalls.Load(); calls > 4 {
+		t.Fatalf("%d status loads; queued reloads were not superseded", calls)
+	}
+}
+
 func TestDriftDetailOpensAndCloses(t *testing.T) {
 	t.Parallel()
 	s := start(t, newFake())

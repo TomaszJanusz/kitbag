@@ -1,8 +1,9 @@
 // Package tui renders the shared view models (internal/ui/model) in a
 // terminal with Bubble Tea and Lip Gloss. It owns no behavior, validation or
 // text: keys become model intents, views come from the models and every
-// string comes from the text catalog. Commands run on worker goroutines that
-// end when the program quits.
+// string comes from the text catalog. Commands run one at a time on a worker
+// goroutine, the event subscription on another; both end when the program
+// quits.
 package tui
 
 import (
@@ -67,6 +68,7 @@ type Model struct {
 	cancel   context.CancelFunc
 	results  chan any
 	workers  *sync.WaitGroup
+	queue    *queue
 	catalog  text.Catalog
 	input    textinput.Model
 	height   int
@@ -99,12 +101,15 @@ func New(opts Options) *Model {
 	input.Cursor.SetMode(cursor.CursorStatic)
 	return &Model{
 		ctx: ctx, cancel: cancel, app: model.NewApp(opts.LogCapacity), runner: opts.Runner, catalog: catalog,
-		results: make(chan any), workers: &sync.WaitGroup{}, styles: newStyles(profile), input: input, follow: true,
+		results: make(chan any), workers: &sync.WaitGroup{}, queue: newQueue(), styles: newStyles(profile), input: input, follow: true,
 	}
 }
 
-// Init loads every snapshot, subscribes to events and starts listening.
+// Init starts the serial worker, loads every snapshot, subscribes to events
+// and starts listening.
 func (m *Model) Init() tea.Cmd {
+	m.workers.Add(1)
+	go m.serve()
 	m.start(m.app.Init())
 	return m.listen()
 }
@@ -114,31 +119,6 @@ func (m *Model) Init() tea.Cmd {
 func (m *Model) Close() {
 	m.cancel()
 	m.workers.Wait()
-}
-
-func (m *Model) start(cmds []model.Cmd) {
-	for _, cmd := range cmds {
-		m.workers.Add(1)
-		go m.work(cmd)
-	}
-}
-
-func (m *Model) work(cmd model.Cmd) {
-	defer m.workers.Done()
-	defer func() {
-		if value := recover(); value != nil {
-			m.emit(panicMsg{value: value})
-		}
-	}()
-	m.runner.Run(m.ctx, cmd, func(msg model.Msg) { m.emit(msg) })
-}
-
-// emit delivers to the program loop unless the renderer is shutting down.
-func (m *Model) emit(msg any) {
-	select {
-	case m.results <- msg:
-	case <-m.ctx.Done():
-	}
 }
 
 // listen waits for the next worker result; exactly one listener is pending.

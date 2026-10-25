@@ -22,6 +22,9 @@ type fakeClient struct {
 	drift        model.DriftSnapshot
 	status       model.StatusSnapshot
 	mu           sync.Mutex
+	delay        time.Duration
+	inflight     atomic.Int32
+	overlapped   atomic.Bool
 	statusCalls  atomic.Int32
 	subscribed   atomic.Int32
 	unsubscribed atomic.Int32
@@ -55,7 +58,17 @@ func newFake() *fakeClient {
 	}
 }
 
+// enter records calls that overlap, like a contended state lock would.
+func (f *fakeClient) enter() func() {
+	if f.inflight.Add(1) > 1 {
+		f.overlapped.Store(true)
+	}
+	time.Sleep(f.delay)
+	return func() { f.inflight.Add(-1) }
+}
+
 func (f *fakeClient) Status(context.Context) (model.StatusSnapshot, error) {
+	defer f.enter()()
 	f.statusCalls.Add(1)
 	if f.panicStatus {
 		panic("scripted status failure")
@@ -66,12 +79,14 @@ func (f *fakeClient) Status(context.Context) (model.StatusSnapshot, error) {
 }
 
 func (f *fakeClient) Drift(context.Context) (model.DriftSnapshot, error) {
+	defer f.enter()()
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.drift, nil
 }
 
 func (f *fakeClient) Sync(ctx context.Context, progress func(string)) (model.SyncOutcome, error) {
+	defer f.enter()()
 	for {
 		select {
 		case phase, ok := <-f.phases:
@@ -86,12 +101,14 @@ func (f *fakeClient) Sync(ctx context.Context, progress func(string)) (model.Syn
 }
 
 func (f *fakeClient) Settings(context.Context) ([]model.SettingValue, error) {
+	defer f.enter()()
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return append([]model.SettingValue(nil), f.settings...), nil
 }
 
 func (f *fakeClient) SetSetting(_ context.Context, key, value string) error {
+	defer f.enter()()
 	f.writes <- [2]string{key, value}
 	if f.settingErr != nil {
 		return f.settingErr

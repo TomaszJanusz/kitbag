@@ -23,7 +23,7 @@ func (m *Model) statusView() []string {
 		headline = m.styles.success
 	}
 	lines := m.wrap(headline, m.say(view.Headline))
-	lines = append(lines, m.problem(view.Problem)...)
+	lines = append(lines, m.problem(view.Problem, view.Headline)...)
 	for _, notice := range view.Notices {
 		lines = append(lines, m.wrap(m.styles.warning, m.say(notice))...)
 	}
@@ -61,7 +61,7 @@ func (m *Model) driftView(height int) []string {
 		return m.driftDetail(*view.Detail)
 	}
 	lines := m.wrap(m.styles.heading, m.say(view.Headline))
-	lines = append(lines, m.problem(view.Problem)...)
+	lines = append(lines, m.problem(view.Problem, view.Headline)...)
 	tail := m.warnings(view.Warnings)
 	if len(view.Rows) > 0 {
 		tail = append(tail, "", m.styles.faint.Render(m.say(text.New(text.DriftListHint))))
@@ -106,7 +106,7 @@ func (m *Model) driftDetail(detail model.DriftDetail) []string {
 func (m *Model) settingsView(height int) []string {
 	view := m.app.Settings.View()
 	lines := m.wrap(m.styles.heading, m.say(view.Headline))
-	lines = append(lines, m.problem(view.Problem)...)
+	lines = append(lines, m.problem(view.Problem, view.Headline)...)
 	if len(view.Fields) == 0 {
 		return lines
 	}
@@ -137,7 +137,7 @@ func (m *Model) fieldDetail(field model.FieldView) []string {
 	if len(field.Choices) > 0 {
 		lines = append(lines, m.wrap(m.styles.faint, m.say(text.New(text.SettingChoices, text.Plain(strings.Join(field.Choices, ", ")))))...)
 	}
-	lines = append(lines, m.problem(field.Problem)...)
+	lines = append(lines, m.problem(field.Problem, text.Message{})...)
 	if m.editing {
 		return append(lines, m.input.View(), m.styles.faint.Render(m.say(text.New(text.SettingEditing))))
 	}

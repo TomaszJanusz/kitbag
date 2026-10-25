@@ -110,8 +110,9 @@ func window(selected, count, rows int) int {
 	return min(max(selected-rows/2, 0), count-rows)
 }
 
-func (m *Model) problem(problem *text.Message) []string {
-	if problem == nil {
+// problem renders a view's problem unless the headline already says it.
+func (m *Model) problem(problem *text.Message, headline text.Message) []string {
+	if problem == nil || m.say(*problem) == m.say(headline) {
 		return nil
 	}
 	return m.wrap(m.styles.failure, m.say(*problem))
