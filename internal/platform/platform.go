@@ -3,6 +3,7 @@ package platform
 import (
 	"errors"
 	"io/fs"
+	"runtime"
 )
 
 // Classification sentinels returned (wrapped) by every implementation.
@@ -146,4 +147,13 @@ func CheckOS(goos string) error {
 		return &UnsupportedOSError{Message: "Windows is not supported before 1.x"}
 	}
 	return nil
+}
+
+// DefaultMode returns the platform materialization default. Windows runtime
+// support remains deferred; cross-compilation uses its future copy default.
+func DefaultMode() string {
+	if runtime.GOOS == "windows" {
+		return "copy"
+	}
+	return "link"
 }

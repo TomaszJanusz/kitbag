@@ -18,7 +18,11 @@ func (s Service) intent() (*manifest.Manifest, error) {
 	if err != nil {
 		return nil, err
 	}
-	return m.ResolveHost(hostEnvironment{s.Host, s.HostFlag}, s.Config.Host)
+	host, _, err := config.Resolve(s.Host, config.Values{"host": s.Config.Host}, "host", s.HostFlag)
+	if err != nil {
+		return nil, err
+	}
+	return m.ResolveHost(hostEnvironment{s.Host, host}, host)
 }
 
 type hostEnvironment struct {

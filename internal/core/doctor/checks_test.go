@@ -115,7 +115,7 @@ func manifestVersionCases() []manifestCase {
 	return []manifestCase{
 		{
 			name: "invalid host flag", manifest: "schema=1\n", flag: "not a host!",
-			expects: []expect{{"manifest", "invalid host name", "host selection", Fail}}, code: apply.Warnings,
+			expects: []expect{{"manifest", "invalid configuration host", "host selection", Fail}}, code: apply.Warnings,
 		},
 		{
 			name: "tool too old", manifest: "schema=1\nmin_tool_version=\"2.0.0\"\n", version: "1.0.0",

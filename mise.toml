@@ -93,3 +93,11 @@ run = "KITBAG_UPDATE_CLI=1 go test ./cmd/kitbag -run '^TestCLIReference$' -count
 [tasks."docs:cli:check"]
 description = "Check the committed command reference without writing"
 run = "go test ./cmd/kitbag -run '^TestCLIReference$' -count=1"
+
+[tasks."docs:config"]
+description = "Generate machine settings documentation from the key registry"
+run = "KITBAG_UPDATE_CONFIG=1 go test ./cmd/kitbag -run '^TestConfigDocumentation$' -count=1"
+
+[tasks."docs:config:check"]
+description = "Check machine settings documentation freshness"
+run = "go test ./cmd/kitbag -run '^TestConfigDocumentation$' -count=1"

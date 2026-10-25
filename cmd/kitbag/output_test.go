@@ -17,10 +17,14 @@ func TestPlanColour(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name                    string
+		preference              string
 		terminal, noColor, want bool
 	}{
 		{name: "terminal", terminal: true, want: true},
 		{name: "pipe"},
+		{name: "always in pipe", preference: "always", want: true},
+		{name: "never on terminal", preference: "never", terminal: true},
+		{name: "NO_COLOR beats always", preference: "always", noColor: true},
 		{name: "NO_COLOR even empty", terminal: true, noColor: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -35,6 +39,7 @@ func TestPlanColour(t *testing.T) {
 			}
 			var output terminalBuffer
 			c := commandLine{host: fake.New(options...), stdout: &output}
+			c.config.UI.Color = tc.preference
 			p := plan.Plan{Operations: []plan.Operation{{Kind: plan.Write, Path: "/output", Classification: plan.UpdateNeeded}}}
 			if err := writeDiff(c.stdout, p, c.colour()); err != nil {
 				t.Fatal(err)

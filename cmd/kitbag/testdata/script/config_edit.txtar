@@ -1,0 +1,63 @@
+env KITBAG_CONFIG=$WORK/machine.toml
+env EDITOR='sh "$WORK/editor.sh"'
+cp original.toml machine.toml
+cp valid.toml candidate.toml
+exec kitbag config edit
+cmp machine.toml valid.toml
+! exists machine.toml.edit.toml
+
+cp machine.toml before.toml
+cp invalid.toml candidate.toml
+stdin abort.txt
+exec kitbag config edit
+stderr 'allowed link, copy'
+stderr 'Re-edit\?'
+cmp machine.toml before.toml
+! exists machine.toml.edit.toml
+
+# A second editor invocation repairs an invalid draft.
+env EDITOR='sh "$WORK/retry.sh"'
+stdin retry.txt
+exec kitbag config edit
+stderr 'Re-edit\?'
+cmp machine.toml valid.toml
+! exists machine.toml.edit.toml
+
+# Editor failure and missing editor preserve the original.
+env EDITOR=false
+! exec kitbag config edit
+cmp machine.toml before.toml
+! exists machine.toml.edit.toml
+env EDITOR=
+execstatus 2 kitbag config edit
+stderr 'set EDITOR'
+-- editor.sh --
+cp "$WORK/candidate.toml" "$1"
+-- retry.sh --
+if test -f "$WORK/attempt"; then
+  cp "$WORK/valid.toml" "$1"
+else
+  touch "$WORK/attempt"
+  cp "$WORK/invalid.toml" "$1"
+fi
+-- abort.txt --
+n
+-- retry.txt --
+y
+-- original.toml --
+schema=1
+[repo]
+url='local'
+-- valid.toml --
+# Preserved by edit.
+schema=1
+[repo]
+url='local'
+[sync]
+mode='copy'
+-- invalid.toml --
+schema=1
+[repo]
+url='local'
+[sync]
+mode='bogus'

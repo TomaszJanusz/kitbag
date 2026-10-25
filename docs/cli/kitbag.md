@@ -21,6 +21,7 @@ kitbag [flags]
 ### SEE ALSO
 
 * [kitbag adopt](kitbag_adopt.md)	 - Take over destinations agent-config-sync already manages
+* [kitbag config](kitbag_config.md)	 - Inspect and change machine settings
 * [kitbag doctor](kitbag_doctor.md)	 - Explain synchronization problems and suggest fixes
 * [kitbag init](kitbag_init.md)	 - Set up a configuration clone or scaffold a new repository
 * [kitbag plan](kitbag_plan.md)	 - Show the local synchronization diff without applying it

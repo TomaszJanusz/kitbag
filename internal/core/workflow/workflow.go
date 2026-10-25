@@ -139,12 +139,15 @@ func (s Service) intent() (*manifest.Manifest, string, error) {
 	if err = m.CheckVersion(s.Version); err != nil {
 		return nil, "", err
 	}
-	m, err = m.ResolveHost(hostEnvironment{s.Host, s.HostFlag}, s.Config.Host)
+	host, _, err := config.Resolve(s.Host, config.Values{"host": s.Config.Host}, "host", s.HostFlag)
 	if err != nil {
 		return nil, "", err
 	}
-	envMode, _ := s.Host.LookupEnv("KITBAG_MODE")
-	mode, err := apply.ResolveMode("", s.ModeFlag, envMode, s.Config.Sync.Mode, "")
+	m, err = m.ResolveHost(hostEnvironment{s.Host, host}, host)
+	if err != nil {
+		return nil, "", err
+	}
+	mode, _, err := config.Resolve(s.Host, config.Values{"sync.mode": s.Config.Sync.Mode}, "sync.mode", s.ModeFlag)
 	return m, mode, err
 }
 

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/TomaszJanusz/kitbag/internal/core/plan"
+	"github.com/TomaszJanusz/kitbag/internal/settingskey"
 )
 
 // Code is the command exit classification shared by all entry points.
@@ -56,15 +57,14 @@ func (r Result) Code() Code {
 // ResolveMode selects flag, environment, configuration, then platform default.
 // The most specific manifest value is separate: copy on either side wins.
 func ResolveMode(manifestMode, flag, environment, configuration, platformDefault string) (string, error) {
-	machine := platformDefault
-	for _, candidate := range []string{configuration, environment, flag} {
-		if candidate != "" {
-			machine = candidate
-		}
+	key, err := settingskey.Find("sync.mode")
+	if err != nil {
+		return "", err
 	}
-	if machine == "" {
-		machine = "link"
+	if platformDefault != "" {
+		key.Default = platformDefault
 	}
+	machine, _ := key.Choose(flag, environment, configuration)
 	if !validMode(machine) || (manifestMode != "" && !validMode(manifestMode)) {
 		return "", errUsage()
 	}

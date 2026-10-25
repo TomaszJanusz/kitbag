@@ -22,7 +22,7 @@ func TestCLIReference(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	commands := append([]*cobra.Command{root}, root.Commands()...)
+	commands := referenceCommands(root)
 	for _, cmd := range commands {
 		checkReference(t, cmd, directory, update)
 	}
@@ -35,9 +35,18 @@ func TestCLIReference(t *testing.T) {
 	}
 }
 
+func referenceCommands(root *cobra.Command) []*cobra.Command {
+	commands := make([]*cobra.Command, 1, 1+len(root.Commands()))
+	commands[0] = root
+	for _, child := range root.Commands() {
+		commands = append(commands, referenceCommands(child)...)
+	}
+	return commands
+}
+
 func referenceSuffix(cmd *cobra.Command) string {
 	if cmd.HasParent() {
-		return "_" + cmd.Name()
+		return referenceSuffix(cmd.Parent()) + "_" + cmd.Name()
 	}
 	return ""
 }

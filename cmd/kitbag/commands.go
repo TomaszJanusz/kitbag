@@ -47,7 +47,7 @@ func (c *commandLine) root() *cobra.Command {
 	flags.BoolVar(&c.flags.verbose, "verbose", false, "Show backend selection and working copy diagnostics")
 	flags.BoolVar(&c.flags.quiet, "quiet", false, "Suppress successful sync change output")
 	root.MarkFlagsMutuallyExclusive("verbose", "quiet")
-	root.AddCommand(c.initCommand(), c.syncCommand(), c.planCommand(), c.statusCommand(), c.doctorCommand(), c.adoptCommand(), c.unmanageCommand(), c.revertCommand(), c.versionCommand())
+	root.AddCommand(c.configCommand(), c.initCommand(), c.syncCommand(), c.planCommand(), c.statusCommand(), c.doctorCommand(), c.adoptCommand(), c.unmanageCommand(), c.revertCommand(), c.versionCommand())
 	return root
 }
 
@@ -55,29 +55,21 @@ func (c *commandLine) prepare(cmd *cobra.Command, _ []string) error {
 	if err := cmd.ValidateFlagGroups(); err != nil {
 		return err
 	}
-	if cmd.Name() == "init" {
+	if cmd.Name() == "init" || (cmd.Parent() != nil && cmd.Parent().Name() == "config") {
 		return nil // Init must work before an explicit configuration file exists.
 	}
-	filename := c.flags.config
-	if filename == "" {
-		filename, _ = c.host.LookupEnv("KITBAG_CONFIG")
-	}
-	if filename != "" {
-		absolute, err := filepath.Abs(filename)
-		if err != nil {
-			return classified(err)
-		}
-		filename = absolute
-	}
-	cfg, err := config.Load(c.host, filename)
+	cfg, err := c.loadConfig()
 	if err != nil {
 		return classified(err)
 	}
-	c.config = cfg
 	envBackend, _ := c.host.LookupEnv(vcs.EnvVar)
 	c.selection, err = vcs.Select(c.flags.gitBackend, envBackend, cfg.Git.Backend)
 	if err != nil {
 		return &commandError{err: err, code: apply.Usage}
+	}
+	c.config, err = config.Effective(c.host, cfg, map[string]string{"host": c.flags.host, "mode": c.flags.mode, "git-backend": c.flags.gitBackend})
+	if err != nil {
+		return classified(err)
 	}
 	if cmd.Name() == "version" {
 		return classified(checkGitBackend(cmd.Context(), c.selection, c.host))
@@ -173,4 +165,19 @@ func (c *commandLine) statusCommand() *cobra.Command {
 	}}
 	cmd.Flags().BoolVar(&asJSON, "json", false, "Print stable status_schema=1 JSON")
 	return cmd
+}
+
+func (c *commandLine) loadConfig() (config.Config, error) {
+	filename := c.flags.config
+	if filename == "" {
+		filename, _ = c.host.LookupEnv("KITBAG_CONFIG")
+	}
+	if filename != "" {
+		absolute, err := filepath.Abs(filename)
+		if err != nil {
+			return config.Config{}, err
+		}
+		filename = absolute
+	}
+	return config.Load(c.host, filename)
 }

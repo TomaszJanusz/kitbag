@@ -64,7 +64,7 @@ func (c *commandLine) runInit(cmd *cobra.Command, args []string, flags *initFlag
 	if exists {
 		return c.initMessage("Already set up: %s exists; configuration and working copies were left unchanged.\n", filename)
 	}
-	if err = initRepo(args, flags); err != nil {
+	if err = c.initInputs(args, flags); err != nil {
 		return err
 	}
 	if err = c.initChoices(cmd, flags); err != nil {
@@ -93,12 +93,9 @@ func (c *commandLine) initChoices(cmd *cobra.Command, flags *initFlags) error {
 		return err
 	}
 	flags.selection, flags.backend = sel, string(sel.Kind)
-	flags.mode = c.flags.mode
-	if flags.mode == "" {
-		flags.mode, _ = c.host.LookupEnv("KITBAG_MODE")
-	}
-	if flags.mode == "" {
-		flags.mode = "link"
+	flags.mode, _, err = config.Resolve(c.host, config.Values{}, "sync.mode", c.flags.mode)
+	if err != nil {
+		return err
 	}
 	detected, err := initialize.Detect(c.host)
 	if err != nil {
@@ -214,3 +211,33 @@ func (c *commandLine) initMessage(format string, values ...any) error {
 }
 
 func shellQuote(value string) string { return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'" }
+
+func (c *commandLine) initSettings(flags *initFlags, positional bool) error {
+	for _, field := range []struct {
+		value *string
+		path  string
+	}{
+		{&flags.repo, "repo.url"},
+		{&flags.branch, "repo.branch"},
+		{&flags.name, "git.identity.name"},
+		{&flags.email, "git.identity.email"},
+		{&c.flags.host, "host"},
+	} {
+		if positional && field.path == "repo.url" {
+			continue
+		}
+		value, _, err := config.Resolve(c.host, config.Values{}, field.path, *field.value)
+		if err != nil {
+			return err
+		}
+		*field.value = value
+	}
+	return nil
+}
+
+func (c *commandLine) initInputs(args []string, flags *initFlags) error {
+	if err := c.initSettings(flags, len(args) > 0); err != nil {
+		return err
+	}
+	return initRepo(args, flags)
+}
