@@ -7,6 +7,7 @@
 "aqua:sigstore/cosign" = "3.1.4"
 "aqua:anchore/syft" = "1.55.0"
 "aqua:orhun/git-cliff" = "2.14.2"
+"aqua:slsa-framework/slsa-verifier" = "2.7.1"
 "aqua:mvdan/sh" = "3.14.1"
 "aqua:crate-ci/typos" = "1.51.1"
 "aqua:gitleaks/gitleaks" = "8.30.1"
@@ -115,3 +116,7 @@ run = "go test ./cmd/kitbag -run '^TestAPIArtifacts$' -count=1"
 description = "Check relative documentation files and heading anchors offline"
 # The pinned Go toolchain runs this test package in the full check suite.
 run = "go test ./internal/doccheck -count=1"
+
+[tasks."release:snapshot"]
+description = "Build release archives and SBOMs without signing or publishing; verify reproducibility"
+run = "bash scripts/release-snapshot.sh"

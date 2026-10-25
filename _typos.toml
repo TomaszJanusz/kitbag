@@ -1,0 +1,3 @@
+[default.extend-words]
+# Standard in-toto provenance filename extension required by the SLSA generator.
+intoto = "intoto"

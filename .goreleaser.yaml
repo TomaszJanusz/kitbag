@@ -1,0 +1,67 @@
+version: 2
+project_name: kitbag
+
+builds:
+  - id: kitbag
+    main: ./cmd/kitbag
+    binary: kitbag
+    env: [CGO_ENABLED=0]
+    goos: [darwin, linux]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    mod_timestamp: '{{ .CommitTimestamp }}'
+
+archives:
+  - formats: [tar.gz]
+    name_template: 'kitbag_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+    files:
+      - src: LICENSE
+        info:
+          mtime: '{{ .CommitDate }}'
+          owner: root
+          group: root
+          mode: 0644
+      - src: README.md
+        info:
+          mtime: '{{ .CommitDate }}'
+          owner: root
+          group: root
+          mode: 0644
+      - src: packaging/kitbag.install-source
+        dst: .
+        strip_parent: true
+        info:
+          mtime: '{{ .CommitDate }}'
+          owner: root
+          group: root
+          mode: 0644
+    builds_info:
+      mtime: '{{ .CommitDate }}'
+      owner: root
+      group: root
+      mode: 0755
+    # Normalize repository file timestamps and ownership as well as the binary.
+    wrap_in_directory: false
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+sboms:
+  - artifacts: archive
+    documents:
+      - '{{ .ArtifactName }}.sbom.json'
+    cmd: syft
+    args: ['${artifact}', '--output', 'spdx-json=${document}']
+
+snapshot:
+  version_template: '{{ if index .Env "KITBAG_SNAPSHOT_VERSION" }}{{ .Env.KITBAG_SNAPSHOT_VERSION }}{{ else }}{{ incpatch .Version }}-nightly.0.g{{ .ShortCommit }}{{ end }}'
+
+# Release Please owns the changelog; publishing and keyless signing happen only
+# in the release workflow, after verification and provenance generation.
+changelog:
+  disable: true
+release:
+  disable: true
