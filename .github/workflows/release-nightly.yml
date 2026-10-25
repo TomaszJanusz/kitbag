@@ -12,6 +12,7 @@ concurrency:
 jobs:
   nightly:
     if: github.ref == 'refs/heads/main'
+    # Cover all release.yml jobs and its nested SLSA workflow, even skipped jobs.
     permissions:
       contents: write
       actions: read

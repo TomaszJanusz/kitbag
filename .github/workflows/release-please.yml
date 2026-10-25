@@ -38,6 +38,7 @@ jobs:
   release:
     needs: propose
     if: needs.propose.outputs.created == 'true'
+    # Cover all release.yml jobs and its nested SLSA workflow, even skipped jobs.
     permissions:
       contents: write
       actions: read
