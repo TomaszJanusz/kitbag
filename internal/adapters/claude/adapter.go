@@ -17,6 +17,13 @@ import (
 // it with New after resolving CLAUDE_CONFIG_DIR through platform.Env.AgentHome.
 type Adapter struct{ home, directory string }
 
+// Result contains declarations and nonblocking instruction-renderer warnings.
+// Use Plan when the caller can display these warnings alongside planner output.
+type Result struct {
+	Targets  []target.Target
+	Warnings []string
+}
+
 // New accepts the absolute home and default Claude configuration directory.
 // An empty directory selects <home>/.claude; explicit manifest instances always
 // use their listed directories and must already exist.
@@ -36,10 +43,16 @@ func New(home, directory string) (Adapter, error) {
 // intent. Reads use fsys exclusively; destination safety and ordering belong to
 // the planner. Default instances may be created; listed instances may not.
 func (a Adapter) Declare(fsys manifest.FileSystem, repository string, intent *manifest.Manifest) ([]target.Target, error) {
+	result, err := a.Plan(fsys, repository, intent)
+	return result.Targets, err
+}
+
+// Plan also returns nonblocking warnings from the shared instruction renderer.
+func (a Adapter) Plan(fsys manifest.FileSystem, repository string, intent *manifest.Manifest) (Result, error) {
 	if a.home == "" || intent == nil {
-		return nil, errors.New("claude: uninitialized adapter or manifest")
+		return Result{}, errors.New("claude: uninitialized adapter or manifest")
 	}
-	var result []target.Target
+	var result Result
 	for _, name := range slices.Sorted(maps.Keys(intent.Targets)) {
 		config := intent.Targets[name]
 		if config.Agent != "claude" || !enabled(config.Enabled) {
@@ -62,9 +75,10 @@ func (a Adapter) Declare(fsys manifest.FileSystem, repository string, intent *ma
 			}
 			declarations, err := c.declare(fsys)
 			if err != nil {
-				return nil, fmt.Errorf("claude %s/%s: %w", name, instanceName, err)
+				return Result{}, fmt.Errorf("claude %s/%s: %w", name, instanceName, err)
 			}
-			result = append(result, declarations...)
+			result.Targets = append(result.Targets, declarations.Targets...)
+			result.Warnings = append(result.Warnings, declarations.Warnings...)
 		}
 	}
 	return result, nil

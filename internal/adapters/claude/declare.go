@@ -13,42 +13,43 @@ import (
 	"github.com/TomaszJanusz/kitbag/pkg/manifest"
 )
 
-func (c instanceContext) declare(fsys manifest.FileSystem) ([]target.Target, error) {
-	var result []target.Target
+func (c instanceContext) declare(fsys manifest.FileSystem) (Result, error) {
+	var result Result
 	if c.intent.Instructions != nil && enabled(c.policy("instructions").Enabled) {
 		declarations, err := c.instructions(fsys)
 		if err != nil {
-			return nil, err
+			return Result{}, err
 		}
-		result = append(result, declarations...)
+		result.Targets = append(result.Targets, declarations.Target)
+		result.Warnings = append(result.Warnings, declarations.Warnings...)
 	}
 	if c.intent.Skills != nil && enabled(c.policy("skills").Enabled) {
 		skills, err := c.skills(fsys)
 		if err != nil {
-			return nil, err
+			return Result{}, err
 		}
-		result = append(result, skills...)
+		result.Targets = append(result.Targets, skills...)
 	}
 	collections, err := c.collections(fsys)
 	if err != nil {
-		return nil, err
+		return Result{}, err
 	}
-	result = append(result, collections...)
+	result.Targets = append(result.Targets, collections...)
 
 	if c.config.Settings != "" {
 		d := c.declaration("settings", filepath.Join(c.directory, "settings.json"), target.Merged)
 		d.SourcePath = filepath.Join(c.repository, filepath.FromSlash(c.config.Settings))
 		d.Merger = Merger{Repository: c.repository}
 		d.Preserve = !enabled(c.instance.Settings)
-		result = append(result, d)
+		result.Targets = append(result.Targets, d)
 	}
-	return result, nil
+	return result, c.protectSynced(result.Targets)
 }
 
-func (c instanceContext) instructions(fsys manifest.FileSystem) ([]target.Target, error) {
+func (c instanceContext) instructions(fsys manifest.FileSystem) (instructions.Result, error) {
 	strategy, err := instructions.Choose(c.policy("instructions").Render, instructions.Import, instructions.Import, instructions.Concat)
 	if err != nil {
-		return nil, err
+		return instructions.Result{}, err
 	}
 	d := c.declaration("instructions", c.root("instructions", "CLAUDE.md"), target.Generated)
 	rendered, err := instructions.Declare(fsys, instructions.Request{
@@ -56,17 +57,10 @@ func (c instanceContext) instructions(fsys manifest.FileSystem) ([]target.Target
 		Repository:   c.repository, Path: d.Path, Agent: "claude", Strategy: strategy, Owners: d.Owners,
 	})
 	if err != nil {
-		return nil, err
+		return instructions.Result{}, err
 	}
 	rendered.Target.InstanceDir, rendered.Target.Mode = d.InstanceDir, d.Mode
-	result := []target.Target{rendered.Target}
-	// Keep nonblocking renderer warnings separate from its writable declaration.
-	for _, warning := range rendered.Warnings {
-		notice := c.declaration("instructions", d.Path+".kitbag-warning", target.Generated)
-		notice.Warning = warning
-		result = append(result, notice)
-	}
-	return result, nil
+	return rendered, nil
 }
 
 func (c instanceContext) skills(fsys manifest.FileSystem) ([]target.Target, error) {
@@ -176,4 +170,28 @@ func (c instanceContext) collections(fsys manifest.FileSystem) ([]target.Target,
 		result = append(result, declarations...)
 	}
 	return result, nil
+}
+
+// Protect the reserved tree even when a different primitive overrides its root.
+func (c instanceContext) protectSynced(declarations []target.Target) error {
+	reserved := filepath.Join(c.directory, "skills", "synced")
+	for _, d := range declarations {
+		if pathContains(reserved, d.Path) || pathContains(d.Path, reserved) {
+			return errors.New("claude: destination overlaps reserved skills/synced: " + d.Path)
+		}
+	}
+	return nil
+}
+
+func pathContains(parent, child string) bool {
+	for {
+		if strings.EqualFold(parent, child) {
+			return true
+		}
+		next := filepath.Dir(child)
+		if next == child {
+			return false
+		}
+		child = next
+	}
 }

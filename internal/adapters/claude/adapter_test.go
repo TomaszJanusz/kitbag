@@ -265,3 +265,33 @@ func assertMaterialized(t *testing.T, ds []target.Target) {
 		}
 	}
 }
+
+func TestReservedDestinationRoots(t *testing.T) {
+	t.Parallel()
+	for _, primitive := range []string{"instructions", "skills", "commands", "agents", "hooks", "rules"} {
+		h, m := fixture(t)
+		config := m.Targets["work"]
+		config.Instances = map[string]manifest.Instance{"main": {Dir: "~/.claude", Roots: map[string]string{primitive: "~/.claude/skills/synced"}}}
+		m.Targets["work"] = config
+		if _, err := adapter(t, "").Declare(h, "/repo", m); err == nil || !strings.Contains(err.Error(), "reserved skills/synced") {
+			t.Fatalf("%s root accepted: %v", primitive, err)
+		}
+	}
+}
+
+func TestMissingHostWarningDoesNotCreateATarget(t *testing.T) {
+	t.Parallel()
+	h, m := fixture(t)
+	m.Instructions.Hosts = "hosts/missing.md"
+	result, err := adapter(t, "").Plan(h, "/repo", m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Targets) != 7 || len(result.Warnings) != 1 {
+		t.Fatalf("warning changed targets: %+v", result)
+	}
+	d := find(t, result.Targets, "/home/test/.claude/CLAUDE.md")
+	if d.Warning != "" || !strings.Contains(string(d.Content), "@/repo/global/AGENTS.md") {
+		t.Fatalf("missing host suppressed imports: %+v", d)
+	}
+}

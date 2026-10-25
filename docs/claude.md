@@ -14,9 +14,12 @@ trees containing Markdown; hook files keep their native content and executable
 bits. `per_agent.claude` replaces same-name shared entries. Roots and primitive
 policy follow the manifest contract. `skills/synced` belongs to Claude Code:
 it is never scanned for stale links, and a repository skill named `synced` is
-rejected. Instructions use the shared renderer, defaulting to `import`; explicit
-`concat` is supported. Missing host additions generate a separate warning
-without suppressing the instructions output.
+rejected. Root overrides of any primitive may not overlap that reserved tree.
+Instructions use the shared renderer, defaulting to `import`; explicit
+`concat` is supported. Missing host additions are returned in `Adapter.Plan`
+`Result.Warnings` without adding synthetic targets or suppressing instructions.
+`Declare` implements the planner contract and returns the same targets; callers
+that display nonblocking renderer warnings use `Plan`.
 
 Settings are `merged` targets, never links, with `Backup: Once`; core owns backup,
 drift, atomic writes and state. Instance `settings = false` declares a preserved
