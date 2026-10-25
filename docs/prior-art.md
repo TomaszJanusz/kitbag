@@ -23,7 +23,7 @@ sources and a compatible or literal APM lock. Neither settles an exact schema:
 [KIT-2][kit2] explicitly commissions that recommendation, and
 [ADR 2](adr/0002-git-source-of-truth.md) leaves it open. Treat those earlier
 examples as provisional inputs. The new [ADR 9](adr/0009-skill-lock-interchange.md)
-is **Proposed**, supersedes no Accepted ADR, and does not silently accept either
+is **Accepted**, supersedes no Accepted ADR, and does not silently accept either
 plan paragraph as a complete implementation contract.
 
 ## 1. microsoft/apm

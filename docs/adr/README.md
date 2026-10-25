@@ -13,9 +13,9 @@ architecture, not features already implemented.
 7. [Name the project kitbag](0007-name.md) — Accepted
 8. [Use the MIT License](0008-license.md) — Accepted
 
-Follow-up recommendations remain open until accepted:
+Follow-up recommendation, accepted on 2026-10-25 and not yet implemented:
 
-9. [Preserve skills lock interchange and separate immutable provenance](0009-skill-lock-interchange.md) — Proposed (KIT-2)
+9. [Preserve skills lock interchange and separate immutable provenance](0009-skill-lock-interchange.md) — Accepted (KIT-2)
 
 Implementation decisions:
 
