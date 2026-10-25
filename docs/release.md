@@ -15,14 +15,9 @@ manifest is a bootstrap baseline, not a published release. Release Please uses
 its simple strategy and `.release-please-version`; executable stamping always
 comes from GoReleaser's version, never that file at runtime.
 
-**First release pin.** `release-please-config.json` sets `"release-as": "0.1.0"`
-so the first proposal is exactly `0.1.0`; without it Release Please treats the
-`0.0.0` baseline's feat/breaking commits as a major bump and proposes `1.0.0`.
-The pin is one-time and must be removed in the PR right after v0.1.0 is
-published, otherwise every later proposal would stay at `0.1.0`.
-
-- [ ] After v0.1.0 is published, open a PR removing `release-as` from
-  `release-please-config.json`.
+**First release pin.** The one-time `"release-as": "0.1.0"` pin was removed from
+`release-please-config.json` after v0.1.0 was published, so later proposals
+follow the commit history again.
 
 `bump-minor-pre-major` and `bump-patch-for-minor-pre-major` keep versions below
 `1.0.0` on the usual pre-1.0 rules: breaking changes bump the minor and features
