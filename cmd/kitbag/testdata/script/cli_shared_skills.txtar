@@ -1,0 +1,30 @@
+env KITBAG_CONFIG=$WORK/machine.toml
+env GEMINI_CLI_HOME=
+env CODEX_HOME=
+env XDG_CONFIG_HOME=
+gitremote $WORK/config.git config
+exec git clone --quiet $WORK/config.git $HOME/checkout
+exec kitbag sync --no-pull
+! stderr .
+stdout -count=1 'materialize .*/home/\.agents/skills/alpha$'
+linktarget $HOME/.agents/skills/alpha $HOME/checkout/skills/alpha
+cmp $HOME/.config/opencode/skills/alpha/SKILL.md config/skills/alpha/SKILL.md
+exec kitbag sync --no-pull
+nooutput
+-- config/kitbag.toml --
+schema = 1
+[skills]
+dirs = ["skills"]
+[targets.codex]
+agent = "codex"
+[targets.gemini]
+agent = "gemini"
+[targets.opencode]
+agent = "opencode"
+-- config/skills/alpha/SKILL.md --
+Alpha skill.
+-- machine.toml --
+schema = 1
+[repo]
+url = "local-config"
+path = "~/checkout"

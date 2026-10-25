@@ -265,6 +265,38 @@ linters:
           deny:
             - pkg: github.com/TomaszJanusz/kitbag/internal/adapters/
               desc: Adapters cannot import other agents.
+        gemini:
+          # Longest-prefix matching admits only gemini below the adapters prefix.
+          files: ["**/internal/adapters/gemini/*.go", "**/internal/adapters/gemini/**/*.go"]
+          # Lax: common already restricts imports to stdlib and this module.
+          # depguard compares an import with its nearest sorted entry only, so
+          # a strict list here let the subtree entries hide kitbag/ (KIT-17).
+          list-mode: lax
+          allow:
+            - github.com/TomaszJanusz/kitbag/internal/adapters/gemini/
+            - github.com/TomaszJanusz/kitbag/internal/adapters/gemini$
+            - github.com/TomaszJanusz/kitbag/internal/adapters$
+            # The shared instruction renderer is a contract, not a peer agent.
+            - github.com/TomaszJanusz/kitbag/internal/adapters/instructions$
+          deny:
+            - pkg: github.com/TomaszJanusz/kitbag/internal/adapters/
+              desc: Adapters cannot import other agents.
+        opencode:
+          # Longest-prefix matching admits only opencode below the adapters prefix.
+          files: ["**/internal/adapters/opencode/*.go", "**/internal/adapters/opencode/**/*.go"]
+          # Lax: common already restricts imports to stdlib and this module.
+          # depguard compares an import with its nearest sorted entry only, so
+          # a strict list here let the subtree entries hide kitbag/ (KIT-17).
+          list-mode: lax
+          allow:
+            - github.com/TomaszJanusz/kitbag/internal/adapters/opencode/
+            - github.com/TomaszJanusz/kitbag/internal/adapters/opencode$
+            - github.com/TomaszJanusz/kitbag/internal/adapters$
+            # The shared instruction renderer is a contract, not a peer agent.
+            - github.com/TomaszJanusz/kitbag/internal/adapters/instructions$
+          deny:
+            - pkg: github.com/TomaszJanusz/kitbag/internal/adapters/
+              desc: Adapters cannot import other agents.
         generic:
           # Apply the same self-only import boundary to the generic adapter.
           files: ["**/internal/adapters/generic/*.go", "**/internal/adapters/generic/**/*.go"]
@@ -309,6 +341,10 @@ linters:
             - "**/internal/adapters/**/*.go"
             - "!**/internal/adapters/claude/*.go"
             - "!**/internal/adapters/claude/**/*.go"
+            - "!**/internal/adapters/gemini/*.go"
+            - "!**/internal/adapters/gemini/**/*.go"
+            - "!**/internal/adapters/opencode/*.go"
+            - "!**/internal/adapters/opencode/**/*.go"
             - "!**/internal/adapters/codex/*.go"
             - "!**/internal/adapters/codex/**/*.go"
             - "!**/internal/adapters/generic/*.go"

@@ -1,0 +1,31 @@
+/home/user/.config/opencode/AGENTS.md
+  kind: generated
+  backup: once
+  owner: instructions opencode:opencode/default
+  content: <!-- Managed by kitbag. Edit the source in the configuration repository, not this file. -->
+  | 
+  | # Shared instructions
+  | 
+  | Rules every coding agent follows on every machine.
+  | 
+  | - Keep changes small and focused.
+  | - Run the project checks before opening a pull request.
+  | 
+  | # Host: example
+  | 
+  | A shared build machine; keep parallelism low.
+/home/user/.config/opencode/agents/override.md
+  kind: materialized
+  mode: copy
+  source: /repo/agents/override.md
+  owner: agents opencode:opencode/default
+/home/user/.config/opencode/agents/reviewer.md
+  kind: materialized
+  mode: copy
+  source: /repo/opencode-agents/reviewer.md
+  owner: agents opencode:opencode/default
+/home/user/.config/opencode/agents/reviewer.toml
+  kind: materialized
+  mode: copy
+  warning: opencode: agents entry reviewer.toml is not a Markdown file; not supported
+  owner: agents opencode:opencode/default

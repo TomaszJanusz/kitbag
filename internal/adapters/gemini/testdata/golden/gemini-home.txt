@@ -1,0 +1,48 @@
+/srv/custom/.gemini/GEMINI.md
+  kind: generated
+  backup: once
+  owner: instructions gemini:gemini/default
+  content: <!-- Managed by kitbag. Edit the source in the configuration repository, not this file. -->
+  | 
+  | # Shared instructions
+  | 
+  | Rules every coding agent follows on every machine.
+  | 
+  | - Keep changes small and focused.
+  | - Run the project checks before opening a pull request.
+  | 
+  | # Host: example
+  | 
+  | A shared build machine; keep parallelism low.
+/home/user/.agents/skills/alpha
+  kind: materialized
+  source: /repo/skills/alpha
+  owner: skills gemini:gemini/default
+/home/user/.agents/skills/beta
+  kind: materialized
+  source: /repo/skills/beta
+  owner: skills gemini:gemini/default
+/home/user/.agents/skills/gamma
+  kind: materialized
+  source: /repo/vendor/gamma
+  owner: skills gemini:gemini/default
+/srv/custom/.gemini/commands/build.toml
+  kind: materialized
+  mode: copy
+  source: /repo/commands/build.toml
+  owner: commands gemini:gemini/default
+/srv/custom/.gemini/commands/nested
+  kind: materialized
+  mode: copy
+  warning: gemini: command nested is not a native TOML command file; conversion semantics are unknown; not supported
+  owner: commands gemini:gemini/default
+/srv/custom/.gemini/commands/review.md
+  kind: materialized
+  mode: copy
+  warning: gemini: command review.md is not a native TOML command file; conversion semantics are unknown; not supported
+  owner: commands gemini:gemini/default
+/srv/custom/.gemini/commands/shared.md
+  kind: materialized
+  mode: copy
+  warning: gemini: command shared.md is not a native TOML command file; conversion semantics are unknown; not supported
+  owner: commands gemini:gemini/default

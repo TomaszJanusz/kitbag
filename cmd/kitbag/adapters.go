@@ -8,7 +8,9 @@ import (
 	"github.com/TomaszJanusz/kitbag/internal/adapters/claude"
 	"github.com/TomaszJanusz/kitbag/internal/adapters/codex"
 	"github.com/TomaszJanusz/kitbag/internal/adapters/files"
+	"github.com/TomaszJanusz/kitbag/internal/adapters/gemini"
 	"github.com/TomaszJanusz/kitbag/internal/adapters/generic"
+	"github.com/TomaszJanusz/kitbag/internal/adapters/opencode"
 	"github.com/TomaszJanusz/kitbag/internal/target"
 	"github.com/TomaszJanusz/kitbag/pkg/manifest"
 )
@@ -44,11 +46,9 @@ func (c *commandLine) adapters(m *manifest.Manifest, warnings *[]string) ([]targ
 func (c *commandLine) agentAdapter(agent, home string, warnings *[]string) (target.Adapter, error) {
 	switch agent {
 	case "claude":
-		dir, err := c.host.AgentHome("CLAUDE_CONFIG_DIR", ".claude")
-		if err != nil {
-			return nil, err
-		}
-		adapter, err := claude.New(home, dir)
+		return c.claudeAdapter(home, warnings)
+	case "codex":
+		adapter, err := codex.New(c.host)
 		if err != nil {
 			return nil, err
 		}
@@ -57,8 +57,18 @@ func (c *commandLine) agentAdapter(agent, home string, warnings *[]string) (targ
 			*warnings = append(*warnings, r.Warnings...)
 			return r.Targets, err
 		}), nil
-	case "codex":
-		adapter, err := codex.New(c.host)
+	case "gemini":
+		adapter, err := gemini.New(c.host)
+		if err != nil {
+			return nil, err
+		}
+		return adapterFunc(func(fs manifest.FileSystem, repo string, m *manifest.Manifest) ([]target.Target, error) {
+			r, err := adapter.Plan(fs, repo, m)
+			*warnings = append(*warnings, r.Warnings...)
+			return r.Targets, err
+		}), nil
+	case "opencode":
+		adapter, err := opencode.New(c.host)
 		if err != nil {
 			return nil, err
 		}
@@ -77,4 +87,20 @@ func (c *commandLine) agentAdapter(agent, home string, warnings *[]string) (targ
 	default:
 		return nil, fmt.Errorf("agent %q has no adapter in this version", agent)
 	}
+}
+
+func (c *commandLine) claudeAdapter(home string, warnings *[]string) (target.Adapter, error) {
+	dir, err := c.host.AgentHome("CLAUDE_CONFIG_DIR", ".claude")
+	if err != nil {
+		return nil, err
+	}
+	adapter, err := claude.New(home, dir)
+	if err != nil {
+		return nil, err
+	}
+	return adapterFunc(func(fs manifest.FileSystem, repo string, m *manifest.Manifest) ([]target.Target, error) {
+		r, err := adapter.Plan(fs, repo, m)
+		*warnings = append(*warnings, r.Warnings...)
+		return r.Targets, err
+	}), nil
 }

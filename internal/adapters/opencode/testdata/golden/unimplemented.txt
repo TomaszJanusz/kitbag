@@ -1,0 +1,1 @@
+non-blocking warning: opencode: hooks are not synchronized for opencode:opencode/default

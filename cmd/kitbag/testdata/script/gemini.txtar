@@ -1,0 +1,76 @@
+env KITBAG_CONFIG=$WORK/machine.toml
+env KITBAG_HOST=test
+env GEMINI_CLI_HOME=
+env XDG_CONFIG_HOME=
+gitremote $WORK/config.git config
+exec git clone --quiet $WORK/config.git $HOME/checkout
+exec kitbag sync --no-pull
+! stderr .
+stdout 'write .*/GEMINI.md'
+cmp $HOME/.gemini/GEMINI.md expected.md
+cmp $HOME/.gemini/commands/review.toml config/native/review.toml
+! linktarget $HOME/.gemini/commands/review.toml
+linktarget $HOME/.agents/skills/alpha $HOME/checkout/skills/alpha
+! exists $HOME/.gemini/hooks
+! exists $HOME/.gemini/rules
+! exists $HOME/.gemini/settings.json
+! exists $HOME/.gemini/opencode.json
+exec kitbag sync --no-pull
+nooutput
+
+# Explicit relocation through platform.Env, never the real home.
+env GEMINI_CLI_HOME=$WORK/relocated
+exec kitbag sync --no-pull
+! stderr .
+cmp $WORK/relocated/.gemini/GEMINI.md expected.md
+! exists $WORK/relocated/GEMINI.md
+exec kitbag sync --no-pull
+nooutput
+
+# A missing explicit instance warns and is never created.
+cp listed.toml $HOME/checkout/kitbag.toml
+execstatus 1 kitbag sync --no-pull
+stderr 'instance directory is missing; skipped'
+! exists $HOME/.missing
+
+env GEMINI_CLI_HOME=relative
+execstatus 2 kitbag sync --no-pull
+stderr 'GEMINI_CLI_HOME="relative"'
+
+-- config/kitbag.toml --
+schema = 1
+[instructions]
+source = "global/AGENTS.md"
+per_agent.gemini = "override.md"
+[skills]
+dirs = ["skills"]
+[commands]
+per_agent.gemini = "native"
+[targets.gemini]
+agent = "gemini"
+-- listed.toml --
+schema = 1
+[instructions]
+source = "global/AGENTS.md"
+per_agent.gemini = "override.md"
+[targets.gemini]
+agent = "gemini"
+[targets.gemini.instances.missing]
+dir = "~/.missing"
+-- config/global/AGENTS.md --
+Shared rules must be replaced.
+-- config/override.md --
+Override rules.
+-- config/skills/alpha/SKILL.md --
+Alpha skill.
+-- config/native/review.toml --
+prompt = "Review."
+-- expected.md --
+<!-- Managed by kitbag. Edit the source in the configuration repository, not this file. -->
+
+Override rules.
+-- machine.toml --
+schema = 1
+[repo]
+url = "local-config"
+path = "~/checkout"

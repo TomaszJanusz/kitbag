@@ -1,0 +1,123 @@
+/home/user/.opencode/AGENTS.md
+  kind: generated
+  instance: /home/user/.opencode
+  backup: once
+  owner: instructions opencode:opencode/main
+  content: <!-- Managed by kitbag. Edit the source in the configuration repository, not this file. -->
+  | 
+  | # Shared instructions
+  | 
+  | Rules every coding agent follows on every machine.
+  | 
+  | - Keep changes small and focused.
+  | - Run the project checks before opening a pull request.
+  | 
+  | # Host: example
+  | 
+  | A shared build machine; keep parallelism low.
+/home/user/.opencode/skills/alpha
+  kind: materialized
+  mode: copy
+  source: /repo/skills/alpha
+  instance: /home/user/.opencode
+  owner: skills opencode:opencode/main
+/home/user/.opencode/skills/beta
+  kind: materialized
+  mode: copy
+  source: /repo/skills/beta
+  instance: /home/user/.opencode
+  owner: skills opencode:opencode/main
+/home/user/.opencode/skills/gamma
+  kind: materialized
+  mode: copy
+  source: /repo/vendor/gamma
+  instance: /home/user/.opencode
+  owner: skills opencode:opencode/main
+/home/user/.opencode/commands/build.toml
+  kind: materialized
+  mode: copy
+  instance: /home/user/.opencode
+  warning: opencode: commands entry build.toml is not a Markdown file; not supported
+  owner: commands opencode:opencode/main
+/home/user/.opencode/commands/nested
+  kind: materialized
+  mode: copy
+  instance: /home/user/.opencode
+  warning: opencode: commands entry nested is not a Markdown file; not supported
+  owner: commands opencode:opencode/main
+/home/user/.opencode/commands/review.md
+  kind: materialized
+  mode: copy
+  source: /repo/commands/review.md
+  instance: /home/user/.opencode
+  owner: commands opencode:opencode/main
+/home/user/.opencode/commands/shared.md
+  kind: materialized
+  mode: copy
+  source: /repo/opencode-commands/shared.md
+  instance: /home/user/.opencode
+  owner: commands opencode:opencode/main
+/home/user/.opencode/opencode.json
+  kind: merged
+  instance: /home/user/.opencode
+  warning: opencode: settings are not synchronized; remove targets.opencode.settings
+  owner: settings opencode:opencode/main
+/home/user/.opencode-plain/AGENTS.md
+  kind: generated
+  instance: /home/user/.opencode-plain
+  backup: once
+  owner: instructions opencode:opencode/plain
+  content: <!-- Managed by kitbag. Edit the source in the configuration repository, not this file. -->
+  | 
+  | # Shared instructions
+  | 
+  | Rules every coding agent follows on every machine.
+  | 
+  | - Keep changes small and focused.
+  | - Run the project checks before opening a pull request.
+  | 
+  | # Host: example
+  | 
+  | A shared build machine; keep parallelism low.
+/home/user/.opencode-plain/skills/alpha
+  kind: materialized
+  mode: copy
+  source: /repo/skills/alpha
+  instance: /home/user/.opencode-plain
+  owner: skills opencode:opencode/plain
+/home/user/.opencode-plain/skills/beta
+  kind: materialized
+  mode: copy
+  source: /repo/skills/beta
+  instance: /home/user/.opencode-plain
+  owner: skills opencode:opencode/plain
+/home/user/.opencode-plain/skills/gamma
+  kind: materialized
+  mode: copy
+  source: /repo/vendor/gamma
+  instance: /home/user/.opencode-plain
+  owner: skills opencode:opencode/plain
+/home/user/.opencode-plain/commands/build.toml
+  kind: materialized
+  mode: copy
+  instance: /home/user/.opencode-plain
+  warning: opencode: commands entry build.toml is not a Markdown file; not supported
+  owner: commands opencode:opencode/plain
+/home/user/.opencode-plain/commands/nested
+  kind: materialized
+  mode: copy
+  instance: /home/user/.opencode-plain
+  warning: opencode: commands entry nested is not a Markdown file; not supported
+  owner: commands opencode:opencode/plain
+/home/user/.opencode-plain/commands/review.md
+  kind: materialized
+  mode: copy
+  source: /repo/commands/review.md
+  instance: /home/user/.opencode-plain
+  owner: commands opencode:opencode/plain
+/home/user/.opencode-plain/commands/shared.md
+  kind: materialized
+  mode: copy
+  source: /repo/opencode-commands/shared.md
+  instance: /home/user/.opencode-plain
+  owner: commands opencode:opencode/plain
