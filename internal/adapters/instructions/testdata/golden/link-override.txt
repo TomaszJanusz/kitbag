@@ -1,0 +1,5 @@
+kind: materialized
+path: /home/user/.gemini/INSTRUCTIONS.md
+source: /repo/agents/override.md
+backup: once
+owner: instructions gemini:main

@@ -109,6 +109,9 @@ render style is `primitives.instructions.render`:
   Requesting `import` for an adapter without documented import syntax is a
   plan-time error, not a silent fallback.
 
+[instructions.md](instructions.md) describes the shared renderer, its marker
+and warnings.
+
 ### `[skills]`
 
 | Key | Type | Required | Default | Meaning |

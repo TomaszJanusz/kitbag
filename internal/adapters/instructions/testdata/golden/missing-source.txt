@@ -1,0 +1,5 @@
+kind: generated
+path: /home/user/.codex/INSTRUCTIONS.md
+backup: once
+warning: instructions: source global/absent.md is missing
+owner: instructions codex:main

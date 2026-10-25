@@ -1,0 +1,5 @@
+kind: materialized
+path: /home/user/.codex/INSTRUCTIONS.md
+source: /repo/global/AGENTS.md
+backup: once
+owner: instructions codex:main

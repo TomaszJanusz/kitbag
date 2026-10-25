@@ -1,0 +1,5 @@
+kind: materialized
+path: /home/user/.codex/INSTRUCTIONS.md
+backup: once
+warning: instructions: link render cannot include host addition hosts/example.md; use import or concat
+owner: instructions codex:main

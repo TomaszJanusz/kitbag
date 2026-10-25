@@ -1,0 +1,6 @@
+kind: materialized
+path: /home/user/.codex/INSTRUCTIONS.md
+source: /repo/global/AGENTS.md
+backup: once
+owner: instructions codex:main
+non-blocking warning: instructions: host addition hosts/absent.md not found; using global/AGENTS.md alone

@@ -1,0 +1,5 @@
+kind: generated
+path: /home/user/.claude/INSTRUCTIONS.md
+backup: once
+owner: instructions claude:main
+non-blocking warning: instructions: host addition hosts/absent.md not found; using global/AGENTS.md alone
