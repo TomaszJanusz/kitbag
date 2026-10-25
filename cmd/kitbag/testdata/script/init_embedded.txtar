@@ -1,0 +1,38 @@
+env KITBAG_CONFIG=$WORK/config.toml
+env KITBAG_HOST=test
+env CLAUDE_CONFIG_DIR=
+env CODEX_HOME=
+env KITBAG_GIT_BACKEND=
+env XDG_CONFIG_HOME=$HOME/.config
+env XDG_DATA_HOME=$HOME/.local/share
+env XDG_STATE_HOME=$HOME/.local/state
+gitremote $WORK/config.git seed
+hidecmd git git-upload-pack git-receive-pack
+exec kitbag init $WORK/config.git --yes --git-backend=auto --mode=copy --identity-name=Publisher --identity-email=publisher@example.com
+stdout 'Git: embedded'
+stdout 'Wrote '
+configschema $WORK/config.toml
+! exists $HOME/init-output
+exec kitbag sync --no-pull
+content $HOME/init-output hello
+exec kitbag init $WORK/config.git --yes
+stdout 'Already set up:'
+
+# A different remote with the same basename cannot hijack an existing clone.
+! exec kitbag --config=$WORK/other.toml init $WORK/other/config.git --yes --git-backend=embedded
+stderr 'different origin'
+! exists $WORK/other.toml
+
+# Missing identity is advisory for headless consumers; it must never prompt.
+exec kitbag --config=$WORK/no-identity.toml init $WORK/config.git --yes --git-backend=embedded
+stdout 'Commit identity is unset; sync works without it'
+exists $WORK/no-identity.toml
+configschema $WORK/no-identity.toml
+
+-- seed/kitbag.toml --
+schema=1
+[[files]]
+src='source'
+dest='~/init-output'
+-- seed/source --
+hello

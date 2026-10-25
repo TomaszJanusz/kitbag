@@ -1,0 +1,73 @@
+# A throwaway HOME and local bare remote exercise all noninteractive choices.
+env KITBAG_CONFIG=
+env KITBAG_HOST=test
+env KITBAG_GIT_BACKEND=
+env KITBAG_MODE=
+env CLAUDE_CONFIG_DIR=
+env CODEX_HOME=
+env XDG_CONFIG_HOME=$HOME/.config
+env XDG_DATA_HOME=$HOME/.local/share
+env XDG_STATE_HOME=$HOME/.local/state
+agentdirs .claude .codex
+gitremote $WORK/config.git seed
+exec kitbag init $WORK/config.git --yes --git-backend=system --mode=copy --host=test --branch=main --identity-name=Publisher --identity-email=publisher@example.com
+stdout 'Detected claude:'
+stdout 'Detected codex:'
+stdout 'materialize .*init-output'
+stdout 'Wrote .*config.toml'
+stdout 'Run manually: kitbag --config .* sync'
+stdout 'service install.*not available'
+! exists $HOME/init-output
+exists $HOME/.local/share/kitbag/repos/config/.git
+configschema $HOME/.config/kitbag/config.toml
+cp $HOME/.config/kitbag/config.toml before.toml
+
+# Repeating init bypasses even a bad new URL/backend and preserves all bytes.
+exec kitbag init nonexistent --yes --git-backend=invalid
+stdout 'Already set up:'
+! stdout 'Detected|Wrote|Working copy:'
+cmp $HOME/.config/kitbag/config.toml before.toml
+exec kitbag sync --no-pull
+stdout 'materialize .*init-output'
+content $HOME/init-output hello
+exec kitbag sync --no-pull
+nooutput
+
+# An invalid existing config is still not clobbered or parsed by init.
+cp invalid.toml $HOME/.config/kitbag/config.toml
+exec kitbag init --yes
+stdout 'Already set up:'
+cmp $HOME/.config/kitbag/config.toml invalid.toml
+
+# Explicit new config path must work even though Load normally requires it.
+exec kitbag --config=$WORK/custom.toml init --repo=$WORK/config.git --yes --git-backend=system --mode=copy
+stdout 'already exists: true'
+exists $WORK/custom.toml
+configschema $WORK/custom.toml
+
+# Invalid input is rejected without a clone or saved configuration.
+! exec kitbag --config=$WORK/missing.toml init --yes
+stderr 'requires a repository URL'
+! exists $WORK/missing.toml
+! exec kitbag --config=$WORK/bad.toml init $WORK/config.git --yes --mode=bad
+stderr 'invalid configuration sync.mode'
+! exists $WORK/bad.toml
+! exec kitbag --config=$WORK/interactive.toml init $WORK/config.git
+stderr 'needs a terminal; supply --yes'
+! exists $WORK/interactive.toml
+
+# Leftover staging data is a failure, never a claim of successful setup.
+cp invalid.toml $WORK/staged.toml.init-new
+! exec kitbag --config=$WORK/staged.toml init $WORK/config.git --yes --git-backend=system
+stderr 'init-new already exists'
+! exists $WORK/staged.toml
+
+-- seed/kitbag.toml --
+schema=1
+[[files]]
+src='source'
+dest='~/init-output'
+-- seed/source --
+hello
+-- invalid.toml --
+not valid TOML

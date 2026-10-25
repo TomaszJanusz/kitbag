@@ -22,6 +22,7 @@ kitbag [flags]
 
 * [kitbag adopt](kitbag_adopt.md)	 - Take over destinations agent-config-sync already manages
 * [kitbag doctor](kitbag_doctor.md)	 - Explain synchronization problems and suggest fixes
+* [kitbag init](kitbag_init.md)	 - Set up a configuration clone or scaffold a new repository
 * [kitbag plan](kitbag_plan.md)	 - Show the local synchronization diff without applying it
 * [kitbag revert](kitbag_revert.md)	 - Restore the targets as they were before recent plans
 * [kitbag status](kitbag_status.md)	 - Show upstream relation, last sync and local drift
