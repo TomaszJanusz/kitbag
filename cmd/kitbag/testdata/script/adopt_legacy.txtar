@@ -1,0 +1,200 @@
+# A HOME prepared by the real agent-config-sync (recorded below by
+# scripts/legacy-home.py) is adopted with zero file changes; sync then has
+# nothing to do. The clone is the one the script ran from (~/checkout).
+env KITBAG_CONFIG=$WORK/machine.toml
+env KITBAG_HOST=fixture
+gitremote $WORK/config.git seed
+exec git clone --quiet $WORK/config.git $HOME/checkout
+homefixture legacyhome
+linktarget $HOME/.claude/skills/review $HOME/checkout/skills/review
+grep 'Managed by agent-config-sync' $HOME/.claude/CLAUDE.md
+grep '# agent-config-managed' $HOME/.claude/settings.json
+
+# Without adoption, KitBag would back up and rewrite the legacy outputs and
+# replace every legacy link, although each already points at its source.
+exec kitbag plan
+stdout '^~ backup .*/\.claude/CLAUDE\.md'
+stdout '^\+ materialize .*/\.agents/skills/review'
+
+# Adoption without explicit roots explains the open configuration question.
+execstatus 2 kitbag --config=$WORK/strict.toml adopt
+stderr 'legacy_roots'
+! stdout .
+
+# A dry run reports the adoption and changes nothing, state included.
+treesnap $HOME $WORK/before.snap .local/state checkout
+cp $WORK/.gitconfig $WORK/gitconfig.before
+exec kitbag adopt --dry-run --json
+adoptschema stdout
+stdout '"adopt_schema": 1'
+stdout '"dry_run": true'
+! exists $HOME/.local/state/kitbag/state.json
+exec kitbag adopt --dry-run
+stdout '^would adopt .*/\.codex/AGENTS\.md \[generated\] \(agent-config-sync marker'
+
+exec kitbag adopt
+! stderr .
+stdout '^adopt .*/\.agents/skills/browse \[link\]$'
+stdout '^adopt .*/\.agents/skills/review \[link\]$'
+stdout '^adopt .*/\.claude/skills/browse \[link\]$'
+stdout '^adopt .*/\.claude/skills/review \[link\]$'
+stdout '^adopt .*/\.claude/CLAUDE\.md \[generated\] \(agent-config-sync marker'
+stdout '^adopt .*/\.claude/settings\.json \[merged\] \(agent-config-sync marker'
+stdout '^adopt .*/\.codex/AGENTS\.md \[generated\]'
+stdout '^adopt .*/\.agent-browser/config\.json \[link\]$'
+! stdout 'next sync'
+
+# Zero file changes: no entry created, removed, rewritten or retargeted.
+treesnap $HOME $WORK/after.snap .local/state checkout
+cmp $WORK/before.snap $WORK/after.snap
+cmp $WORK/.gitconfig $WORK/gitconfig.before
+! exists $HOME/.claude/CLAUDE.md.before-kitbag.*
+exec kitbag revert --list
+stdout '^1  .*  adopted 8 path\(s\)'
+
+# The next sync reports nothing to do and still changes nothing.
+exec kitbag plan
+stdout '^No changes\.$'
+exec kitbag sync --no-pull
+nooutput
+treesnap $HOME $WORK/synced.snap .local/state checkout
+cmp $WORK/before.snap $WORK/synced.snap
+grep 'Managed by agent-config-sync' $HOME/.claude/CLAUDE.md
+
+# Re-running adoption is a no-op; status shows everything in sync.
+exec kitbag adopt
+! stdout .
+exec kitbag status --json
+stdout '"in sync": 8'
+
+# A later source change rewrites the legacy file with KitBag's marker, once
+# and visibly, keeping the adopted bytes in a backup.
+cp new-global.md $HOME/checkout/global/AGENTS.md
+exec kitbag sync --no-pull
+stdout '^write .*/\.codex/AGENTS\.md$'
+grep 'Managed by kitbag' $HOME/.codex/AGENTS.md
+exec sh -c 'grep -l "Managed by agent-config-sync" "$HOME"/.codex/AGENTS.md.before-kitbag.*'
+grep 'Managed by agent-config-sync' $HOME/.claude/CLAUDE.md
+exec kitbag sync --no-pull
+nooutput
+
+-- machine.toml --
+schema = 1
+[repo]
+url = "local-config"
+path = "~/checkout"
+[migration]
+legacy_roots = ["~/checkout", "~/.agents/skills"]
+-- strict.toml --
+schema = 1
+[repo]
+url = "local-config"
+path = "~/checkout"
+-- new-global.md --
+# Global rules
+
+Rules every agent follows, revised.
+-- seed/kitbag.toml --
+schema = 1
+
+[instructions]
+source = "global/AGENTS.md"
+hosts = "hosts/{host}.md"
+
+[skills]
+dirs = ["skills", ".agents/skills"]
+
+[[files]]
+src = "agent-browser/config.json"
+dest = "~/.agent-browser/config.json"
+
+[git]
+include = ["git/agent.gitconfig"]
+
+[targets.claude]
+agent = "claude"
+settings = "claude/settings.json"
+
+[targets.codex]
+agent = "codex"
+-- seed/global/AGENTS.md --
+# Global rules
+
+Rules every agent follows.
+-- seed/hosts/fixture.md --
+# Host fixture
+
+Additions for this machine.
+-- seed/skills/review/SKILL.md --
+---
+name: review
+description: Review a change.
+---
+Review carefully.
+-- seed/.agents/skills/browse/SKILL.md --
+---
+name: browse
+description: Browse a page.
+---
+Browse carefully.
+-- seed/claude/settings.json --
+{
+  "permissions": {"allow": ["Bash(git status)"]},
+  "hooks": {
+    "Stop": [{"hooks": [{"type": "command", "command": "@REPO@/bin/notify"}]}]
+  }
+}
+-- seed/git/agent.gitconfig --
+[rerere]
+	enabled = true
+-- seed/agent-browser/config.json --
+{"headless": true}
+-- seed/bin/agent-config-sync --
+#!/bin/sh
+# Stand-in: scripts/legacy-home.py runs the real script from this path.
+exit 0
+-- legacyhome/.claude/CLAUDE.md --
+<!-- Managed by agent-config-sync (@HOME@/checkout). Edit the repository, not this file. -->
+
+@@HOME@/checkout/global/AGENTS.md
+@@HOME@/checkout/hosts/fixture.md
+-- legacyhome/.claude/settings.json --
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "@HOME@/checkout/bin/notify # agent-config-managed"
+          }
+        ]
+      }
+    ]
+  }
+}
+-- legacyhome/.codex/AGENTS.md --
+<!-- Managed by agent-config-sync (@HOME@/checkout). Edit the repository, not this file. -->
+
+# Global rules
+
+Rules every agent follows.
+
+# Host fixture
+
+Additions for this machine.
+-- legacyhome.links --
+.agent-browser/config.json -> @HOME@/checkout/agent-browser/config.json
+.agents/skills/browse -> @HOME@/checkout/.agents/skills/browse
+.agents/skills/review -> @HOME@/checkout/skills/review
+.claude/skills/browse -> @HOME@/checkout/.agents/skills/browse
+.claude/skills/review -> @HOME@/checkout/skills/review
+.local/bin/agent-config-sync -> @HOME@/checkout/bin/agent-config-sync
+-- legacyhome.gitconfig --
+[include]
+	path = @HOME@/checkout/git/agent.gitconfig

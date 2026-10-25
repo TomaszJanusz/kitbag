@@ -45,7 +45,7 @@ func TestDeterministicOutput(t *testing.T) {
 		if !bytes.Equal(first, second) {
 			t.Fatalf("unstable JSON:\n%s\n%s", first, second)
 		}
-		if !bytes.HasSuffix(first, []byte("\n")) || !bytes.Contains(first, []byte(`"schema_version": 1`)) {
+		if !bytes.HasSuffix(first, []byte("\n")) || !bytes.Contains(first, []byte(`"schema_version": 2`)) {
 			t.Fatalf("unexpected JSON %s", first)
 		}
 		return nil
@@ -55,9 +55,10 @@ func TestDeterministicOutput(t *testing.T) {
 func TestRejectsUnreadableStateWithoutOverwrite(t *testing.T) {
 	t.Parallel()
 	for _, data := range []string{
-		`{"schema_version":2,"targets":[]}`, `{"schema_version":0}`, `{"schema_version":-1}`,
+		`{"schema_version":3,"targets":[]}`, `{"schema_version":0}`, `{"schema_version":-1}`,
 		`{}`, `null`, `{"schema_version":1.5}`, `{"schema_version":1,"secret":"no"}`,
-		`{"schema_version":1} {}`, `{"schema_version":1,"targets":[{}]}`, `{`,
+		`{"schema_version":2,"secret":"no"}`, `{"schema_version":1} {}`, `{"schema_version":2} {}`,
+		`{"schema_version":1,"targets":[{}]}`, `{"schema_version":2,"targets":[{}]}`, `{`,
 	} {
 		t.Run(data, func(t *testing.T) {
 			t.Parallel()
@@ -87,12 +88,12 @@ func (fn migrationFunc) Migrate(data []byte) ([]byte, error) { return fn(data) }
 
 func TestMigrationIsExplicitAndPreservesOriginal(t *testing.T) {
 	t.Parallel()
-	const original = `{"schema_version":0,"legacy":true}`
+	const original = `{"schema_version":1,"legacy":true}`
 	migration := migrationFunc(func(data []byte) ([]byte, error) {
 		if string(data) != original {
 			t.Fatalf("migration input = %s", data)
 		}
-		return []byte(`{"schema_version":1,"targets":[],"history":[]}`), nil
+		return []byte(`{"schema_version":2,"targets":[],"history":[]}`), nil
 	})
 	store, host, path := newStore(t, state.Options{Migration: migration})
 	withLock(t, store, func(session *state.Session) error {
@@ -120,14 +121,14 @@ func TestMigrationRejectsBadOutputAndErrors(t *testing.T) {
 	for name, migration := range map[string]migrationFunc{
 		"error":       func([]byte) ([]byte, error) { return nil, errors.New("migration failed") },
 		"no progress": func(data []byte) ([]byte, error) { return data, nil },
-		"newer":       func([]byte) ([]byte, error) { return []byte(`{"schema_version":2}`), nil },
-		"invalid":     func([]byte) ([]byte, error) { return []byte(`{"schema_version":1,"targets":[{}]}`), nil },
+		"newer":       func([]byte) ([]byte, error) { return []byte(`{"schema_version":3}`), nil },
+		"invalid":     func([]byte) ([]byte, error) { return []byte(`{"schema_version":2,"targets":[{}]}`), nil },
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			store, host, path := newStore(t, state.Options{Migration: migration})
 			withLock(t, store, func(session *state.Session) error {
-				if err := host.WriteAtomic(path, []byte(`{"schema_version":0}`), 0o600); err != nil {
+				if err := host.WriteAtomic(path, []byte(`{"schema_version":1}`), 0o600); err != nil {
 					return err
 				}
 				if _, err := session.Load(); err == nil {
@@ -189,10 +190,10 @@ func TestLockAndDirectoryErrors(t *testing.T) {
 
 func TestMigrationArchiveAndInterruptedSave(t *testing.T) {
 	t.Parallel()
-	const original = `{"schema_version":0}`
-	migration := migrationFunc(func([]byte) ([]byte, error) { return []byte(`{"schema_version":1}`), nil })
+	const original = `{"schema_version":1}`
+	migration := migrationFunc(func([]byte) ([]byte, error) { return []byte(`{"schema_version":2}`), nil })
 	store, host, path := newStore(t, state.Options{Migration: migration})
-	archive := filepath.Join(filepath.Dir(path), "state.v0.json")
+	archive := filepath.Join(filepath.Dir(path), "state.v1.json")
 	withLock(t, store, func(session *state.Session) error {
 		if err := host.WriteAtomic(path, []byte(original), 0o600); err != nil {
 			return err
@@ -223,11 +224,11 @@ func TestMigrationArchiveErrors(t *testing.T) {
 	for _, scenario := range []string{"conflict", "unreadable", "write failure"} {
 		t.Run(scenario, func(t *testing.T) {
 			t.Parallel()
-			migration := migrationFunc(func([]byte) ([]byte, error) { return []byte(`{"schema_version":1}`), nil })
+			migration := migrationFunc(func([]byte) ([]byte, error) { return []byte(`{"schema_version":2}`), nil })
 			store, host, path := newStore(t, state.Options{Migration: migration})
-			archive := filepath.Join(filepath.Dir(path), "state.v0.json")
+			archive := filepath.Join(filepath.Dir(path), "state.v1.json")
 			withLock(t, store, func(session *state.Session) error {
-				const original = `{"schema_version":0}`
+				const original = `{"schema_version":1}`
 				if err := host.WriteAtomic(path, []byte(original), 0o600); err != nil {
 					return err
 				}

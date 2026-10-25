@@ -1,0 +1,101 @@
+# revert after a bad change restores the previous targets: file bytes from the
+# journaled backups, links from their journaled text, absence for new entries.
+env KITBAG_CONFIG=$WORK/machine.toml
+env KITBAG_HOST=test
+gitremote $WORK/config.git config
+exec git clone --quiet $WORK/config.git $HOME/checkout
+agentdirs .codex
+execstatus 2 kitbag revert
+stderr 'journal holds 0 plan'
+exec kitbag revert --list
+stdout '^No journaled plans\.$'
+
+exec kitbag sync --no-pull
+cp $HOME/.codex/AGENTS.md $WORK/good-agents.md
+linktarget $HOME/.agents/skills/review $HOME/checkout/skills/review
+
+# A bad change: broken instructions, a skill renamed, the tool file emptied.
+cp bad.md $HOME/checkout/global/AGENTS.md
+exec mv $HOME/checkout/skills/review $HOME/checkout/skills/broken
+cp empty.json $HOME/checkout/tool.json
+exec kitbag sync --no-pull
+stdout '^remove .*/\.agents/skills/review$'
+stdout '^materialize .*/\.agents/skills/broken$'
+grep 'Broken' $HOME/.codex/AGENTS.md
+content $HOME/.tool.json '{}'
+exec kitbag revert --list
+stdout '^1  .*  applied 4 path\(s\)'
+stdout '^2  .*  applied 3 path\(s\)'
+exec kitbag revert --list --json
+historyschema stdout
+stdout '"history_schema": 1'
+
+# The dry run is a validated plan and changes nothing.
+exec kitbag revert --dry-run
+stdout '^\+ restore .*/\.codex/AGENTS\.md.*before-kitbag'
+stdout '^\+ restore .*/\.agents/skills/review.*checkout/skills/review'
+stdout '^- discard .*/\.agents/skills/broken'
+exec kitbag revert --dry-run --json
+planschema stdout
+grep 'Broken' $HOME/.codex/AGENTS.md
+execstatus 2 kitbag revert --to 3
+stderr 'journal holds 2 plan'
+execstatus 2 kitbag revert --json
+stderr 'requires --dry-run'
+
+exec kitbag revert
+! stderr .
+cmp $HOME/.codex/AGENTS.md $WORK/good-agents.md
+linktarget $HOME/.agents/skills/review $HOME/checkout/skills/review
+! exists $HOME/.agents/skills/broken
+content $HOME/.tool.json '{"tool": "good"}'
+exec kitbag status --json
+stdout '"conflict": 0'
+# The repository is still bad, so the next sync would reapply it.
+exec kitbag plan
+stdout 'write .*/\.codex/AGENTS\.md'
+
+# A changed destination is never overwritten without --force.
+exec kitbag sync --no-pull
+cp edited.md $HOME/.codex/AGENTS.md
+execstatus 3 kitbag revert
+stderr 'AGENTS\.md: changed since the reverted plan'
+cmp $HOME/.codex/AGENTS.md edited.md
+linktarget $HOME/.agents/skills/review $HOME/checkout/skills/review
+! exists $HOME/.agents/skills/broken
+exec kitbag revert --to 2 --dry-run
+stdout '^! skip .*/\.codex/AGENTS\.md'
+exec kitbag revert --to 2 --force
+cmp $HOME/.codex/AGENTS.md $WORK/good-agents.md
+exec sh -c 'grep -l "Edited by hand" "$HOME"/.codex/AGENTS.md.before-kitbag.*'
+stdout 'AGENTS.md.before-kitbag'
+
+-- machine.toml --
+schema = 1
+[repo]
+url = "local-config"
+path = "~/checkout"
+-- config/kitbag.toml --
+schema = 1
+[instructions]
+source = "global/AGENTS.md"
+[skills]
+dirs = ["skills"]
+[[files]]
+src = "tool.json"
+dest = "~/.tool.json"
+mode = "copy"
+[targets.codex]
+agent = "codex"
+-- config/global/AGENTS.md --
+Good rules.
+-- config/skills/review/SKILL.md --
+Review skill.
+-- config/tool.json --
+{"tool": "good"}
+-- bad.md --
+Broken rules.
+-- empty.json --
+{}
+-- edited.md --
+Edited by hand.

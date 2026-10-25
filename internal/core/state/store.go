@@ -33,6 +33,9 @@ func New(hostFS platform.FS, env platform.Env, options Options) (*Store, error) 
 	if options.HistoryLimit == 0 {
 		options.HistoryLimit = DefaultHistoryLimit
 	}
+	if options.Migration == nil {
+		options.Migration = V1Migration{}
+	}
 	dirs, err := env.Dirs()
 	if err != nil {
 		return nil, fmt.Errorf("state directory: %w", err)
@@ -94,8 +97,8 @@ func (s *Session) Load() (Database, error) {
 	return decode(data, s.store.options.Migration)
 }
 
-// Save validates, sorts and atomically replaces the snapshot, retaining the last
-// configured N journals. The caller appends completed plans; this does not apply
+// Save validates, sorts and atomically replaces the snapshot, retaining the
+// entries of the last configured N plans. The caller appends completed plans; this does not apply
 // them or remove backups. It refuses to overwrite unreadable/newer on-disk state.
 // A post-rename durability error may mean new state is already visible; reload
 // before deciding whether to retry. Previous bytes survive pre-rename failure.
@@ -112,9 +115,8 @@ func (s *Session) Save(db Database) error {
 	if err = validate(db); err != nil {
 		return err
 	}
-	if len(db.History) > s.store.options.HistoryLimit {
-		db.History = db.History[len(db.History)-s.store.options.HistoryLimit:]
-	}
+	db.Backups = retainBackups(db)
+	db.History = retain(db.History, s.store.options.HistoryLimit)
 	data, err := encode(db)
 	if err != nil {
 		return err
@@ -126,6 +128,43 @@ func (s *Session) Save(db Database) error {
 		return fmt.Errorf("write state: %w", err)
 	}
 	return nil
+}
+
+// retainBackups preserves recovery metadata before history rotates. Newer
+// unmanaged backups replace older records for the same destination; ordinary
+// owned replacements do not change the original that unmanage should restore.
+func retainBackups(db Database) []Change {
+	byPath := make(map[string]Change)
+	for _, change := range db.Backups {
+		byPath[change.Path] = change
+	}
+	for _, entry := range db.History {
+		for _, change := range entry.Changes {
+			if prev := change.Previous; prev != nil && prev.Managed == nil && prev.BackupPath != "" {
+				byPath[change.Path] = change
+			}
+		}
+	}
+	result := make([]Change, 0, len(byPath))
+	for _, change := range byPath {
+		result = append(result, change)
+	}
+	return result
+}
+
+// retain keeps the entries of the last limit plans; entries of one plan are
+// contiguous because a plan runs under one lock.
+func retain(history []AppliedPlan, limit int) []AppliedPlan {
+	plans := 0
+	for i := len(history) - 1; i >= 0; i-- {
+		if i == len(history)-1 || history[i].PlanID() != history[i+1].PlanID() {
+			plans++
+		}
+		if plans > limit {
+			return history[i+1:]
+		}
+	}
+	return history
 }
 
 func (s *Session) readExisting() ([]byte, error) {

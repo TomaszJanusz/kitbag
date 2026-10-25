@@ -13,6 +13,17 @@ func Managed(content []byte) bool {
 	return bytes.HasPrefix(content, []byte(Marker+"\n"))
 }
 
+// LegacyMarker is agent-config-sync's first line for the clone at repository.
+func LegacyMarker(repository string) string {
+	return "<!-- Managed by agent-config-sync (" + repository + "). Edit the repository, not this file. -->"
+}
+
+// legacy renders content as agent-config-sync wrote it: only the marker differs.
+func legacy(content []byte, repository string) []byte {
+	rest, _ := bytes.CutPrefix(content, []byte(Marker))
+	return append([]byte(LegacyMarker(repository)), rest...)
+}
+
 // renderImport reproduces agent-config-sync's CLAUDE.md: the marker, a blank
 // line, then one "@<absolute path>" line per input.
 func renderImport(paths []string) []byte {

@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -21,6 +22,23 @@ func schemaVersion(data []byte) (int, error) {
 		return 0, fmt.Errorf("missing schema_version: %w", fs.ErrInvalid)
 	}
 	return *header.Version, nil
+}
+
+// V1Migration upgrades schema 1 losslessly: every schema 1 snapshot is a valid
+// schema 2 snapshot whose history entries are each their own plan.
+type V1Migration struct{}
+
+// Migrate rewrites only schema_version, retaining every other member verbatim.
+func (V1Migration) Migrate(previous []byte) ([]byte, error) {
+	var document map[string]json.RawMessage
+	if err := json.Unmarshal(previous, &document); err != nil {
+		return nil, fmt.Errorf("schema 1 state: %w", err)
+	}
+	if document == nil {
+		return nil, fmt.Errorf("schema 1 state is not an object: %w", fs.ErrInvalid)
+	}
+	document["schema_version"] = json.RawMessage(strconv.Itoa(CurrentVersion))
+	return json.Marshal(document)
 }
 
 func decode(data []byte, migration Migration) (Database, error) {
@@ -79,6 +97,7 @@ func canonicalize(db *Database) {
 		db.History = []AppliedPlan{}
 	}
 	slices.SortFunc(db.Targets, func(a, b Target) int { return strings.Compare(a.Path, b.Path) })
+	slices.SortFunc(db.Backups, func(a, b Change) int { return strings.Compare(a.Path, b.Path) })
 	for i := range db.Targets {
 		sortOwners(&db.Targets[i])
 	}

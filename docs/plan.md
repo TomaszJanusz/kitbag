@@ -111,6 +111,23 @@ link is a source change, per ADR 3. Logical output kinds remain independent of l
 a resolved manifest mode and callers supply a machine mode for representation
 changes; [apply](apply.md) resolves copy-wins policy without a silent fallback.
 
+## Legacy equivalence
+
+A generated declaration may carry `Target.Legacy`, and a merger may implement
+`target.LegacyRenderer`: agent-config-sync's rendering of the same output,
+differing only in its marker. For a **managed** destination holding exactly that
+rendering, the planner classifies the target in sync and records the hash of the
+bytes present (a `record` only when metadata differs). Once the desired output
+changes, the rendering no longer matches and the ordinary update rewrites the
+file with KitBag's marker. Unmanaged destinations are unaffected: only explicit
+[adoption](adopt.md) establishes ownership. `Candidates` lists unowned
+declarations whose destinations already hold the desired output (or that
+rendering) without writing; `Declarations` exposes the assembled declarations.
+
+Unmanage and revert build their own plans from state and the journal with the
+`discard`, `restore`, `unmerge` and `release` kinds; JSON shows a restore's
+`backup` or `link`. They share plan_schema 1 and the renderers.
+
 ## Removals, moves and backups
 
 A state target absent from desired state is stale:

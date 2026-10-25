@@ -2,8 +2,14 @@ package state
 
 import (
 	"path/filepath"
+	"slices"
 	"strings"
 )
+
+// AsideDirectory names the directory that holds real skill directories moved
+// out of the way by an explicit adoption. It is the only backup location that
+// is not a reserved sibling of its destination.
+const AsideDirectory = "skills-before-kitbag"
 
 func validateStep(s *Step) error {
 	if s == nil {
@@ -28,20 +34,44 @@ func validateStep(s *Step) error {
 }
 
 func validateStepAction(s *Step) error {
+	valid := false
 	switch s.Action {
 	case "output":
-		if s.After == nil || s.Stage == "" {
-			return invalid("pending output missing target/stage")
-		}
+		valid = s.After != nil && s.Stage != "" && noRestore(s)
 	case "remove", "backup":
-		if s.After != nil || s.Stage != "" {
-			return invalid("pending removal/backup has output")
-		}
-	default:
-		return invalid("pending step action")
+		valid = s.After == nil && s.Stage == "" && noRestore(s) && !s.Release
+	case "restore":
+		valid = validRestore(s)
 	}
-	if s.Before.Kind != "" && s.Backup == "" {
-		return invalid("pending backup missing")
+	if !valid {
+		return invalid("pending step action or its metadata")
+	}
+	return validateAside(s)
+}
+
+func noRestore(s *Step) bool { return s.Restored == nil && s.From == "" }
+
+// validRestore requires the restored entry, and a backup to rename exactly
+// when that entry is not a link (which is recreated from its text).
+func validRestore(s *Step) bool {
+	r := s.Restored
+	return r != nil && s.Stage == "" && !s.Release && validEntry(*r) && r.Kind != "" && (s.From == "") == (r.Kind == "link")
+}
+
+// validateAside requires exactly one place for an existing entry: a backup,
+// or (never for a backup step) a discard sibling.
+func validateAside(s *Step) error {
+	asides := 0
+	for _, aside := range []string{s.Backup, s.Discard} {
+		if aside != "" {
+			asides++
+		}
+	}
+	switch {
+	case s.Action == "backup" && s.Discard != "":
+		return invalid("pending backup cannot discard")
+	case (s.Before.Kind != "") != (asides == 1) || asides > 1:
+		return invalid("pending backup missing or ambiguous")
 	}
 	return nil
 }
@@ -58,22 +88,36 @@ func validateStepTargets(s *Step) error {
 			return invalid("pending target path disagrees")
 		}
 	}
+	if s.Discard != "" && s.Previous == nil {
+		return invalid("pending discard of unowned entry")
+	}
 	return nil
 }
 
 func validateStepPaths(s *Step) error {
-	for _, item := range []struct{ path, prefix string }{{s.Stage, s.Path + ".kitbag-stage."}, {s.Backup, s.Path + ".before-kitbag."}} {
+	for _, item := range []struct{ path, prefix string }{{s.Stage, s.Path + ".kitbag-stage."}, {s.Discard, s.Path + ".kitbag-stage."}, {s.Backup, s.Path + ".before-kitbag."}} {
 		if item.path == "" {
 			continue
 		}
 		if err := validPath(item.path); err != nil {
 			return err
 		}
-		if !reservedSibling(item.path, s.Path, item.prefix) {
+		if !reservedSibling(item.path, s.Path, item.prefix) && (item.path != s.Backup || !aside(s)) {
 			return invalid("pending path must be a reserved sibling")
 		}
 	}
+	if s.Stage != "" && s.Stage == s.Discard {
+		return invalid("pending stage and discard overlap")
+	}
+	if s.From != "" {
+		return validPath(s.From)
+	}
 	return nil
+}
+
+// aside permits only an explicit backup into the adoption directory.
+func aside(s *Step) bool {
+	return s.Action == "backup" && slices.Contains(strings.Split(filepath.ToSlash(filepath.Dir(s.Backup)), "/"), AsideDirectory)
 }
 
 func reservedSibling(path, destination, prefix string) bool {

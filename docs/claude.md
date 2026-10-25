@@ -41,7 +41,10 @@ Hooks follow the legacy jq program's group ownership: if any command in a group
 ends in a managed marker, the entire group is removed before the current repo
 groups are appended. Both `# agent-config-managed` and `# kitbag-managed` are
 recognized; newly written commands end in `# kitbag-managed`. Inline mentions
-that are not trailing markers do not confer ownership. Foreign hook groups,
+that are not trailing markers do not confer ownership. `Merger.Legacy` renders
+output with the old marker (equal to the script's raw jq output for every
+golden case), so an adopted file stays in sync; `Merger.Unmerge` removes managed
+groups for `kitbag unmanage`, keeping every other key. Foreign hook groups,
 including prompt hooks, remain; repository hooks must have string commands and
 must not declare a non-command type.
 

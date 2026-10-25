@@ -2,6 +2,7 @@ package state
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io/fs"
 	"path/filepath"
@@ -103,7 +104,19 @@ func validate(db Database) error {
 			return err
 		}
 	}
-	return validateStep(db.Pending)
+	return errors.Join(validateBackups(db.Backups), validateStep(db.Pending))
+}
+
+func validateBackups(backups []Change) error {
+	if err := validateChanges(backups); err != nil {
+		return err
+	}
+	for _, change := range backups {
+		if change.Adopted || change.Previous == nil || change.Previous.Managed != nil || change.Previous.BackupPath == "" {
+			return invalid("original backup requires an unmanaged file or tree")
+		}
+	}
+	return nil
 }
 
 func validateChanges(changes []Change) error {
@@ -116,6 +129,9 @@ func validateChanges(changes []Change) error {
 			return invalid("duplicate journal path")
 		}
 		paths[change.Path] = true
+		if change.Adopted && change.Previous != nil {
+			return invalid("adopted journal entry has a previous entry")
+		}
 		if change.Previous == nil {
 			continue
 		}
@@ -154,6 +170,10 @@ func validateRestore(prev Previous) error {
 	}
 	if prev.LinkTarget != "" {
 		return invalid("file cannot have link target")
+	}
+	if prev.BackupPath == "" && prev.Managed != nil {
+		// Discarded KitBag output: the repository reproduces it.
+		return nil
 	}
 	return validPath(prev.BackupPath)
 }

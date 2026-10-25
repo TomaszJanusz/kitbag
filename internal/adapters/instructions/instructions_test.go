@@ -43,8 +43,13 @@ func TestLegacyCompatibility(t *testing.T) {
 				t.Fatalf("legacy fixture lacks its marker: %q", marker)
 			}
 			want := append([]byte(instructions.Marker+"\n"), rest...)
-			if got := declare(t, name).Target.Content; !bytes.Equal(got, want) {
+			declared := declare(t, name).Target
+			if got := declared.Content; !bytes.Equal(got, want) {
 				t.Fatalf("not byte-identical to agent-config-sync:\ngot:  %q\nwant: %q", got, want)
+			}
+			// The legacy rendering is the script's exact output for this clone.
+			if !bytes.Equal(declared.Legacy, legacy) || string(marker) != instructions.LegacyMarker("/repo") {
+				t.Fatalf("legacy rendering differs:\ngot:  %q\nwant: %q", declared.Legacy, legacy)
 			}
 		})
 	}

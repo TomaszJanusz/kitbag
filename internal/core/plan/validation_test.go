@@ -167,7 +167,7 @@ func invalidRequest(scenario string) plan.Request {
 	case "relative root":
 		req.Repository = "relative"
 	case "state schema":
-		req.State.SchemaVersion = 2
+		req.State.SchemaVersion = state.CurrentVersion + 1
 	case "duplicate state":
 		req.State.Targets = []state.Target{old, old}
 	case "unsafe state":

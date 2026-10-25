@@ -153,19 +153,30 @@ func (s Service) build(session *state.Session, m *manifest.Manifest, mode string
 	if err != nil {
 		return plan.Plan{}, err
 	}
-	adapters, err := s.Adapters(m, warnings)
+	req, err := s.request(m, mode, warnings)
 	if err != nil {
 		return plan.Plan{}, err
 	}
+	req.State, req.Force = db, force
+	return plan.Build(s.Host, req)
+}
+
+// request assembles planner input without state: adapters for the resolved
+// manifest and the explicitly configured legacy roots expanded through HOME.
+func (s Service) request(m *manifest.Manifest, mode string, warnings *[]string) (plan.Request, error) {
+	adapters, err := s.Adapters(m, warnings)
+	if err != nil {
+		return plan.Request{}, err
+	}
 	home, err := s.Host.HomeDir()
 	if err != nil {
-		return plan.Plan{}, err
+		return plan.Request{}, err
 	}
 	roots := make([]string, 0, len(s.Config.Migration.LegacyRoots))
 	for _, root := range s.Config.Migration.LegacyRoots {
 		roots = append(roots, config.Expand(home, root))
 	}
-	return plan.Build(s.Host, plan.Request{Repository: s.Repository, Manifest: m, Mode: mode, Force: force, State: db, Adapters: adapters, LegacyRoots: roots})
+	return plan.Request{Repository: s.Repository, Manifest: m, Mode: mode, State: state.Database{SchemaVersion: state.CurrentVersion}, Adapters: adapters, LegacyRoots: roots}, nil
 }
 
 type hostEnvironment struct {

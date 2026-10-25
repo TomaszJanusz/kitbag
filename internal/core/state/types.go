@@ -4,10 +4,12 @@ package state
 
 import "time"
 
-// CurrentVersion is the on-disk schema understood by this release.
-const CurrentVersion = 1
+// CurrentVersion is the on-disk schema understood by this release. Schema 2
+// groups journal entries into plans, records adoption and allows discarded
+// (reproducible) KitBag output without a backup; schema 1 migrates losslessly.
+const CurrentVersion = 2
 
-// DefaultHistoryLimit bounds retained applied plans when no limit is configured.
+// DefaultHistoryLimit bounds retained applied plans (entry groups) when no limit is configured.
 const DefaultHistoryLimit = 10
 
 // Kind describes how a destination was materialized.
@@ -43,6 +45,8 @@ type Target struct {
 // Previous describes the entry before a change. File bytes live in BackupPath,
 // outside this database; LinkTarget preserves a link's exact, possibly relative,
 // text. Managed is nil for an unmanaged entry, otherwise its prior ownership.
+// An empty BackupPath for a file or tree means unchanged KitBag output was
+// discarded because the repository reproduces it; it requires Managed.
 type Previous struct {
 	Managed     *Target `json:"managed,omitempty"`
 	Kind        Kind    `json:"kind"`
@@ -51,27 +55,43 @@ type Previous struct {
 	BackupPath  string  `json:"backup_path,omitempty"`
 }
 
-// Change journals a destination once per plan. A nil Previous means it did not
+// Change journals a destination once per entry. A nil Previous means it did not
 // exist; a non-nil Previous contains enough metadata to restore its prior entry.
+// Adopted records ownership taken over without changing the entry (Previous nil).
 type Change struct {
 	Previous *Previous `json:"previous"`
 	Path     string    `json:"path"`
+	Adopted  bool      `json:"adopted,omitempty"`
 }
 
-// AppliedPlan is a completed plan's revert journal. Changes are independent
-// destination records, not ordered apply instructions. History is oldest first.
+// AppliedPlan is one completed step's revert journal. Plan groups the entries
+// written by one command (sync, adopt, unmanage, revert); empty means the entry
+// is its own plan, as in schema 1. Changes are independent destination records,
+// not ordered apply instructions. History is oldest first.
 type AppliedPlan struct {
 	ID        string    `json:"id"`
+	Plan      string    `json:"plan,omitempty"`
 	AppliedAt time.Time `json:"applied_at"`
 	Changes   []Change  `json:"changes"`
 }
 
+// PlanID returns the grouping key of an entry.
+func (p AppliedPlan) PlanID() string {
+	if p.Plan != "" {
+		return p.Plan
+	}
+	return p.ID
+}
+
 // Database is one atomic snapshot. Empty collections serialize as arrays.
 type Database struct {
-	Pending       *Step         `json:"pending,omitempty"`
-	Targets       []Target      `json:"targets"`
-	History       []AppliedPlan `json:"history"`
-	SchemaVersion int           `json:"schema_version"`
+	Pending *Step         `json:"pending,omitempty"`
+	Targets []Target      `json:"targets"`
+	History []AppliedPlan `json:"history"`
+	// Backups retains the latest displaced unowned entry per path independently
+	// of bounded revert history. Consumed/missing backups are never recreated.
+	Backups       []Change `json:"backups,omitempty"`
+	SchemaVersion int      `json:"schema_version"`
 }
 
 // Migration upgrades explicitly versioned N-1 JSON to CurrentVersion in memory.
@@ -82,7 +102,8 @@ type Migration interface {
 }
 
 // Options configures a Store. A zero HistoryLimit selects DefaultHistoryLimit;
-// negative limits are invalid. Migration is optional; no legacy format is implied.
+// negative limits are invalid. A nil Migration selects the built-in schema 1
+// upgrade ([V1Migration]); tests may inject another N-1 hook.
 type Options struct {
 	Migration    Migration
 	HistoryLimit int
@@ -98,15 +119,23 @@ type Entry struct {
 
 // Step is write-ahead recovery metadata for one authorized filesystem step.
 // Stage is a reserved sibling owned by this transaction. Backup retains the old
-// entry. Recovery either recognizes the complete output or restores the old one.
+// entry; Discard instead holds unchanged owned output that is deleted once the
+// step completes. A restore renames From (or recreates the Restored link) into
+// place. Release drops ownership of written output. Recovery either recognizes
+// the complete result or restores the old entry.
 type Step struct {
 	At       time.Time `json:"at"`
 	After    *Target   `json:"after,omitempty"`
 	Previous *Target   `json:"previous,omitempty"`
+	Restored *Entry    `json:"restored,omitempty"`
 	Before   Entry     `json:"before"`
 	Path     string    `json:"path"`
 	Stage    string    `json:"stage,omitempty"`
 	Backup   string    `json:"backup,omitempty"`
+	Discard  string    `json:"discard,omitempty"`
+	From     string    `json:"from,omitempty"`
 	Action   string    `json:"action"`
 	ID       string    `json:"id"`
+	Plan     string    `json:"plan,omitempty"`
+	Release  bool      `json:"release,omitempty"`
 }

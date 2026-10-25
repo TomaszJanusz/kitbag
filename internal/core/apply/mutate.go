@@ -1,6 +1,7 @@
 package apply
 
 import (
+	"cmp"
 	"errors"
 	"io/fs"
 	"path/filepath"
@@ -25,6 +26,11 @@ func mutate(fsys platform.FS, s state.Step, op plan.Operation) error {
 	if err := checkSource(fsys, op); err != nil {
 		return err
 	}
+	if s.From != "" {
+		if err := check(fsys, s.From, *s.Restored); err != nil {
+			return err
+		}
+	}
 	// Recheck after staging (which may take time) and immediately before rename.
 	if err := check(fsys, s.Path, s.Before); err != nil {
 		return err
@@ -32,13 +38,28 @@ func mutate(fsys platform.FS, s state.Step, op plan.Operation) error {
 	if err := moveAside(fsys, s, op); err != nil {
 		return err
 	}
-	if s.Action != "output" {
+	if err := install(fsys, s); err != nil {
+		return err
+	}
+	// Owned output that the repository reproduces is deleted only once replaced.
+	return cleanStage(fsys, s.Discard)
+}
+
+func install(fsys platform.FS, s state.Step) error {
+	if s.Action != "output" && s.Action != "restore" {
 		return nil
 	}
 	if err := check(fsys, s.Path, state.Entry{}); err != nil {
 		return err
 	}
-	return fsys.Rename(s.Stage, s.Path)
+	switch {
+	case s.Action == "output":
+		return fsys.Rename(s.Stage, s.Path)
+	case s.From != "":
+		return fsys.Rename(s.From, s.Path)
+	default:
+		return fsys.Link(s.Restored.Link, s.Path)
+	}
 }
 
 func stage(fsys platform.FS, s state.Step, op plan.Operation) error {
@@ -135,11 +156,18 @@ func moveAside(fsys platform.FS, s state.Step, op plan.Operation) error {
 			return err
 		}
 	}
-	if s.Backup == "" {
+	aside := cmp.Or(s.Backup, s.Discard)
+	if aside == "" {
 		return nil
 	}
-	if err := check(fsys, s.Backup, state.Entry{}); err != nil {
+	if s.Action == "backup" && filepath.Dir(aside) != filepath.Dir(s.Path) {
+		// An explicit adoption move creates its private backup directory.
+		if err := fsys.MkdirAll(filepath.Dir(aside), privateDir); err != nil {
+			return err
+		}
+	}
+	if err := check(fsys, aside, state.Entry{}); err != nil {
 		return err
 	}
-	return fsys.Rename(s.Path, s.Backup)
+	return fsys.Rename(s.Path, aside)
 }

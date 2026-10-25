@@ -1,8 +1,8 @@
 package apply
 
 import (
+	"cmp"
 	"fmt"
-	"slices"
 
 	"github.com/TomaszJanusz/kitbag/internal/core/plan"
 	"github.com/TomaszJanusz/kitbag/internal/core/state"
@@ -22,13 +22,18 @@ func Recover(fsys platform.FS, session *state.Session) error {
 	if err != nil {
 		return err
 	}
-	complete := s.Action != "output" && current.Kind == ""
-	if s.Action == "output" {
+	complete := current.Kind == ""
+	switch s.Action {
+	case "output":
 		complete = matches(current, *s.After)
+	case "restore":
+		complete = current == *s.Restored
 	}
 	if complete {
-		if err = cleanStage(fsys, s.Stage); err != nil {
-			return err
+		for _, reserved := range []string{s.Stage, s.Discard} {
+			if err = cleanStage(fsys, reserved); err != nil {
+				return err
+			}
 		}
 		return finish(session, &db)
 	}
@@ -44,17 +49,23 @@ func rollback(fsys platform.FS, s state.Step, current state.Entry) error {
 		return fmt.Errorf("recover %s: %w", s.Path, errChanged())
 	}
 	if current.Kind == "" && s.Before.Kind != "" {
-		if err := check(fsys, s.Backup, s.Before); err != nil {
-			return err
-		}
-		if err := check(fsys, s.Path, state.Entry{}); err != nil {
-			return err
-		}
-		if err := fsys.Rename(s.Backup, s.Path); err != nil {
+		if err := putBack(fsys, s); err != nil {
 			return err
 		}
 	}
 	return cleanStage(fsys, s.Stage)
+}
+
+// putBack renames the entry moved aside (backup or discard) to its destination.
+func putBack(fsys platform.FS, s state.Step) error {
+	aside := cmp.Or(s.Backup, s.Discard)
+	if err := check(fsys, aside, s.Before); err != nil {
+		return err
+	}
+	if err := check(fsys, s.Path, state.Entry{}); err != nil {
+		return err
+	}
+	return fsys.Rename(aside, s.Path)
 }
 
 func cleanStage(fsys platform.FS, path string) error {
@@ -77,14 +88,13 @@ func matches(entry state.Entry, t state.Target) bool {
 
 func finish(session *state.Session, db *state.Database) error {
 	s := db.Pending
-	switch s.Action {
-	case "output":
+	switch {
+	case s.After != nil && !s.Release:
 		record(db, *s.After)
-	case "remove":
-		db.Targets = slices.DeleteFunc(db.Targets, func(t state.Target) bool { return t.Path == s.Path })
-	case "backup":
+	case s.Action != "backup":
+		release(db, s.Path)
 	}
-	db.History = append(db.History, state.AppliedPlan{ID: s.ID, AppliedAt: s.At, Changes: []state.Change{{Path: s.Path, Previous: journalPrevious(*s)}}})
+	db.History = append(db.History, state.AppliedPlan{ID: s.ID, Plan: s.Plan, AppliedAt: s.At, Changes: []state.Change{{Path: s.Path, Previous: journalPrevious(*s)}}})
 	db.Pending = nil
 	return session.Save(*db)
 }

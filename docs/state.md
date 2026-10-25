@@ -4,21 +4,38 @@
 `state.lock`. It accepts only `platform.FS` and `platform.Env`; it does not
 resolve sources or execute plan, apply or revert operations.
 
-## Schema 1
+## Schema 2
 
 The JSON snapshot contains:
 
-- `schema_version`: currently `1`, independent of manifest and provenance versions.
+- `schema_version`: currently `2`, independent of manifest and provenance versions.
 - `targets`: each absolute destination path, materialization `kind` (`link`,
   `copy`, `generated`, `merged`), local `source_path` and `source_hash`, last
   `written_hash`, and `owners` (primitive plus agent instance). Shared
   destinations have multiple owners. Generated and merged outputs may omit both
   source fields when they have no single source.
-- `history`: applied plans, oldest first, each with a unique `id`, `applied_at`,
-  and destination changes. Each change records `path` and `previous`: null for
-  a newly created entry, otherwise its prior kind/hash and exact link target or
-  file backup path. `previous.managed` optionally preserves the old target's
-  ownership and source metadata; nil means the previous entry was unmanaged.
+- `history`: journal entries, oldest first, each with a unique `id`, `applied_at`,
+  an optional `plan` and destination changes. Apply writes one entry per
+  completed step; all entries of one command (sync, unmanage, revert, an
+  adoption move) share `plan`, the first step's ID, and the history limit counts
+  these plans. An entry without `plan` (schema 1) is its own plan. Each change
+  records `path` and `previous`: null for a newly created entry, otherwise its
+  prior kind/hash and exact link target or file backup path.
+  `previous.managed` optionally preserves the old target's ownership and source
+  metadata; nil means the previous entry was unmanaged. A file without
+  `backup_path` requires `managed`: unchanged KitBag output that unmanage or
+  revert discarded because the repository reproduces it. A change with
+  `adopted: true` and a null `previous` records ownership taken over by
+  [adoption](adopt.md) without changing the entry.
+- `backups`: optional original-backup records, using the change format above.
+  Save retains the latest unmanaged file/tree backup per destination before
+  rotating history. Unmanage can therefore restore an original after its plan
+  expires. Consumed or externally removed backups are never recreated from
+  this metadata; no backup bytes are stored here.
+
+Schema 2 is a superset of schema 1, so the built-in `V1Migration` (the default
+`Options.Migration`) only rewrites `schema_version`; the first Save archives the
+original as `state.v1.json`. Older releases refuse schema 2 state.
 
 Path fields must be absolute and clean in the host's syntax. `link_target` is
 an exception: it preserves the symbolic link's exact text, including relative
@@ -35,12 +52,13 @@ normalizes timestamps to UTC, uses stable indentation and a final newline, and
 writes empty collections as arrays. Plan order is retained. Save does not mutate
 its caller's collections. Duplicate paths, owners and plan IDs are rejected.
 
-The journal retains the last 10 plans by default; `Options.HistoryLimit` accepts
-another positive limit (zero selects the default). The caller appends completed
-plan records before Save. The store neither deletes external backups as history
-expires nor guarantees they still exist; the future revert/backup policy must
-retain referenced bytes. A backup can contain sensitive configuration, so its
-storage and permissions belong to that future policy. No contents enter JSON.
+The journal retains the entries of the last 10 plans by default;
+`Options.HistoryLimit` accepts another positive limit (zero selects the
+default). The caller appends completed entries before Save. The store neither
+deletes external backups as history expires nor guarantees they still exist;
+revert and unmanage recheck a backup's hash before renaming it back and skip a
+missing or changed one. Backups keep the destination's permissions (private for
+new files). No contents enter JSON.
 
 ## Lock and transaction boundary
 
@@ -80,9 +98,9 @@ Only a missing file produces empty state. Malformed JSON, unknown fields,
 invalid metadata and unsupported versions fail closed, including on Save; no
 fallback overwrites an unreadable or newer database.
 
-`Options.Migration` optionally upgrades explicitly versioned N-1 JSON in memory.
-This release defines no legacy schema; a version-0 hook in tests demonstrates the
-extension point. Missing versions and versions outside N/N-1 are rejected. The
+`Options.Migration` upgrades explicitly versioned N-1 JSON in memory; it
+defaults to `V1Migration`, and tests may inject another hook. Missing versions
+and versions outside N/N-1 are rejected. The
 hook must return current-version, valid JSON; errors, invalid output and no
 version progress fail. Load never writes. An explicit Save preserves original
 legacy bytes in `state.v<old-version>.json` before atomic replacement. An identical

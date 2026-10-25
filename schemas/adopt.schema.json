@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kitbag.sh/schemas/adopt.schema.json",
+  "title": "KitBag adoption report (adopt_schema 1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "adopt_schema",
+    "dry_run",
+    "adopted",
+    "moved",
+    "remaining",
+    "undeclared"
+  ],
+  "properties": {
+    "adopt_schema": {
+      "type": "integer",
+      "const": 1
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "adopted": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "kind",
+          "legacy"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "link",
+              "copy",
+              "generated",
+              "merged"
+            ]
+          },
+          "legacy": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "moved": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "backup"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "backup": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "remaining": {
+      "type": "array",
+      "items": {
+        "$ref": "plan.schema.json#/properties/operations/items"
+      }
+    },
+    "undeclared": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

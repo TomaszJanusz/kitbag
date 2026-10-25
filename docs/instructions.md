@@ -61,7 +61,11 @@ Generated files start with this line:
 It contains no host-specific path, so output is the same wherever the working
 copy lives. `Managed` recognizes it as the first line. Ownership still comes
 from local state, not the marker: a file carrying the old `agent-config-sync`
-marker is unmanaged to KitBag and is backed up once.
+marker is unmanaged to KitBag and is backed up once, unless it is
+[adopted](adopt.md). Every generated declaration also carries `Target.Legacy`:
+the same output with `LegacyMarker(repository)` as its first line, exactly what
+the script wrote for this clone (`TestLegacyCompatibility` compares it byte for
+byte). An adopted file holding it stays in sync until the output changes.
 
 ## Backups
 

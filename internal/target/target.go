@@ -33,6 +33,20 @@ type Merger interface {
 	Merge(current, fragment []byte) ([]byte, error)
 }
 
+// LegacyRenderer is an optional Merger capability. Legacy renders merged output
+// as agent-config-sync would have written the same content (its hook marker),
+// so an adopted file written by that tool stays in sync until the output changes.
+type LegacyRenderer interface {
+	Legacy(output []byte) ([]byte, error)
+}
+
+// Unmerger is an optional Merger capability. Unmerge removes the content that
+// KitBag owns inside a shared native file (managed hook groups), keeping every
+// other key. It returns current unchanged when nothing is owned.
+type Unmerger interface {
+	Unmerge(current []byte) ([]byte, error)
+}
+
 // Target declares an absolute, clean destination and its owners. Materialized
 // entries require SourcePath inside the repository; generated entries use Content.
 // Merged entries use either a source fragment or Content and require Merger.
@@ -50,7 +64,10 @@ type Target struct {
 	Backup      BackupPolicy
 	Warning     string
 	Content     []byte
-	Owners      []state.Owner
+	// Legacy optionally holds agent-config-sync's rendering of generated Content,
+	// differing only in its marker. It is accepted as in sync, never written.
+	Legacy []byte
+	Owners []state.Owner
 	// Preserve leaves this path and previous ownership untouched without reading
 	// a source or producing an operation (for instance settings=off).
 	Preserve bool

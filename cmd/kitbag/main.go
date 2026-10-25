@@ -14,7 +14,7 @@ import (
 
 const (
 	version           = "dev"
-	usage             = "usage: kitbag [flags] <sync|plan|status|doctor|version>"
+	usage             = "usage: kitbag [flags] <sync|plan|status|doctor|adopt|unmanage|revert|version>"
 	exitFailure       = int(apply.Warnings)
 	exitUsage         = int(apply.Usage)
 	exitUnsupportedOS = int(apply.UnsupportedOS)

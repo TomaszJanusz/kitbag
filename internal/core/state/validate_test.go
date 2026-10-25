@@ -78,14 +78,19 @@ func invalidJournals() map[string]func(*state.Database) {
 		"duplicate change": func(db *state.Database) {
 			db.History[0].Changes = append(db.History[0].Changes, db.History[0].Changes[0])
 		},
-		"kind":          func(db *state.Database) { db.History[0].Changes[0].Previous.Kind = "other" },
-		"hash":          func(db *state.Database) { db.History[0].Changes[0].Previous.WrittenHash = "bad" },
-		"backup":        func(db *state.Database) { db.History[0].Changes[0].Previous.BackupPath = "relative" },
-		"file link":     func(db *state.Database) { db.History[0].Changes[0].Previous.LinkTarget = "../somewhere" },
-		"link empty":    func(db *state.Database) { db.History[0].Changes[2].Previous.LinkTarget = "" },
-		"link backup":   func(db *state.Database) { db.History[0].Changes[2].Previous.BackupPath = "/backup" },
-		"owner path":    func(db *state.Database) { db.History[0].Changes[0].Previous.Managed.Path = "/other" },
-		"owner invalid": func(db *state.Database) { db.History[0].Changes[0].Previous.Managed.Owners = nil },
+		"kind":                  func(db *state.Database) { db.History[0].Changes[0].Previous.Kind = "other" },
+		"hash":                  func(db *state.Database) { db.History[0].Changes[0].Previous.WrittenHash = "bad" },
+		"backup":                func(db *state.Database) { db.History[0].Changes[0].Previous.BackupPath = "relative" },
+		"file link":             func(db *state.Database) { db.History[0].Changes[0].Previous.LinkTarget = "../somewhere" },
+		"link empty":            func(db *state.Database) { db.History[0].Changes[2].Previous.LinkTarget = "" },
+		"link backup":           func(db *state.Database) { db.History[0].Changes[2].Previous.BackupPath = "/backup" },
+		"owner path":            func(db *state.Database) { db.History[0].Changes[0].Previous.Managed.Path = "/other" },
+		"owner invalid":         func(db *state.Database) { db.History[0].Changes[0].Previous.Managed.Owners = nil },
+		"adopted with previous": func(db *state.Database) { db.History[0].Changes[0].Adopted = true },
+		"unowned discard": func(db *state.Database) {
+			db.History[0].Changes[0].Previous.BackupPath = ""
+			db.History[0].Changes[0].Previous.Managed = nil
+		},
 	}
 }
 

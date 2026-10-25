@@ -30,6 +30,15 @@ type builder struct {
 	force       bool
 }
 
+// Declarations validates req and returns its assembled declarations sorted by
+// path, exactly as Build sees them. It never writes.
+func Declarations(fsys platform.FS, req Request) ([]target.Target, error) {
+	if err := validateRequest(req); err != nil {
+		return nil, err
+	}
+	return assemble(fsys, req)
+}
+
 // Build reads the world through fsys and returns a logical plan. It never
 // writes files or state. Input errors and unreadable entries fail the whole
 // build; unsafe or unsupported individual targets produce skip warnings.
@@ -131,6 +140,9 @@ func prepare(fsys platform.FS, d target.Target) (Desired, error) {
 	if d.Kind != target.Materialized {
 		desired.WrittenHash = HashBytes(desired.Content)
 	}
+	if d.Kind == target.Generated && d.Legacy != nil {
+		desired.LegacyHash = HashBytes(d.Legacy)
+	}
 	return desired, nil
 }
 
@@ -159,13 +171,13 @@ func (b *builder) sort() {
 
 func operationRank(kind Kind) int {
 	switch kind {
-	case Remove:
+	case Remove, Discard:
 		return removePhase
 	case Backup:
 		return backupPhase
-	case Materialize, Write, Merge:
+	case Materialize, Write, Merge, Unmerge, Restore:
 		return outputPhase
-	case Record:
+	case Record, Release:
 		return recordPhase
 	case Skip:
 		return skipPhase
