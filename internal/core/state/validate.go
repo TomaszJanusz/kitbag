@@ -2,6 +2,7 @@ package state
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io/fs"
 	"path/filepath"
@@ -103,7 +104,19 @@ func validate(db Database) error {
 			return err
 		}
 	}
-	return validateStep(db.Pending)
+	return errors.Join(validateBackups(db.Backups), validateStep(db.Pending))
+}
+
+func validateBackups(backups []Change) error {
+	if err := validateChanges(backups); err != nil {
+		return err
+	}
+	for _, change := range backups {
+		if change.Adopted || change.Previous == nil || change.Previous.Managed != nil || change.Previous.BackupPath == "" {
+			return invalid("original backup requires an unmanaged file or tree")
+		}
+	}
+	return nil
 }
 
 func validateChanges(changes []Change) error {

@@ -97,6 +97,7 @@ func canonicalize(db *Database) {
 		db.History = []AppliedPlan{}
 	}
 	slices.SortFunc(db.Targets, func(a, b Target) int { return strings.Compare(a.Path, b.Path) })
+	slices.SortFunc(db.Backups, func(a, b Change) int { return strings.Compare(a.Path, b.Path) })
 	for i := range db.Targets {
 		sortOwners(&db.Targets[i])
 	}

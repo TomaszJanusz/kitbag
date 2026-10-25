@@ -31,7 +31,7 @@ func Unmanage(fsys platform.FS, session *state.Session, declarations []target.Ta
 	}
 	p := newPlan(false)
 	for _, t := range db.Targets {
-		op, opErr := unmanageTarget(fsys, db.History, t, byPath[t.Path])
+		op, opErr := unmanageTarget(fsys, db, t, byPath[t.Path])
 		if opErr != nil {
 			return Outcome{Plan: p}, opErr
 		}
@@ -40,7 +40,7 @@ func Unmanage(fsys platform.FS, session *state.Session, declarations []target.Ta
 	return execute(fsys, session, p, options)
 }
 
-func unmanageTarget(fsys platform.FS, history []state.AppliedPlan, t state.Target, d target.Target) (plan.Operation, error) {
+func unmanageTarget(fsys platform.FS, db state.Database, t state.Target, d target.Target) (plan.Operation, error) {
 	entry, warning, err := inspect(fsys, t.Path)
 	switch {
 	case err != nil:
@@ -52,6 +52,7 @@ func unmanageTarget(fsys platform.FS, history []state.AppliedPlan, t state.Targe
 	case !owned(entry, t):
 		return skip(t.Path, "changed since KitBag wrote it; left alone"), nil
 	}
+	history := append([]state.AppliedPlan{{Changes: db.Backups}}, db.History...)
 	original, found, err := originalBackup(fsys, history, t.Path)
 	if err != nil {
 		return plan.Operation{}, err

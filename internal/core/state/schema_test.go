@@ -124,3 +124,25 @@ func TestAdoptionAndDiscardJournals(t *testing.T) {
 		return nil
 	})
 }
+
+func TestRejectInvalidOriginalBackups(t *testing.T) {
+	t.Parallel()
+	for _, change := range []state.Change{
+		{Path: "/dest/a"},
+		{Path: "/dest/a", Adopted: true},
+		{Path: "/dest/a", Previous: &state.Previous{Kind: state.Link, WrittenHash: hash("a"), LinkTarget: "/repo/a"}},
+	} {
+		t.Run(strconv.FormatBool(change.Adopted)+strconv.FormatBool(change.Previous != nil), func(t *testing.T) {
+			t.Parallel()
+			store, _, _ := newStore(t, state.Options{})
+			withLock(t, store, func(session *state.Session) error {
+				db := snapshot()
+				db.Backups = []state.Change{change}
+				if err := session.Save(db); err == nil {
+					t.Fatal("invalid original backup accepted")
+				}
+				return nil
+			})
+		})
+	}
+}

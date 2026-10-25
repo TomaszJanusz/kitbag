@@ -2,6 +2,7 @@ package undo_test
 
 import (
 	"maps"
+	"strconv"
 	"testing"
 
 	"github.com/TomaszJanusz/kitbag/internal/core/apply"
@@ -10,6 +11,37 @@ import (
 	"github.com/TomaszJanusz/kitbag/internal/core/undo"
 	"github.com/TomaszJanusz/kitbag/internal/target"
 )
+
+func TestUnmanageRestoresAfterHistoryRotation(t *testing.T) {
+	t.Parallel()
+	w := newWorld(t)
+	var err error
+	w.store, err = state.New(w.h, w.h, state.Options{HistoryLimit: 1})
+	must(t, err)
+	w.sync(t)
+	for i := range 3 {
+		w.decls[3] = generated("CODEX.md", "revision "+strconv.Itoa(i))
+		w.sync(t)
+	}
+	db := w.database(t)
+	if len(undo.History(db)) != 1 || len(db.Backups) != 3 {
+		t.Fatalf("history rotation lost original metadata: %+v", db)
+	}
+	outcome, err := w.unmanage(t, w.h, run(undo.Options{}))
+	must(t, err)
+	if outcome.Result.Code() != apply.OK {
+		t.Fatalf("unmanage = %+v", outcome.Result)
+	}
+	content(t, w.h, "/home/a/tool", "mine")
+	content(t, w.h, "/home/a/AGENTS.md", "own rules\n")
+	content(t, w.h, "/home/a/settings", "local-key\n")
+	absent(t, w.h, "/home/a/skill")
+	absent(t, w.h, "/home/a/CODEX.md")
+	w.sync(t)
+	if result := w.sync(t); len(result.Changed) != 0 {
+		t.Fatalf("not converged: %+v", result)
+	}
+}
 
 func TestUnmanageRestoresOriginalsAndConverges(t *testing.T) {
 	t.Parallel()

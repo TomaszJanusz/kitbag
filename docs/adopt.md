@@ -94,15 +94,15 @@ move is a journaled apply step, so `unmanage` and `revert` can put it back.
 | other unchanged settings | `unmerge`: remove KitBag's hook groups in place, keep every other key |
 | other unchanged output | `discard`: delete it |
 
-"Original" means the newest journaled backup of an entry KitBag did not own (a
-one-time backup or an adoption move) whose bytes still match the journal.
+"Original" means the newest recorded backup of an entry KitBag did not own (a
+one-time backup or an adoption move) whose bytes still match the recorded hash.
+State retains that backup metadata separately when revert history rotates.
 Discarded output is never backed up: the repository reproduces it, and a
 backup sibling would block the next one-time backup. A fresh `sync` therefore
-converges after `unmanage` (`unmanage.txtar`). Limitations: once history has
-rotated past the one-time backup, the original is no longer found and the
-output is simply discarded; settings with absorbed local edits keep their
-original backup, which then blocks the next sync's one-time backup until it is
-removed; merged repository keys cannot be told from local ones and stay.
+converges after `unmanage` (`unmanage.txtar`). Limitations: settings with absorbed
+local edits keep their original backup, which then blocks the next sync's
+one-time backup until it is removed; merged repository keys cannot be told
+from local ones and stay.
 Unmanage reads the manifest only to find the settings merger; without one the
 settings are skipped.
 

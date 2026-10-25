@@ -27,6 +27,11 @@ The JSON snapshot contains:
   revert discarded because the repository reproduces it. A change with
   `adopted: true` and a null `previous` records ownership taken over by
   [adoption](adopt.md) without changing the entry.
+- `backups`: optional original-backup records, using the change format above.
+  Save retains the latest unmanaged file/tree backup per destination before
+  rotating history. Unmanage can therefore restore an original after its plan
+  expires. Consumed or externally removed backups are never recreated from
+  this metadata; no backup bytes are stored here.
 
 Schema 2 is a superset of schema 1, so the built-in `V1Migration` (the default
 `Options.Migration`) only rewrites `schema_version`; the first Save archives the

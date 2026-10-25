@@ -85,10 +85,13 @@ func (p AppliedPlan) PlanID() string {
 
 // Database is one atomic snapshot. Empty collections serialize as arrays.
 type Database struct {
-	Pending       *Step         `json:"pending,omitempty"`
-	Targets       []Target      `json:"targets"`
-	History       []AppliedPlan `json:"history"`
-	SchemaVersion int           `json:"schema_version"`
+	Pending *Step         `json:"pending,omitempty"`
+	Targets []Target      `json:"targets"`
+	History []AppliedPlan `json:"history"`
+	// Backups retains the latest displaced unowned entry per path independently
+	// of bounded revert history. Consumed/missing backups are never recreated.
+	Backups       []Change `json:"backups,omitempty"`
+	SchemaVersion int      `json:"schema_version"`
 }
 
 // Migration upgrades explicitly versioned N-1 JSON to CurrentVersion in memory.
