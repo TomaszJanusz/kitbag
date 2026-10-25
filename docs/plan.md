@@ -30,8 +30,9 @@ source enumeration and reporting unsupported formats. They must omit removed
 entries. A still-declared, missing source is also treated as absent desired state;
 it stays absent on subsequent plans. Other unsupported source entries produce a
 protective skip. Adapters can declare an explicit Warning for required sources.
-Arbitrary files and Git includes will need declarations from their eventual implementation too; this
-change implements no real adapter, CLI wiring or execution.
+Arbitrary files use the same declarations. Git includes use a separate idempotent
+step after apply; see [generic.md](generic.md). They never mutate through the
+planner or executor.
 
 ## Hashes and ownership
 

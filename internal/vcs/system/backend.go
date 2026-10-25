@@ -37,10 +37,11 @@ type Options struct {
 // Backend is the vcs.Backend that runs the git executable. Create it with
 // [New].
 type Backend struct {
-	runner  Runner
-	git     string
-	env     []string
-	version Version
+	runner       Runner
+	git          string
+	env          []string
+	globalConfig globalConfig
+	version      Version
 }
 
 var _ vcs.Backend = (*Backend)(nil)
@@ -63,7 +64,7 @@ func New(ctx context.Context, opts Options) (*Backend, error) {
 		// The runner only reports "not found"; the sentinel is the message.
 		return nil, ErrGitNotFound
 	}
-	b := &Backend{runner: runner, git: git, env: env}
+	b := &Backend{runner: runner, git: git, env: env, globalConfig: newGlobalConfig(opts.Env, homeOf(env), env)}
 
 	res, err := b.run(ctx, rootOf(git), "--version")
 	if err != nil {

@@ -1,6 +1,6 @@
 # Git backends
 
-All Git access goes through `vcs.Backend` in `internal/vcs`, so the embedded
+Repository Git access goes through `vcs.Backend` in `internal/vcs`, so the embedded
 backend can replace system Git without touching callers
 ([ADR 4](adr/0004-git-backends.md), plan §15.1 and §15.1a). This note
 describes the boundary introduced by
@@ -174,3 +174,13 @@ covers selection end to end, including Git removed from `PATH` (`hidecmd git`).
   `doctor` output from `vcs.Resolution` (KIT-24).
 - Windows: the environment pass-through list needs Windows variables
   (`USERPROFILE`, `APPDATA`, ...) with M6.
+
+## Global Git includes
+
+`vcs.GlobalConfig` is an optional system-backend capability for reading and
+extending global `include.path` values. `vcs.EnsureIncludes` compares normalized
+paths before checking write safety. [generic.md](generic.md) explains its
+separate lifecycle and dotfile protections. Global commands alone honour an
+absolute `GIT_CONFIG_GLOBAL`; repository commands still discard it and every
+other unlisted `GIT_*` variable. The same Runner supplies the explicit clean
+environment, adding only that override for global commands.

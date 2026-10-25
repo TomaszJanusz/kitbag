@@ -56,7 +56,7 @@ type Target struct {
 // Adapter declares all its enabled targets from an already validated and
 // host-resolved manifest. It must only read through fsys, never mutate inputs,
 // and must not consult clocks, randomness, environment, or other host APIs.
-// Callers supply the complete adapter set, including files/git declarations.
+// Callers supply the complete adapter set, including arbitrary file declarations. Git includes use a separate vcs step.
 type Adapter interface {
 	Declare(fsys manifest.FileSystem, repository string, intent *manifest.Manifest) ([]Target, error)
 }

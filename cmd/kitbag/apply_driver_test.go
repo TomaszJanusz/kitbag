@@ -35,10 +35,6 @@ func applyDriver(args []string, stdout, stderr io.Writer) int {
 		return int(apply.Usage)
 	}
 	host := unix.New()
-	adapter, err := driverAdapter(host, options.adapter, options.args[1:])
-	if err != nil {
-		return driverError(stderr, err)
-	}
 	m, err := fixtureManifest(host, options.args[0])
 	if err != nil {
 		return driverError(stderr, err)
@@ -51,11 +47,15 @@ func applyDriver(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return driverError(stderr, err)
 	}
-	req := plan.Request{Repository: options.args[0], Manifest: m, Adapters: []target.Adapter{adapter}}
 	home, err := host.HomeDir()
 	if err != nil {
 		return driverError(stderr, err)
 	}
+	selected, err := driverSelection(host, home, options)
+	if err != nil {
+		return driverError(stderr, err)
+	}
+	req := plan.Request{Repository: options.args[0], Manifest: m, Adapters: selected.adapters}
 	req.LegacyRoots = []string{req.Repository, filepath.Join(home, ".agents", "skills")}
 	result, err := apply.Run(host, store, req, apply.Options{Mode: machineMode, Force: options.force, Now: time.Now})
 	if printErr := printApply(stdout, stderr, result); printErr != nil {
@@ -64,17 +64,18 @@ func applyDriver(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return max(int(result.Code()), driverError(stderr, err))
 	}
-	return int(result.Code())
+	return max(int(result.Code()), selected.includes(host, req.Repository, home, m, stdout, stderr))
 }
 
 type driverOptions struct {
-	mode    string
-	adapter string
-	args    []string
-	force   bool
+	mode     string
+	adapter  string
+	adapters string
+	args     []string
+	force    bool
 }
 
-// parseDriver accepts [-mode m] [-force] [-adapter kind] repo instance...;
+// parseDriver accepts mode/force and a real adapter or adapter list;
 // instances are required only for the fixture adapter.
 func parseDriver(args []string, stderr io.Writer) (driverOptions, bool) {
 	var options driverOptions
@@ -83,11 +84,12 @@ func parseDriver(args []string, stderr io.Writer) (driverOptions, bool) {
 	flags.StringVar(&options.mode, "mode", "", "machine mode")
 	flags.BoolVar(&options.force, "force", false, "discard copy drift after backup")
 	flags.StringVar(&options.adapter, "adapter", "", "real adapter instead of the fixture")
+	flags.StringVar(&options.adapters, "adapters", "", "real adapters: generic,files,git")
 	if err := flags.Parse(args); err != nil {
 		return options, false
 	}
 	options.args = flags.Args()
-	return options, len(options.args) >= 1 && (options.adapter != "" || len(options.args) >= 2)
+	return options, validDriverArgs(options)
 }
 
 func fixtureManifest(host platform.Host, repo string) (*manifest.Manifest, error) {

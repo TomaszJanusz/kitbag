@@ -226,6 +226,16 @@ linters:
           deny:
             - pkg: github.com/TomaszJanusz/kitbag/internal/adapters/
               desc: Adapters cannot import other agents.
+        files:
+          # Non-agent declarations share target contracts, never peer adapters.
+          files: ["**/internal/adapters/files/*.go", "**/internal/adapters/files/**/*.go"]
+          list-mode: lax
+          allow:
+            - github.com/TomaszJanusz/kitbag/internal/adapters/files/
+            - github.com/TomaszJanusz/kitbag/internal/adapters/files$
+          deny:
+            - pkg: github.com/TomaszJanusz/kitbag/internal/adapters/
+              desc: File declarations cannot import agent adapters.
         instructions:
           # KIT-17: the shared instruction renderer serves every adapter, so it
           # never depends on one; same lax shape as the agent rules above.
@@ -248,6 +258,8 @@ linters:
             - "!**/internal/adapters/codex/**/*.go"
             - "!**/internal/adapters/generic/*.go"
             - "!**/internal/adapters/generic/**/*.go"
+            - "!**/internal/adapters/files/*.go"
+            - "!**/internal/adapters/files/**/*.go"
             - "!**/internal/adapters/instructions/*.go"
             - "!**/internal/adapters/instructions/**/*.go"
           deny:
