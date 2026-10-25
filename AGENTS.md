@@ -23,7 +23,8 @@
   tests use `fake`; implementations must pass the shared contract suite. See
   [docs/platform.md](docs/platform.md).
 - `internal/adapters/<agent>`: agent paths, instruction and settings formats.
-- `internal/vcs`: Git contracts and backends.
+- `internal/vcs`: Git contracts and backends; all Git access goes through
+  `vcs.Backend`. See [docs/vcs.md](docs/vcs.md).
 - `internal/ui/model`: shared view models, independent of UI renderers.
 - `pkg/manifest`: the only public library package; treat its API as a contract.
 - `internal/e2e`: test-only testscript harness; prove CLI behaviour with scripts

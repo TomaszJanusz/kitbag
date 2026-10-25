@@ -5,6 +5,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 
 	"github.com/rogpeppe/go-internal/testscript"
 )
@@ -16,6 +18,7 @@ import (
 //	linktarget path [target]   assert path is a symlink (to exactly target)
 //	content file text          assert file holds exactly text and a newline
 //	nooutput                   assert the last command wrote no stdout or stderr
+//	hidecmd program...         drop PATH entries holding an executable program
 //
 // The assertions support negation with "!".
 func Commands() map[string]func(ts *testscript.TestScript, neg bool, args []string) {
@@ -25,6 +28,7 @@ func Commands() map[string]func(ts *testscript.TestScript, neg bool, args []stri
 		"linktarget": cmdLinkTarget,
 		"content":    cmdContent,
 		"nooutput":   cmdNoOutput,
+		"hidecmd":    cmdHideCmd,
 	}
 }
 
@@ -124,4 +128,26 @@ func cmdNoOutput(ts *testscript.TestScript, neg bool, args []string) {
 	case !neg && stderr != "":
 		ts.Fatalf("unexpected stderr: %q", stderr)
 	}
+}
+
+// cmdHideCmd removes from $PATH every directory that holds an executable
+// named like one of the programs, so a script can run kitbag on a machine
+// "without" them. Commands registered with testscript.Main stay available.
+func cmdHideCmd(ts *testscript.TestScript, neg bool, args []string) {
+	if neg || len(args) == 0 {
+		ts.Fatalf("usage: hidecmd program...")
+	}
+	var kept []string
+	for _, dir := range filepath.SplitList(ts.Getenv("PATH")) {
+		holds := func(program string) bool { return isExecutable(filepath.Join(dir, program)) }
+		if !slices.ContainsFunc(args, holds) {
+			kept = append(kept, dir)
+		}
+	}
+	ts.Setenv("PATH", strings.Join(kept, string(filepath.ListSeparator)))
+}
+
+func isExecutable(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.Mode().IsRegular() && info.Mode().Perm()&0o111 != 0
 }

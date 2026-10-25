@@ -5,5 +5,5 @@ stdout '^kitbag dev$'
 
 # Anything else prints usage to stderr and fails.
 ! exec kitbag sync
-stderr '^usage: kitbag version$'
+stderr '^usage: kitbag \[--git-backend=auto\|system\|embedded\] version$'
 ! stdout .

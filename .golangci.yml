@@ -126,6 +126,20 @@ linters:
               desc: OS primitives belong in internal/platform.
             - pkg: golang.org/x/sys/
               desc: OS primitives belong in internal/platform.
+        process-execution:
+          # A child process inherits kitbag's whole environment (GIT_DIR, ...)
+          # unless Cmd.Env is set. Only the platform layer and the system Git
+          # backend, whose runner builds an explicit environment, start
+          # processes; tests may run fixtures directly.
+          files:
+            - "$all"
+            - "!$test"
+            - "!**/internal/platform/*.go"
+            - "!**/internal/platform/**/*.go"
+            - "!**/internal/vcs/system/*.go"
+          deny:
+            - pkg: os/exec
+              desc: Start processes through internal/platform or the vcs/system runner.
         core:
           # The policy layer must not depend on command or UI renderers/models,
           # nor reach the host except through the platform interfaces. Denying

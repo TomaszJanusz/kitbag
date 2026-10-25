@@ -51,6 +51,7 @@ It adds these commands; the assertions accept `!` to negate them:
 | `linktarget path [target]` | assert `path` is a symlink, to exactly `target` if given |
 | `content file text` | assert `file` holds exactly `text` and a newline (reads through symlinks) |
 | `nooutput` | assert the last command wrote nothing to stdout or stderr |
+| `hidecmd program...` | remove `PATH` entries holding `program`, e.g. `hidecmd git` to run without Git |
 
 Use the built-in `cmp` for multi-line content and `exists` for presence.
 

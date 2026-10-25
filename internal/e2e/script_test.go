@@ -41,6 +41,7 @@ func TestFailingByDesign(t *testing.T) {
 		"content_mismatch.txtar":       `file holds "hello\\n", want "goodbye\\n"`,
 		"content_negated.txtar":        `file unexpectedly holds "hello\\n"`,
 		"gitremote_exists.txtar":       `gitremote: remote\.git already exists`,
+		"hidecmd_usage.txtar":          `usage: hidecmd program\.\.\.`,
 		"linktarget_negated.txtar":     `link is a symlink to "target"`,
 		"linktarget_not_symlink.txtar": `file is not a symlink`,
 		"linktarget_wrong.txtar":       `link is a symlink to "target", want "other"`,
