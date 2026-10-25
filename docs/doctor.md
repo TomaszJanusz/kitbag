@@ -25,12 +25,18 @@ checks; it does not assert that they passed.
 | Copy/link | Create unpredictable scratch names in the kitbag cache; verify atomic bytes and a symbolic link, then remove them. Repair cache permissions/filesystem support or use copy mode. Link failure WARNs when machine mode is copy, FAILs otherwise. This tests the cache filesystem, not all destination mounts or native agent loading. |
 | State | Read and validate state and last-sync schemas through the state store while holding its nonblocking lock. Release immediately; never save/recover state. Restore a valid backup/use a compatible tool for corrupt or newer data. Wait for an active sync or correct lock/directory permissions. A leftover unlocked lock file is healthy. |
 | Legacy links | With `migration.legacy_roots`, inspect shared/instance skills, instructions, old executable and agent-browser links into those roots or `~/.agents/skills`; review them, then run `kitbag adopt` ([adopt.md](adopt.md)). Dangling links count. |
-| Legacy markers | Inspect instruction files for `agent-config-managed` or `Managed by agent-config-sync`; review/migrate them. Agent settings/credentials are never opened, so hook markers inside settings are deliberately not inspected. |
+| Legacy markers | Inspect instruction files for `agent-config-managed` or `Managed by agent-config-sync`; review/migrate them. |
+| Legacy settings markers | `legacy-settings-markers`: for every enabled Claude instance, a bounded byte search of `<dir>/settings.json` for the hook marker `# agent-config-managed`. It reports only the instance, the path and the number of occurrences; run `kitbag adopt`, then `kitbag sync` ([adopt.md](adopt.md)). A missing file is OK; an unreadable file, or one larger than 4 MiB (not read at all), WARNs with a permission/size hint. |
 | Legacy units | Detect filenames containing `agent-config` under XDG `systemd/user` and `~/Library/LaunchAgents`; review/disable old timers/services manually. Presence does not prove activation. No service manager is invoked. |
 
 Legacy checks skip when `migration.legacy_roots` is empty. They only detect;
-no link, instruction, setting, timer, or service is changed. Service health,
-HTTPS credential-source discovery and API socket checks belong to later milestones.
+no link, instruction, setting, timer, or service is changed. Agent settings
+are read in exactly one place: the `legacy-settings-markers` byte search above,
+through the platform filesystem, only for Claude instances' `settings.json`.
+Nothing is parsed or interpreted, no settings content is ever displayed, stored
+or put in `--json`/`--report` output, and credentials files are never opened.
+Service health, HTTPS credential-source discovery and API socket checks belong
+to later milestones.
 
 Every network/process check has a two-second context deadline. Agent probes run
 serially with only PATH and `LC_ALL=C`, without HOME, agent settings overrides or
@@ -64,8 +70,9 @@ or `--json` format; only the saved file is redacted. Review it before attaching.
 A write failure fails the command. An existing file or link at the report path
 is replaced atomically; its link target is not followed.
 
-Reports contain only diagnostic fields, never file contents, an environment
-snapshot, Git identity values, signing key values, or agent configuration.
+Reports contain only diagnostic fields, never file contents (the settings marker
+check contributes only a path and a count), an environment snapshot, Git identity
+values, signing key values, or agent configuration.
 Before JSON encoding, the redactor masks URL userinfo, common GitHub/OpenAI/
 GitLab/Slack token patterns, named token/API-key/password/authorization/secret
 assignments and email addresses. The current home prefix becomes `~`, as do

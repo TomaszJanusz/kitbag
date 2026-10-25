@@ -113,6 +113,31 @@ linktarget $HOME/.codex/skills $HOME/legacy/source
 cmp marker $HOME/.codex/AGENTS.md
 exists $HOME/.config/systemd/user/agent-config-sync.timer
 
+# Legacy hook markers inside Claude settings are reported as a fact and count;
+# the file is only searched, never echoed, parsed or written.
+cp claude-seed/kitbag.toml $HOME/checkout/kitbag.toml
+mkdir $HOME/.claude
+exec kitbag --config=$WORK/legacy.toml doctor
+stdout 'legacy-settings-markers: legacy hook markers in Claude settings.json'
+! stdout 'legacy-settings-markers: .*fix:'
+cp settings $HOME/.claude/settings.json
+exec kitbag --config=$WORK/legacy.toml doctor
+stdout 'legacy-settings-markers: .*claude/first: .*settings.json: 2 legacy hook marker occurrence\(s\); fix: run kitbag adopt, then kitbag sync; markers are migrated transparently, see docs/adopt.md'
+! stdout 'FAKE_settings_secret'
+execstatus 1 kitbag --config=$WORK/legacy.toml doctor --strict
+exec kitbag --config=$WORK/legacy.toml doctor --json --report=$WORK/settings-report.json
+doctorschema stdout
+doctorschema settings-report.json
+stdout '"id": "legacy-settings-markers"'
+! stdout 'FAKE_settings_secret'
+grep 'legacy-settings-markers' settings-report.json
+grep '~/.claude/settings.json: 2 legacy hook marker' settings-report.json
+! grep 'FAKE_settings_secret' settings-report.json
+! grep $HOME settings-report.json
+cmp settings $HOME/.claude/settings.json
+rm $HOME/.claude/settings.json
+cp seed/kitbag.toml $HOME/checkout/kitbag.toml
+
 # Tool version failure exits 4 before any state lock or further probes.
 cp future $HOME/checkout/kitbag.toml
 execstatus 4 kitbag doctor
@@ -146,6 +171,14 @@ schema=1
 agent="codex"
 [targets.codex.instances.first]
 dir="~/.codex"
+-- claude-seed/kitbag.toml --
+schema=1
+[targets.claude]
+agent="claude"
+[targets.claude.instances.first]
+dir="~/.claude"
+-- settings --
+{"apiKey":"FAKE_settings_secret","hooks":{"a":"run # agent-config-managed","b":"run # agent-config-managed"}}
 -- default --
 schema=1
 [targets.codex]

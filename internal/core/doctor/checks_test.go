@@ -76,7 +76,7 @@ func TestRegistryOrder(t *testing.T) {
 		"git-backend", "remote", "commit-identity", "commit-signing",
 		"ssh-agent", "agent-claude", "agent-codex",
 		"state-lock", "state-health", "materialization-mode", "copy", "link",
-		"legacy-links", "legacy-markers", "legacy-units",
+		"legacy-links", "legacy-markers", "legacy-settings-markers", "legacy-units",
 	}, nil)
 	if r.DoctorSchema != 1 {
 		t.Fatal("schema", r.DoctorSchema)
@@ -405,9 +405,10 @@ func TestLegacyClean(t *testing.T) {
 	must(t, host.MkdirAll(filepath.Join(codexHome(), "skills", "mine"), probeDirPerm))
 	must(t, host.WriteAtomic(filepath.Join(codexHome(), "AGENTS.md"), []byte("# own instructions\n"), probeFilePerm))
 	must(t, host.MkdirAll(filepath.Join(testHome(), ".config", "systemd", "user", "other.timer"), probeDirPerm))
-	assertChecks(t, Report{Checks: s.legacyChecks(t.Context())}, []string{"legacy-links", "legacy-markers", "legacy-units"}, []expect{
+	assertChecks(t, Report{Checks: s.legacyChecks(t.Context())}, []string{"legacy-links", "legacy-markers", "legacy-settings-markers", "legacy-units"}, []expect{
 		{"legacy-links", "legacy links", "", OK},
 		{"legacy-markers", "legacy instruction markers", "", OK},
+		{"legacy-settings-markers", "legacy hook markers", "", OK},
 		{"legacy-units", "legacy timer/service definitions", "", OK},
 	})
 }
