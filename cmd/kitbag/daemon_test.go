@@ -34,15 +34,7 @@ type daemonFixture struct {
 
 func newDaemonFixture(t *testing.T) daemonFixture {
 	t.Helper()
-	root, err := os.MkdirTemp("/tmp", "kitbag-daemon-test-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := os.RemoveAll(root); err != nil {
-			t.Error(err)
-		}
-	})
+	root := daemonTestRoot(t)
 	home := filepath.Join(root, "home")
 	path, _ := newHost().LookupEnv("PATH")
 	values := map[string]string{"HOME": home, "PATH": path, "XDG_RUNTIME_DIR": filepath.Join(root, "run"), "GIT_CONFIG_GLOBAL": filepath.Join(home, ".gitconfig"), "GIT_CONFIG_NOSYSTEM": "1"}
@@ -52,6 +44,7 @@ func newDaemonFixture(t *testing.T) daemonFixture {
 		env = append(env, key+"="+value)
 	}
 	f := daemonFixture{host: host, home: home, remote: filepath.Join(root, "remote.git"), seed: filepath.Join(root, "seed"), env: env}
+	t.Cleanup(func() { f.logFailure(t) })
 	f.git(t, "init", "--quiet", "--bare", "--initial-branch=main", f.remote)
 	f.git(t, "clone", "--quiet", f.remote, f.seed)
 	f.write(t, filepath.Join(f.seed, "kitbag.toml"), "schema=1\n[[files]]\nsrc='source'\ndest='~/output'\nmode='copy'\n")
@@ -60,6 +53,42 @@ func newDaemonFixture(t *testing.T) daemonFixture {
 	config := fmt.Sprintf("schema=1\n[repo]\nurl=%q\npath='~/repo'\n[git]\nbackend='embedded'\n[sync]\npoll_interval='1s'\n[daemon]\ndebounce='100ms'\nupdate_check=false\n", f.remote)
 	f.write(t, filepath.Join(home, ".config", "kitbag", "config.toml"), config)
 	return f
+}
+
+func daemonTestRoot(t *testing.T) string {
+	t.Helper()
+	root, err := os.MkdirTemp("/tmp", "kitbag-daemon-test-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if removeErr := os.RemoveAll(root); removeErr != nil {
+			t.Error(removeErr)
+		}
+	})
+	// Keep socket paths short, then resolve macOS's /tmp -> /private/tmp so
+	// planner checks see real parents for both sources and destinations.
+	resolved, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return resolved
+}
+
+func (f daemonFixture) logFailure(t *testing.T) {
+	t.Helper()
+	if !t.Failed() {
+		return
+	}
+	dirs, err := f.host.Dirs()
+	if err != nil {
+		t.Log(err)
+		return
+	}
+	for _, path := range []string{filepath.Join(dirs.LogDir, "daemon.jsonl"), filepath.Join(dirs.State, "last-sync.json")} {
+		data, readErr := f.host.ReadFile(path)
+		t.Logf("%s: %s (%v)", path, data, readErr)
+	}
 }
 
 func (f daemonFixture) write(t *testing.T, path, body string) {
@@ -163,6 +192,9 @@ func startDaemonProcess(t *testing.T, f daemonFixture) (*exec.Cmd, *bytes.Buffer
 			if err := command.Wait(); err != nil {
 				t.Log(err)
 			}
+		}
+		if t.Failed() {
+			t.Logf("daemon stdout/stderr: %s", output.String())
 		}
 	})
 	return command, output
@@ -308,17 +340,19 @@ func TestDaemonContextCancellation(t *testing.T) {
 	root.SetContext(ctx)
 	done := make(chan error, 1)
 	go func() { done <- root.Execute() }()
-	waitDaemonFile(t, f, "first")
-	cancel()
-	select {
-	case err := <-done:
-		if err != nil {
-			t.Fatal(err)
+	t.Cleanup(func() {
+		cancel()
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Error(err)
+			}
+		case <-time.After(3 * time.Second):
+			t.Error("shutdown hung")
 		}
-	case <-time.After(3 * time.Second):
-		t.Fatal("shutdown hung")
-	}
-	assertDaemonReleased(t, f)
+		assertDaemonReleased(t, f)
+	})
+	waitDaemonFile(t, f, "first")
 }
 
 func TestDaemonBrokenRemoteBackoff(t *testing.T) {
