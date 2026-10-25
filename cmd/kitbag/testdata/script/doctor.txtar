@@ -115,7 +115,7 @@ stdout 'legacy-links: .*fix: review old links and migrate/adopt'
 stdout 'legacy-markers: .*fix: review legacy managed instructions'
 stdout 'legacy-units: .*fix: disable and unload old agent-config-sync timers/services'
 [linux] stdout 'legacy-units: .*systemd/user/agent-config-sync.timer \(loaded=false enabled=true\).*LaunchAgents/com.example.agent-config-sync.plist \(activation not queried\)'
-[darwin] stdout 'legacy-units: .*LaunchAgents/com.example.agent-config-sync.plist \(loaded=false enabled=true\).*systemd/user/agent-config-sync.timer \(activation not queried\)'
+[darwin] stdout 'legacy-units: .*systemd/user/agent-config-sync.timer \(activation not queried\).*LaunchAgents/com.example.agent-config-sync.plist \(loaded=false enabled=true\)'
 [linux] grep '^--user show agent-config-sync.timer ' $HOME/.manager-calls
 [darwin] grep '^print gui/[0-9]+/com.example.agent-config-sync$' $HOME/.manager-calls
 ! grep '(^| )(start|stop|enable|disable|bootstrap|bootout|kickstart)( |$)' $HOME/.manager-calls
