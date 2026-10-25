@@ -81,6 +81,8 @@ func (s suite) testNoUpstream(t *testing.T) {
 
 	_, err := vcs.Pull(t.Context(), w.backend, w.clone)
 	mustIs(t, "pull", err, vcs.ErrNoUpstream)
+	_, err = w.backend.RemoteHead(t.Context(), w.clone)
+	mustIs(t, "probe without upstream", err, vcs.ErrNoUpstream)
 	mustIs(t, "fast-forward", w.backend.FastForward(t.Context(), w.clone), vcs.ErrNoUpstream)
 }
 
@@ -92,6 +94,9 @@ func (s suite) testUnreachableRemote(t *testing.T) {
 		t.Error("cloning a missing remote succeeded")
 	}
 	w.git(t, w.clone, "remote", "set-url", vcs.DefaultRemote, missing)
+	if _, err := w.backend.RemoteHead(t.Context(), w.clone); err == nil {
+		t.Error("probing missing remote succeeded")
+	}
 	if err := w.backend.Fetch(t.Context(), w.clone); err == nil {
 		t.Error("fetching from a missing remote succeeded")
 	}

@@ -79,6 +79,9 @@ type Backend interface {
 	// RemoteURL returns the configured URL of remote, verbatim; an unknown
 	// remote fails with [ErrNoRemote].
 	RemoteURL(ctx context.Context, dir, remote string) (string, error)
+	// RemoteHead probes the current branch's configured upstream without fetching
+	// objects or changing local refs. A missing upstream ref returns ErrNoUpstream.
+	RemoteHead(ctx context.Context, dir string) (string, error)
 	// Head reports the current branch and commit.
 	Head(ctx context.Context, dir string) (Head, error)
 }

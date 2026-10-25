@@ -26,7 +26,7 @@ always passes an explicit environment; unit tests inject fakes.
 `Clone`, `Fetch`, `FastForward`, `Status` (branch, commit, upstream,
 ahead/behind, local changes), `Diff` (name and kind of each path between two
 revisions), `Preview` (unified text diff of committed trees), `Commit` (everything in the working tree), `Push`, `CreateBranch`,
-`DeleteBranch`, `RemoteURL` and `Head`. Every operation takes the absolute,
+`DeleteBranch`, `RemoteURL`, `RemoteHead` and `Head`. Every operation takes the absolute,
 clean path of the working copy's top-level directory. The remote is always
 `origin`. Errors are classified with `errors.Is`: `ErrNotFastForward`,
 `ErrPushRejected`, `ErrNoUpstream`, `ErrDetachedHead`, `ErrNothingToCommit`,
@@ -263,3 +263,9 @@ by querying four named keys. Doctor bounds both operations with a context and
 reports unsupported capabilities explicitly. Agent version probes reuse
 `system.Runner` with a separate minimal environment; they never inherit agent
 credentials or home/config variables. See [doctor.md](doctor.md).
+
+`RemoteHead` advertises only the current branch's configured upstream commit
+without downloading objects or changing local refs. It rejects detached HEAD,
+missing upstream configuration and deleted refs with the existing sentinels.
+The daemon uses it for [cheap polling](daemon.md). Both backends pass the shared
+contract, including proof that the probe leaves cached ahead/behind counts alone.

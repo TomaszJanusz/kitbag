@@ -49,6 +49,7 @@ func runContract(t *testing.T, newSubject factory) {
 	t.Run("PushRejectsNonFF", s.testPushRejectsNonFastForward)
 	t.Run("Branches", s.testBranches)
 	t.Run("RemoteURL", s.testRemoteURL)
+	t.Run("RemoteHead", s.testRemoteHead)
 	t.Run("DetachedHead", s.testDetachedHead)
 	t.Run("NoUpstream", s.testNoUpstream)
 	t.Run("UnreachableRemote", s.testUnreachableRemote)

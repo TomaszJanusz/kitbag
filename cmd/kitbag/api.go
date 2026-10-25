@@ -63,7 +63,7 @@ func (c *commandLine) apiOptions() api.Options {
 	return api.Options{Config: c.configPath, Host: host, Mode: mode, GitBackend: string(c.selection.Kind)}
 }
 
-// apiHandlers is the wiring boundary for a future daemon and the real-socket
+// apiHandlers is the wiring boundary for the daemon and the real-socket
 // integration harness. Each request constructs independent command dependencies.
 func (c *commandLine) apiHandlers(token string, events *api.Events) api.Handlers {
 	return api.Handlers{Host: c.host, Token: token, Events: events, ToolVersion: toolVersion(), Service: func(ctx context.Context, options api.Options) (workflow.Service, error) {

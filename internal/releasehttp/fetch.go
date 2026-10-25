@@ -1,4 +1,4 @@
-// Package releasehttp confines self-update network I/O to a bounded transport.
+// Package releasehttp confines release network I/O to a bounded transport.
 package releasehttp
 
 import (

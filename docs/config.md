@@ -22,7 +22,10 @@ Use `kitbag config get <key>`, `set <key> <value>`, `unset <key>`, `list`, `expl
 | `git.backend` | string | `auto` | `KITBAG_GIT_BACKEND` | `git-backend` | auto, system, embedded | false | Prefer system Git automatically, or force one backend. |
 | `git.identity.name` | string | `unset` | `KITBAG_GIT_IDENTITY_NAME` | `identity-name` | ^[^<>\r\n\x00]+$ | true | Fallback embedded commit author; name and email must be configured together. |
 | `git.identity.email` | string | `unset` | `KITBAG_GIT_IDENTITY_EMAIL` | `identity-email` | ^[^<>\s\x00]+@[^<>\s\x00]+$ | true | Fallback embedded commit email; name and email must be configured together. |
-| `sync.poll_interval` | string | `60s` | `KITBAG_SYNC_POLL_INTERVAL` | `` | ^([0-9]+(ms\|s\|m\|h))+$ | false | Daemon polling interval (daemon is planned). |
+| `sync.poll_interval` | string | `60s` | `KITBAG_SYNC_POLL_INTERVAL` | `` | duration from 1s to 24h (ms, s, m, h) | false | Remote head polling interval; 1s minimum, 24h maximum. |
+| `daemon.debounce` | string | `500ms` | `KITBAG_DAEMON_DEBOUNCE` | `` | duration from 100ms to 1m (ms, s, m, h) | false | Watcher coalescing window; 100ms minimum, 1m maximum. |
+| `daemon.update_check` | boolean | `true` | `KITBAG_DAEMON_UPDATE_CHECK` | `` | true, false | false | Check release metadata daily; never download or install. |
+| `daemon.release_url` | string | `https://api.github.com/repos/TomaszJanusz/kitbag/releases/latest` | `KITBAG_DAEMON_RELEASE_URL` | `` | ^https?://[^\s]+$ | false | Latest release JSON endpoint; restart daemon after changing daemon settings. |
 | `sync.mode` | string | `link (Unix), copy (Windows)` | `KITBAG_MODE` | `mode` | link, copy | false | Machine materialization default; manifest copy still wins. |
 | `ui.notifications` | boolean | `true` | `KITBAG_UI_NOTIFICATIONS` | `` | true, false | false | Show notifications after changes (desktop UI is planned). |
 | `ui.theme` | string | `auto` | `KITBAG_UI_THEME` | `` | auto, dark, light | false | UI theme (desktop UI is planned). |

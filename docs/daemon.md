@@ -1,0 +1,141 @@
+# Foreground daemon
+
+`kitbag daemon` keeps a configured machine current and serves the authenticated
+[local API](api/local-api.md). Run `kitbag init` first, then run the daemon in the
+foreground or under a user service supervisor. The command does not install a
+service. Linux and macOS are supported; Windows remains a compiling stub.
+
+```sh
+kitbag daemon
+kitbag status --json
+```
+
+The initial pass uses the same pull, plan, recovery and apply workflow as
+`kitbag sync`. Subsequent passes advertise the current branch's configured
+upstream through `vcs.Backend.RemoteHead`: system Git uses `ls-remote --refs`;
+embedded Git lists advertised refs without fetching objects. The probe changes
+neither local refs nor the working copy. A changed remote commit triggers sync.
+Unchanged remote heads perform no fetch or apply. GitHub ETag polling of the
+configuration repository is a future optimization; ordinary Git remotes work now.
+
+The existing `sync.poll_interval` setting defaults to **60s**, bounded from
+**1s to 24h**. Polls use 90–100% of the interval to spread machines' requests.
+The next timer starts after the previous operation finishes; network and apply
+time add latency. A probe has a 15s deadline. Failures double the delay up to
+15 minutes (or the configured interval when larger), with the same jitter.
+Success restores the normal interval. Dirty/diverged copies retain normal sync
+safety: no automatic commits, rebases, forced replacement or discard. A remote
+head that was not applied is retried with backoff. Missing-clone startup failures
+retry the normal sync bootstrap.
+
+One scheduler executes its probe, sync, inspection and update check serially.
+API and CLI syncs also share the existing nonblocking state lock; a competing
+operation reports busy instead of overlapping. SIGINT/SIGTERM cancel network/API
+work, close clients and wait for active operations. An apply already writing
+finishes its journaled steps before shutdown; the apply recovery guarantees also
+cover abrupt process death. The daemon does not introduce another state format.
+
+## Drift watching
+
+fsnotify watches the working copy and declared destinations, including their
+parents so atomic replacement is detected. Working-copy manual edits and target
+drift publish `drift.detected` after a read-only inspection. Watch hints **never
+trigger apply**. The next explicit sync, or a moved remote head, uses the normal
+three-way drift protection. Editing through a managed link changes the working
+copy and is reported as working-copy dirtiness.
+
+`daemon.debounce` defaults to **500ms**, bounded from **100ms to 1m**. The first
+hint opens a fixed coalescing window; continuous writes cannot postpone inspection
+indefinitely. A one-element queue coalesces hints without blocking the native
+collector. At most 512 directories, eight levels below each root, and 4096
+entries are traversed per watch rebuild. Symlinks and `.git` subdirectories are
+not traversed. Missing destinations watch their nearest existing parent.
+Directory creation and replacement refresh the watch set after inspection.
+
+A full read-only inspection runs every minute even when native watching is
+unavailable, overflows, reaches a resource/recursion limit, or misses an event.
+Watcher failures are logged and leave periodic inspection active. They do not
+turn a successfully applied commit into a failed sync. Large repositories may
+therefore have up to one-minute drift-detection latency. Filesystem scans can
+cost more than the small idle fixture measured below.
+
+## Lifetime, API and logs
+
+The platform state directory holds `daemon.lock`. Its kernel lock is held for
+the entire lifetime, independent of the shorter sync lock. A second instance
+reports `daemon already running for this user`. Kernel release on process exit
+makes lock recovery independent of PID reuse. Only after acquiring this lock
+does startup consider a stale API socket. It verifies the endpoint's private
+permissions, ownership and connection refusal before removing it. Live servers,
+regular files, symlinks and unsafe endpoints are refused. Normal exit removes
+the owned socket and releases locks.
+
+The API emits `sync.started`, `sync.finished` (including exit code and changed
+count), `drift.detected`, and `update.available`. Existing bounded API subscriber
+queues drop hints when full, so a slow client cannot block synchronization.
+Clients refresh snapshots after reconnecting; events are not a durable journal.
+
+`Dirs.LogDir` is `<state>/log`, following `XDG_STATE_HOME` on both supported
+systems. `daemon.jsonl` contains UTC timestamps, action names and failure booleans;
+it excludes request data, file contents, Git diagnostics and credentials. Files
+are 0600 in a 0700 directory. A small in-repository rotator keeps the current file
+at most 1 MiB plus three numbered archives (at most 4 MiB total). Files with
+modification times older than seven days are removed on the next log write;
+active logs remain size-bounded. Writes are atomic; rotation/log failures stop
+the daemon with an operational error. No log goroutine or rotation dependency
+is retained at idle.
+
+## Release metadata
+
+`daemon.update_check` defaults to **true**. The daemon checks GitHub's latest
+release metadata at startup, then daily. It caches the endpoint, ETag, tag and
+successful-check timestamp as private `release-check.json` in the state directory.
+Restarting within a day uses cached metadata. Subsequent requests send
+`If-None-Match`; 304 reuses the cached tag. Semantic versions newer than the running
+version publish `update.available`. This is a notification only: the checker
+never downloads assets, follows redirects, installs, or restarts the tool.
+
+The shared `internal/releasehttp` transport serves metadata-only requests for
+the daemon, independently of its explicit self-update asset-fetch API. The
+response is limited to 64 KiB with a 10s deadline. Invalid metadata, draft or
+prerelease responses and HTTP failures are logged and retried the next day.
+`daemon.release_url` selects a compatible latest-release JSON endpoint (default
+`https://api.github.com/repos/TomaszJanusz/kitbag/releases/latest`). HTTP is
+supported on loopback for local testing; other endpoints require HTTPS. Disable network update
+checks with `daemon.update_check = false`. Restart after changing daemon scheduling
+settings. Workflow/API operations reload repository and materialization settings
+for each call; token rotation also requires restart.
+
+## Reproducible idle measurement
+
+On Linux, the following builds the production binary and runs it against a
+throwaway HOME and local bare remote. It disables update checks, uses system Git
+and the default 60s polling interval, waits for initial apply, and samples `/proc`
+once per second. It records peak/mean RSS and process CPU time, plus CPU including
+Git children. Startup/build cost is outside the timed window. The tool sends
+SIGTERM and removes only its own temporary directory on exit.
+
+```sh
+mise exec -- bash scripts/daemon-bench.sh 2
+# Manual runner02 acceptance measurement (NOT verified in this change):
+mise exec -- bash scripts/daemon-bench.sh 10
+```
+
+A short runner02 run on 2026-10-25 recorded 120.001 seconds, 121 samples,
+18,464 KiB peak RSS, 17,858.0 KiB mean RSS, 0.03 seconds daemon CPU and 0.07 seconds
+including Git children. Peak RSS was below the 20 MB budget for this fixture;
+the ten-minute acceptance run, production repository sizes, authenticated network
+remotes, and memory after a real GitHub update check are **not verified** by that
+measurement. Run the longer command on an otherwise representative machine.
+
+The fast test suite covers local-remote push/application, process exclusion,
+SIGTERM and context shutdown, stale sockets, target drift preservation, scheduler
+backoff/debounce/serialization, watch limits, metadata-only HTTP/ETag behavior,
+and log size/count/age bounds. These tests run in `mise run check` on Linux/macOS.
+
+Temporary negative controls were run and reverted: concurrent scheduler syncs,
+allowing another daemon instance, downloading release assets, accepting a zero
+interval, force-applying from a watcher, and blocking event publication. Each
+was rejected by its focused test (the zero-interval and blocking-publication
+controls intentionally reached the test timeout). The drift check runs before
+any update creates a one-time backup, so backup safety cannot mask auto-repair.
