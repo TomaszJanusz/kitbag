@@ -14,7 +14,7 @@ import (
 
 const releaseBaseURL = "https://github.com/TomaszJanusz/kitbag/releases"
 
-// KIT-39 must provision the maintainer's production public key before releasing.
+// Keyless release bundles need a reviewed verifier migration; see docs/release.md.
 // Empty trust fails closed. Never use a generated fixture key for production.
 const releasePublicKey = ""
 

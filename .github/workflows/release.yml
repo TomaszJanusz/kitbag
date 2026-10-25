@@ -1,0 +1,139 @@
+name: Release artifacts
+
+on:
+  push:
+    tags: ['v*']
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+      sha:
+        required: true
+        type: string
+      nightly:
+        default: false
+        type: boolean
+
+permissions: {}
+concurrency:
+  group: release-artifacts-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      hashes: ${{ steps.subjects.outputs.hashes }}
+      tag: ${{ steps.subjects.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        with:
+          version: 2026.10.17
+          cache: false
+      - name: Validate source and build without publishing
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+          NIGHTLY: ${{ inputs.nightly || false }}
+          EXPECTED_SHA: ${{ inputs.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          if [[ "$NIGHTLY" == true ]]; then
+            test "$GITHUB_REF" = refs/heads/main
+            test "$TAG" = nightly
+            mise exec -- bash scripts/release-build.sh nightly
+          else
+            [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+            test "$(git rev-parse "refs/tags/$TAG^{commit}")" = "$EXPECTED_SHA"
+            GORELEASER_CURRENT_TAG="$TAG" mise exec -- bash scripts/release-build.sh stable
+          fi
+      - name: Sign the checksum manifest with GitHub OIDC and verify identity
+        run: |
+          set -euo pipefail
+          mise exec -- cosign sign-blob --yes --bundle dist/checksums.txt.sigstore.json dist/checksums.txt
+          mise exec -- cosign verify-blob \
+            --bundle dist/checksums.txt.sigstore.json \
+            --certificate-identity "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release.yml@${GITHUB_WORKFLOW_REF##*@}" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            dist/checksums.txt
+      - name: Bind provenance to archives, SBOMs, metadata and the signed manifest
+        id: subjects
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          cd dist
+          hashes=$(sha256sum ./*.tar.gz ./*.sbom.json kitbag-update.json checksums.txt checksums.txt.sigstore.json | base64 -w0)
+          echo "hashes=$hashes" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-assets
+          if-no-files-found: error
+          retention-days: 3
+          path: |
+            dist/*.tar.gz
+            dist/*.sbom.json
+            dist/kitbag-update.json
+            dist/checksums.txt
+            dist/checksums.txt.sigstore.json
+
+  provenance:
+    needs: build
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    # Upstream requires an exact version tag for slsa-verifier (see docs/release.md).
+    # Verified upstream commit: f7dd8c54c2067bafc12ca7a55595d5ee9b75204a.
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0 # zizmor: ignore[unpinned-uses] exact tag required by upstream identity validation
+    with:
+      base64-subjects: ${{ needs.build.outputs.hashes }}
+      provenance-name: kitbag.intoto.jsonl
+      upload-assets: false
+
+  publish:
+    needs: [build, provenance]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.sha || github.sha }}
+          persist-credentials: false
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        with:
+          version: 2026.10.17
+          cache: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-assets
+          path: dist
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ needs.provenance.outputs.provenance-name }}
+          path: dist
+      - name: Verify provenance and publish the selected channel
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.build.outputs.tag }}
+          NIGHTLY: ${{ inputs.nightly || false }}
+          SOURCE_SHA: ${{ inputs.sha || github.sha }}
+        run: mise exec -- bash scripts/release-publish.sh

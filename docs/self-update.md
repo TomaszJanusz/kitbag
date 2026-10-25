@@ -113,10 +113,12 @@ module is needed for verification. Go and cosign tooling remain pinned in
 ECDSA verification to `internal/releasesig`.
 
 **Production trust is not provisioned in this development repository.**
-KIT-39 must pin the maintainer's public key in `cmd/kitbag/self_update.go`
-(`releasePublicKey`) before publishing an updater-enabled release, and emit
-the metadata and detached artifacts above. Its current empty value fails
-closed. No runtime flag/environment variable can replace this trust anchor.
+The [release pipeline](release.md#artifacts-and-trust) uses keyless cosign bundles,
+which this key-based verifier cannot verify. Before publishing an updater-enabled
+release, a reviewed verifier migration must resolve that trust-model conflict;
+no long-lived project signing secret is permitted. The pipeline already emits
+matching archive names, stamps, checksums and discovery metadata. The current
+empty `releasePublicKey` value fails closed. No runtime flag/environment variable can replace this trust anchor.
 This task creates no production key, release or signature. Tests generate
 fixture-only keys in memory. Key rotation needs a reviewed release containing
 the replacement public key, distributed through the existing trusted path.
