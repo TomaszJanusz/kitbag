@@ -1,0 +1,4 @@
+kind: generated
+path: /home/user/.codex/INSTRUCTIONS.md
+backup: once
+owner: instructions codex:main

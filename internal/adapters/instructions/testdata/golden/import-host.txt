@@ -1,0 +1,4 @@
+kind: generated
+path: /home/user/.claude/INSTRUCTIONS.md
+backup: once
+owner: instructions claude:main
