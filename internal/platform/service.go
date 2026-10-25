@@ -10,6 +10,10 @@ type Service interface {
 	ServiceControl(ctx context.Context, operation string, timer bool) error
 	ServiceInspect(ctx context.Context, timer bool) (ServiceStatus, error)
 	ServiceLinger(ctx context.Context) (bool, error)
+	// UnitInspect reads the state of another user unit by name, a systemd unit
+	// file name or a launchd label, without loading, starting or changing it.
+	// A name that is not one plain path element fails with fs.ErrInvalid.
+	UnitInspect(ctx context.Context, name string) (UnitStatus, error)
 }
 
 // ServiceLayout describes host-specific paths and the resolved running binary.
@@ -25,6 +29,16 @@ type ServiceStatus struct {
 	Loaded   bool   `json:"loaded"`
 	Active   bool   `json:"active"`
 	Enabled  bool   `json:"enabled"`
+}
+
+// UnitStatus observes a user unit KitBag does not own, such as a legacy timer.
+// Loaded means the manager holds the job now (systemd: active or activating;
+// launchd: bootstrapped). Enabled means it is loaded again at the next login
+// (systemd: an enabled unit file; launchd: not disabled). An unknown unit is
+// neither.
+type UnitStatus struct {
+	Loaded  bool `json:"loaded"`
+	Enabled bool `json:"enabled"`
 }
 
 // ServiceLabel is the launchd label and systemd unit basename.

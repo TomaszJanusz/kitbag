@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/TomaszJanusz/kitbag/internal/platform"
 )
 
 func TestLaunchdStatus(t *testing.T) {
@@ -102,5 +104,51 @@ func TestLaunchdLayoutUsesStableHomebrewPath(t *testing.T) {
 	h = New(WithEnv(func(string) (string, bool) { return "/tmp/test", true }), WithExecutable(func() (string, error) { return "", fs.ErrNotExist }))
 	if _, err = h.ServiceLayout(); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatal(err)
+	}
+}
+
+func TestLaunchdUnitInspect(t *testing.T) {
+	t.Parallel()
+	const label = "com.example.agent-config-sync"
+	for _, tc := range []struct {
+		name, overrides string
+		print           int
+		want            platform.UnitStatus
+		wantErr         bool
+	}{
+		{"booted out and disabled", `"` + label + `" => disabled`, 113, platform.UnitStatus{}, false},
+		{"older macOS disabled", `"` + label + `" => true`, 113, platform.UnitStatus{}, false},
+		{"booted out, loads at login", "", 113, platform.UnitStatus{Enabled: true}, false},
+		{"loaded and enabled", `"` + label + `" => enabled`, 0, platform.UnitStatus{Loaded: true, Enabled: true}, false},
+		{"loaded but disabled", `"other" => enabled` + "\n" + `"` + label + `" => disabled`, 0, platform.UnitStatus{Loaded: true}, false},
+		{"domain failure", "", 5, platform.UnitStatus{}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			h := New(WithServiceRunner(func(_ context.Context, name string, args, _ []string) (string, int, error) {
+				switch {
+				case name != "launchctl":
+					t.Errorf("unexpected program %s", name)
+				case args[0] == "print-disabled":
+					return tc.overrides, 0, nil
+				case args[0] != "print" || !strings.HasSuffix(args[1], "/"+label):
+					t.Errorf("unexpected command %v", args)
+				}
+				return "", tc.print, nil
+			}))
+			status, err := h.UnitInspect(t.Context(), label)
+			if (err != nil) != tc.wantErr || status != tc.want {
+				t.Fatal(status, err)
+			}
+		})
+	}
+	h := New(WithServiceRunner(func(context.Context, string, []string, []string) (string, int, error) {
+		t.Error("an invalid label reached launchctl")
+		return "", 0, nil
+	}))
+	for _, label := range []string{"", "-x", "user/501/x", "a\tb"} {
+		if _, err := h.UnitInspect(t.Context(), label); !errors.Is(err, fs.ErrInvalid) {
+			t.Fatalf("%q: %v", label, err)
+		}
 	}
 }

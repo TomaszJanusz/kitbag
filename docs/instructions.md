@@ -26,6 +26,12 @@ result, err := instructions.Declare(fsys, instructions.Request{
 - `instructions.hosts` must already be host-resolved (`{host}` expanded). The
   host addition follows the source. A missing host file adds a warning to
   `Result.Warnings` and renders the source alone; it is not an error.
+- `HostAdditions` lists the hosts whose addition exists for a template, and
+  `HostMismatch` explains a host taken from the system hostname that has none
+  while other hosts do. Sync, plan, status, adopt and unmanage print it as a
+  warning and doctor's `host` check WARNs; it names the files and suggests
+  `kitbag config set host <name>` without choosing one. A host selected by flag,
+  `KITBAG_HOST` or `config.toml` gets only the plain missing-file warning.
 
 Inputs are checked with `Lstat`. A missing source, a source or host addition
 that is not a regular file (links included), or `link` with a host addition

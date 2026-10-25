@@ -93,7 +93,7 @@ fragments. No other placeholder or environment variable is expanded.
 | Key | Type | Required | Default | Meaning |
 | --- | --- | --- | --- | --- |
 | `source` | repository path | yes | — | The shared always-loaded instructions file (Markdown). |
-| `hosts` | repository path template containing `{host}` | no | none | Per-host additions appended after `source`. A missing file for the selected host is reported and skipped; it is not an error. |
+| `hosts` | repository path template containing `{host}` | no | none | Per-host additions appended after `source`. A missing file for the selected host is reported and skipped; it is not an error. When the host is the unconfigured hostname and other hosts have a file, the warning names them and suggests `kitbag config set host <name>` ([instructions.md](instructions.md)). |
 | `per_agent.<kind>` | repository path | no | none | Replaces `source` for that agent kind (the dotagents pattern). Host additions still apply. |
 
 Each enabled target renders one managed instructions file at the adapter's

@@ -98,7 +98,12 @@ env XDG_CACHE_HOME=
 execstatus 1 kitbag --mode=invalid doctor
 stdout 'materialization-mode: .*fix: select --mode=link or --mode=copy'
 
-# Legacy detection is opt-in and never deletes or edits leftovers.
+# Legacy detection is opt-in and never deletes or edits leftovers. Units of
+# the native manager are inspected read-only through stand-ins (enabled and
+# stopped here); the other manager's definitions are reported by presence.
+env PATH=$WORK/bin:$PATH
+exec chmod +x bin/systemctl bin/launchctl
+cp enabled $HOME/.unit-state
 agentdirs legacy .codex skills .config/systemd/user Library/LaunchAgents
 exec ln -s $HOME/legacy/source $HOME/.codex/skills
 # skills was not precreated under .codex.
@@ -108,10 +113,23 @@ cp plain $HOME/Library/LaunchAgents/com.example.agent-config-sync.plist
 exec kitbag --config=$WORK/legacy.toml doctor
 stdout 'legacy-links: .*fix: review old links and migrate/adopt'
 stdout 'legacy-markers: .*fix: review legacy managed instructions'
-stdout 'legacy-units: .*fix: review and disable old agent-config-sync timers/services manually'
+stdout 'legacy-units: .*fix: disable and unload old agent-config-sync timers/services'
+[linux] stdout 'legacy-units: .*systemd/user/agent-config-sync.timer \(loaded=false enabled=true\).*LaunchAgents/com.example.agent-config-sync.plist \(activation not queried\)'
+[darwin] stdout 'legacy-units: .*LaunchAgents/com.example.agent-config-sync.plist \(loaded=false enabled=true\).*systemd/user/agent-config-sync.timer \(activation not queried\)'
+[linux] grep '^--user show agent-config-sync.timer ' $HOME/.manager-calls
+[darwin] grep '^print gui/[0-9]+/com.example.agent-config-sync$' $HOME/.manager-calls
+! grep '(^| )(start|stop|enable|disable|bootstrap|bootout|kickstart)( |$)' $HOME/.manager-calls
 linktarget $HOME/.codex/skills $HOME/legacy/source
 cmp marker $HOME/.codex/AGENTS.md
 exists $HOME/.config/systemd/user/agent-config-sync.timer
+
+# A disabled, stopped native unit is no longer legacy (KIT-78).
+cp disabled $HOME/.unit-state
+exec kitbag --config=$WORK/legacy.toml doctor
+[linux] stdout 'legacy-units: legacy timer/service definitions \(1 disabled and not loaded, ignored\): .*com.example.agent-config-sync.plist \(activation not queried\);'
+[linux] ! stdout 'agent-config-sync\.timer'
+[darwin] stdout 'legacy-units: legacy timer/service definitions \(1 disabled and not loaded, ignored\): .*agent-config-sync.timer \(activation not queried\);'
+[darwin] ! stdout 'agent-config-sync\.plist'
 
 # Legacy hook markers inside Claude settings are reported as a fact and count;
 # the file is only searched, never echoed, parsed or written.
@@ -195,6 +213,27 @@ this is not valid TOML
 # agent-config-managed
 -- plain --
 plain
+-- enabled --
+enabled
+-- disabled --
+disabled
+-- bin/systemctl --
+#!/bin/sh
+# Stand-in for systemctl --user show: $HOME/.unit-state selects the answer.
+echo "$*" >> "$HOME/.manager-calls"
+if [ "$(cat "$HOME/.unit-state")" = enabled ]; then
+	printf 'LoadState=loaded\nActiveState=inactive\nUnitFileState=enabled\n'
+else
+	printf 'LoadState=loaded\nActiveState=inactive\nUnitFileState=disabled\n'
+fi
+-- bin/launchctl --
+#!/bin/sh
+# Stand-in for launchctl: no job is loaded; $HOME/.unit-state selects overrides.
+echo "$*" >> "$HOME/.manager-calls"
+case "$1" in
+print) exit 113 ;;
+print-disabled) printf '"com.example.agent-config-sync" => %s\n' "$(cat "$HOME/.unit-state")" ;;
+esac
 
 -- unsupported-ssh --
 Host *
