@@ -117,7 +117,8 @@ func (t Target) resolvePaths(cfg *ssh_config.Config, alias, known string) (Targe
 	if err != nil {
 		return t, err
 	}
-	if len(identities) == 0 || !t.IdentitiesOnly {
+	// Like OpenSSH, default keys are tried only when no IdentityFile is set.
+	if len(identities) == 0 {
 		identities = append(identities, "~/.ssh/id_ed25519", "~/.ssh/id_ecdsa", "~/.ssh/id_rsa")
 	}
 	if err = t.identityPaths(identities); err != nil {

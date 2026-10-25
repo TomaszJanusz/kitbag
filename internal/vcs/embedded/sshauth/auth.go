@@ -51,7 +51,8 @@ type Auth struct {
 	next    int
 }
 
-// New constructs a lazy chain: agent, configured identities, then default keys.
+// New constructs a lazy chain: agent, then configured identities, or the default keys
+// when ssh_config sets no IdentityFile.
 func New(ctx context.Context, target Target, opts Options) (*Auth, error) {
 	if opts.FS == nil {
 		return nil, vcs.ErrInvalidArgument

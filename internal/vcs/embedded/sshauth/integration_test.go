@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"net"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -246,6 +247,56 @@ func TestAliasAuthentication(t *testing.T) {
 	if target.Agent != "" || target.Host != hostname {
 		t.Fatalf("alias resolution=%+v", target)
 	}
+}
+
+func TestDefaultKeysOnlyWithoutIdentityFile(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, config string
+		wantErr      bool
+	}{
+		{name: "no IdentityFile uses defaults"},
+		{name: "IdentityFile skips defaults", config: "IdentityFile ~/.ssh/configured\n", wantErr: true},
+		{name: "IdentityFile with IdentitiesOnly skips defaults", config: "IdentityFile ~/.ssh/configured\nIdentitiesOnly yes\n", wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			host, accepted, other := newKey(t), newKey(t), newKey(t)
+			addr := listenServer(t, host, accepted)
+			dir, err := filepath.EvalSymlinks(t.TempDir())
+			must(t, err)
+			// Only the default key is accepted by the server; the configured one is not.
+			must(t, os.MkdirAll(filepath.Join(dir, ".ssh"), 0o700))
+			accepted.write(t, filepath.Join(dir, ".ssh", "id_ed25519"), "")
+			other.write(t, filepath.Join(dir, ".ssh", "configured"), "")
+			known := knownFile(t, dir, addr, host, false)
+			hostname, port, err := net.SplitHostPort(addr)
+			must(t, err)
+			h := fake.New(fake.WithEnv(map[string]string{"HOME": dir}))
+			config := "Host alias\n HostName " + hostname + "\n User git-user\n Port " + port + "\n IdentityAgent none\n UserKnownHostsFile " + known + "\n" + indentLines(tc.config)
+			must(t, h.MkdirAll(filepath.Join(dir, ".ssh"), 0o700))
+			must(t, h.WriteAtomic(filepath.Join(dir, ".ssh", "config"), []byte(config), 0o600))
+			target, err := Resolve(h, h, "alias", "", 0, false)
+			must(t, err)
+			auth, err := New(t.Context(), target, Options{FS: fixtureFS{}})
+			must(t, err)
+			err = authenticate(t, addr, auth)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("default key used although IdentityFile is configured")
+				}
+				return
+			}
+			must(t, err)
+			if auth.Source() != "identity file id_ed25519" {
+				t.Fatalf("source = %q", auth.Source())
+			}
+		})
+	}
+}
+
+func indentLines(s string) string {
+	return strings.ReplaceAll(strings.TrimSuffix(" "+s, "\n"), "\n", "\n ") + "\n"
 }
 
 func TestAgentOrderAndFallback(t *testing.T) {
