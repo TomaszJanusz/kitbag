@@ -3,8 +3,8 @@
 
 Usage: python3 scripts/legacy-home.py /path/to/agent-config/bin/agent-config-sync
 
-Copies the seed/ repository of cmd/kitbag/testdata/script/adopt_legacy.txtar to
-a throwaway HOME under /tmp/kitbag-legacy-home.*, puts a copy of the real
+For each script in SCRIPTS, copies its seed/ repository to a throwaway HOME
+under /tmp/kitbag-legacy-home.* as ~/checkout, puts a copy of the real
 (read-only) script at its bin/agent-config-sync, and runs it there with
 --no-pull, AGENT_CONFIG_HOST=fixture, an isolated GIT_CONFIG_GLOBAL and no
 network. The resulting HOME (outside the clone) replaces the script's
@@ -19,7 +19,8 @@ import subprocess
 import sys
 import tempfile
 
-SCRIPT = Path(__file__).resolve().parent.parent / "cmd/kitbag/testdata/script/adopt_legacy.txtar"
+SCRIPTS = [Path(__file__).resolve().parent.parent / "cmd/kitbag/testdata/script" / name
+           for name in ("adopt_legacy.txtar", "adopt_relocated.txtar")]
 SECTION = re.compile(r"^-- (.+) --$", re.M)
 FIXTURE = "legacyhome"
 
@@ -52,7 +53,12 @@ def record(home, gitconfig):
 
 def main():
     legacy = Path(sys.argv[1]).resolve()
-    comment, files = sections(SCRIPT.read_text())
+    for script in SCRIPTS:
+        regenerate(script, legacy)
+
+
+def regenerate(script, legacy):
+    comment, files = sections(script.read_text())
     kept = [(name, body) for name, body in files if not name.startswith(FIXTURE)]
     scratch = Path(tempfile.mkdtemp(prefix="kitbag-legacy-home.", dir="/tmp"))
     try:
@@ -74,7 +80,7 @@ def main():
     finally:
         shutil.rmtree(scratch)
     body = comment + "".join(f"-- {name} --\n{text}" for name, text in kept + fixture)
-    SCRIPT.write_text(body)
+    script.write_text(body)
 
 
 if __name__ == "__main__":

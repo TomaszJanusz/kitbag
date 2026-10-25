@@ -80,18 +80,24 @@ type Desired struct {
 	SourceHash  string      `json:"source_hash,omitempty"`
 	WrittenHash string      `json:"written_hash"`
 	// LegacyHash is the hash of agent-config-sync's equivalent rendering, if any.
-	LegacyHash string        `json:"-"`
-	Owners     []state.Owner `json:"owners"`
-	Content    []byte        `json:"-"`
+	LegacyHash string `json:"-"`
+	// LegacyHashes, with legacy roots configured, also hash that rendering for a
+	// clone at each legacy root: such an unowned file is replaced in place.
+	LegacyHashes []string      `json:"-"`
+	Owners       []state.Owner `json:"owners"`
+	Content      []byte        `json:"-"`
 }
 
 // Operation is one ordered logical action. A skip never authorizes mutation.
 // For Discard, Restore and Unmerge a BackupPath prefix moves a forced, changed
-// entry aside to a backup instead of discarding it.
+// entry aside to a backup instead of discarding it. Replaces marks an output
+// replacing agent-config-sync's reproducible output: apply discards it instead
+// of keeping a backup, journaling it as that previously owned output.
 // Apply must recheck preconditions under the state lock; a plan is not a lease.
 type Operation struct {
 	Expected       *state.Entry   `json:"-"`
 	Desired        *Desired       `json:"desired,omitempty"`
+	Replaces       *state.Target  `json:"-"`
 	Restore        *Restoration   `json:"restore,omitempty"`
 	Kind           Kind           `json:"kind"`
 	Path           string         `json:"path"`

@@ -1,0 +1,202 @@
+# A HOME prepared by the real agent-config-sync from its clone at ~/checkout
+# (recorded below by scripts/legacy-home.py) moves to the separate working copy
+# that kitbag init creates. Adoption cannot keep links or renderings naming the
+# old clone, so the first sync replaces them in place: links are re-pointed and
+# outputs rewritten with KitBag's marker, without a single backup. Only the
+# hand-written ~/notes.md, which no tool generated, is backed up once.
+env KITBAG_CONFIG=
+env KITBAG_HOST=fixture
+env KITBAG_GIT_BACKEND=
+env KITBAG_MODE=
+env CLAUDE_CONFIG_DIR=
+env CODEX_HOME=
+env XDG_CONFIG_HOME=$HOME/.config
+env XDG_DATA_HOME=$HOME/.local/share
+env XDG_STATE_HOME=$HOME/.local/state
+env NEW=$HOME/.local/share/kitbag/repos/config
+gitremote $WORK/config.git seed
+exec git clone --quiet $WORK/config.git $HOME/checkout
+homefixture legacyhome
+cp notes.local $HOME/notes.md
+linktarget $HOME/.claude/skills/review $HOME/checkout/skills/review
+
+# KitBag's own output, derived from the legacy files: the clone path and the
+# markers are all that may differ.
+exec sh -c 'sed -e "1s/.*/<!-- Managed by kitbag. Edit the source in the configuration repository, not this file. -->/" -e "s#$HOME/checkout/#$NEW/#" "$HOME/.claude/CLAUDE.md"'
+cp stdout $WORK/claude.want
+exec sh -c 'sed -e "1s/.*/<!-- Managed by kitbag. Edit the source in the configuration repository, not this file. -->/" "$HOME/.codex/AGENTS.md"'
+cp stdout $WORK/agents.want
+exec sh -c 'sed -e "s#$HOME/checkout/#$NEW/#" -e "s/# agent-config-managed/# kitbag-managed/" "$HOME/.claude/settings.json"'
+cp stdout $WORK/settings.want
+
+exec kitbag init $WORK/config.git --yes --git-backend=system --host=fixture --branch=main
+exists $NEW/.git
+exec kitbag config set migration.legacy_roots '["~/checkout", "~/.agents/skills"]'
+
+# Nothing points at the new working copy yet, so nothing is adopted; the
+# report shows the in-place replacements and the single one-time backup.
+exec kitbag adopt
+! stderr .
+! stdout '^adopt '
+stdout '^\+ materialize .*/\.claude/skills/review" \[update needed\]'
+stdout '^\+ write .*/\.claude/CLAUDE\.md" \[update needed\]'
+stdout '^\+ write .*/\.codex/AGENTS\.md" \[update needed\]'
+stdout '^\+ merge .*/\.claude/settings\.json" \[update needed\]'
+stdout '^~ backup .*/notes\.md" \[unmanaged obstacle\]'
+! stdout 'backup .*/(skills|CLAUDE\.md|AGENTS\.md|settings\.json|config\.json)'
+
+exec kitbag sync --no-pull
+! stderr .
+stdout '^backup .*/notes\.md"?$'
+! stdout 'backup .*/(skills|CLAUDE\.md|AGENTS\.md|settings\.json|config\.json)'
+
+# Exactly one backup, of the hand-written file, and no staging leftovers.
+exec sh -c 'cd "$HOME" && find . \( -name "*.before-kitbag.*" -o -name "*.kitbag-stage.*" \) -print | sed "s/before-kitbag\..*/before-kitbag.TIME/"'
+cmp stdout backups.want
+exec sh -c 'cat "$HOME"/notes.md.before-kitbag.*'
+cmp stdout notes.local
+content $HOME/notes.md 'Notes from the repository.'
+
+# Every skill appears exactly once, linked into the new working copy.
+exec sh -c 'cd "$HOME" && ls -A .claude/skills .agents/skills'
+cmp stdout skills.want
+linktarget $HOME/.claude/skills/review $NEW/skills/review
+linktarget $HOME/.claude/skills/browse $NEW/.agents/skills/browse
+linktarget $HOME/.agents/skills/review $NEW/skills/review
+linktarget $HOME/.agents/skills/browse $NEW/.agents/skills/browse
+linktarget $HOME/.agent-browser/config.json $NEW/agent-browser/config.json
+linktarget $HOME/.local/bin/agent-config-sync $HOME/checkout/bin/agent-config-sync
+
+# Parity with the legacy output apart from the clone path and the markers.
+cmp $HOME/.claude/CLAUDE.md $WORK/claude.want
+cmp $HOME/.codex/AGENTS.md $WORK/agents.want
+cmp $HOME/.claude/settings.json $WORK/settings.want
+
+# The migration is complete: a repeat sync is silent.
+exec kitbag plan
+stdout '^No changes\.$'
+exec kitbag sync --no-pull
+nooutput
+
+-- notes.local --
+Notes written by hand.
+-- backups.want --
+./notes.md.before-kitbag.TIME
+-- skills.want --
+.agents/skills:
+browse
+review
+
+.claude/skills:
+browse
+review
+-- seed/kitbag.toml --
+schema = 1
+
+[instructions]
+source = "global/AGENTS.md"
+hosts = "hosts/{host}.md"
+
+[skills]
+dirs = ["skills", ".agents/skills"]
+
+[[files]]
+src = "agent-browser/config.json"
+dest = "~/.agent-browser/config.json"
+
+[[files]]
+src = "notes.md"
+dest = "~/notes.md"
+
+[git]
+include = ["git/agent.gitconfig"]
+
+[targets.claude]
+agent = "claude"
+settings = "claude/settings.json"
+
+[targets.codex]
+agent = "codex"
+-- seed/global/AGENTS.md --
+# Global rules
+
+Rules every agent follows.
+-- seed/hosts/fixture.md --
+# Host fixture
+
+Additions for this machine.
+-- seed/skills/review/SKILL.md --
+---
+name: review
+description: Review a change.
+---
+Review carefully.
+-- seed/.agents/skills/browse/SKILL.md --
+---
+name: browse
+description: Browse a page.
+---
+Browse carefully.
+-- seed/claude/settings.json --
+{
+  "permissions": {"allow": ["Bash(git status)"]},
+  "hooks": {
+    "Stop": [{"hooks": [{"type": "command", "command": "@REPO@/bin/notify"}]}]
+  }
+}
+-- seed/git/agent.gitconfig --
+[rerere]
+	enabled = true
+-- seed/agent-browser/config.json --
+{"headless": true}
+-- seed/bin/agent-config-sync --
+#!/bin/sh
+# Stand-in: scripts/legacy-home.py runs the real script from this path.
+exit 0
+-- seed/notes.md --
+Notes from the repository.
+-- legacyhome/.claude/CLAUDE.md --
+<!-- Managed by agent-config-sync (@HOME@/checkout). Edit the repository, not this file. -->
+
+@@HOME@/checkout/global/AGENTS.md
+@@HOME@/checkout/hosts/fixture.md
+-- legacyhome/.claude/settings.json --
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "@HOME@/checkout/bin/notify # agent-config-managed"
+          }
+        ]
+      }
+    ]
+  }
+}
+-- legacyhome/.codex/AGENTS.md --
+<!-- Managed by agent-config-sync (@HOME@/checkout). Edit the repository, not this file. -->
+
+# Global rules
+
+Rules every agent follows.
+
+# Host fixture
+
+Additions for this machine.
+-- legacyhome.links --
+.agent-browser/config.json -> @HOME@/checkout/agent-browser/config.json
+.agents/skills/browse -> @HOME@/checkout/.agents/skills/browse
+.agents/skills/review -> @HOME@/checkout/skills/review
+.claude/skills/browse -> @HOME@/checkout/.agents/skills/browse
+.claude/skills/review -> @HOME@/checkout/skills/review
+.local/bin/agent-config-sync -> @HOME@/checkout/bin/agent-config-sync
+-- legacyhome.gitconfig --
+[include]
+	path = @HOME@/checkout/git/agent.gitconfig

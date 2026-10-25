@@ -12,8 +12,11 @@ import (
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 )
 
+// version is the release version, set at build time with
+// -ldflags "-X main.version=<semver>"; development builds report "dev".
+var version = "dev"
+
 const (
-	version           = "dev"
 	usage             = "usage: kitbag [flags] <config|daemon|init|sync|plan|status|doctor|adopt|unmanage|revert|self-update|version>"
 	exitFailure       = int(apply.Warnings)
 	exitUsage         = int(apply.Usage)

@@ -10,11 +10,13 @@ linktarget $HOME/.claude/skills/review $HOME/checkout/skills/review
 grep 'Managed by agent-config-sync' $HOME/.claude/CLAUDE.md
 grep '# agent-config-managed' $HOME/.claude/settings.json
 
-# Without adoption, KitBag would back up and rewrite the legacy outputs and
-# replace every legacy link, although each already points at its source.
+# Without adoption, KitBag would rewrite the legacy outputs with its marker and
+# replace every legacy link in place, although each already points at its
+# source. Legacy output is reproducible, so none of it would be backed up.
 exec kitbag plan
-stdout '^~ backup .*/\.claude/CLAUDE\.md'
-stdout '^\+ materialize .*/\.agents/skills/review'
+stdout '^\+ write .*/\.claude/CLAUDE\.md" \[update needed\]$'
+stdout '^\+ materialize .*/\.agents/skills/review" \[update needed\]'
+! stdout backup
 
 # Adoption without explicit roots explains the open configuration question.
 execstatus 2 kitbag --config=$WORK/strict.toml adopt

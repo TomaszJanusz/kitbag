@@ -49,7 +49,10 @@ With migration roots configured, links lexically inside those whole-component
 roots (including relative links), and any dangling link, are replaceable, matching
 the legacy `replaceable` rule. Targets are never modified or followed for ownership;
 Stat is used only to identify dangling links. Links into the active clone can be
-included too. Without migration roots the strict KIT-15 foreign-link rule remains.
+included too. Files holding exactly agent-config-sync's rendering of the desired
+output, for the active clone or a clone at a legacy root, are replaceable too
+([plan.md](plan.md#legacy-equivalence)). Both are replaced in place, without a
+backup. Without migration roots the strict KIT-15 foreign-link rule remains.
 Core never guesses clone locations or reads HOME. The CLI supplies only explicitly
 configured `migration.legacy_roots` (default: none).
 
@@ -73,11 +76,16 @@ backup, even after state/history loss. Matching is case-insensitive. Backups are
 renamed, never overwritten. Recovery storage may not overlap managed targets. Apply rejects destinations
 overlapping the state directory or its ancestors, protecting state and its lock.
 
-Owned replacements/removals also retain the prior entry in a uniquely named
-backup for the state journal. Unmanage and revert plans instead *discard*
-unchanged owned output: it moves to a reserved `.kitbag-stage.<step ID>` sibling
-that is deleted once the step completes, so no backup sibling blocks a later
-one-time backup. A forced revert moves a changed destination to a backup. No backup is automatically pruned when history
+Owned file/tree replacements and removals also retain the prior entry in a
+uniquely named backup for the state journal. Unmanage and revert plans instead
+*discard* unchanged owned output: it moves to a reserved `.kitbag-stage.<step ID>`
+sibling that is deleted once the step completes, so no backup sibling blocks a
+later one-time backup. Output replacing a link discards the link the same way,
+owned or legacy: the journal keeps its exact text, which is all revert needs, and
+a backup sibling of a skill link would be one more skill that agents load. Output
+replacing agent-config-sync's rendering (`Operation.Replaces`) discards it too,
+journaled as previously owned output that the repository reproduces; revert of
+that step therefore reports it as discarded instead of restoring the old marker. A forced revert moves a changed destination to a backup. No backup is automatically pruned when history
 rotates. Existing permissions are retained by rename. New directories and files
 use 0700/0600; copies also retain source executable bits. Generated content is
 always a regular private file. Directory copies are staged as complete trees;

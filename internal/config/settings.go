@@ -84,7 +84,7 @@ func validateValue(key settingskey.Key, value any) error {
 			return invalid(key.Path + " (allowed: true, false)")
 		}
 	case "array":
-		return validateRoots(value)
+		return validateRoots(key, value)
 	case "string":
 		if _, ok := value.(string); !ok {
 			return invalid(key.Path + " (allowed: string)")
@@ -96,16 +96,16 @@ func validateValue(key settingskey.Key, value any) error {
 	return key.Validate(Text(value))
 }
 
-func validateRoots(value any) error {
+func validateRoots(key settingskey.Key, value any) error {
 	roots, ok := value.([]any)
 	if !ok {
-		return invalid("migration.legacy_roots (allowed: TOML array of unique home paths)")
+		return invalid(key.Path + " (allowed: " + key.Constraint() + ")")
 	}
 	seen := map[string]bool{}
 	for _, root := range roots {
 		text, valid := root.(string)
 		if !valid || !homePath(text) || seen[text] {
-			return invalid("migration.legacy_roots (allowed: unique home paths, each at most 4096 bytes)")
+			return invalid(key.Path + " (allowed: " + key.Constraint() + ")")
 		}
 		seen[text] = true
 	}

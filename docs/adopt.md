@@ -8,9 +8,12 @@ reach the host only through `platform.FS`.
 
 ## Migration walkthrough
 
-1. **Point KitBag at the existing clone.** Adoption leaves bytes alone, so
-   KitBag must render exactly what the script wrote: use the clone the script
-   runs from as `repo.path`, and a `kitbag.toml` that declares the same layout
+1. **Choose the working copy.** With the clone the script runs from as
+   `repo.path`, KitBag renders exactly what the script wrote and adoption
+   leaves every byte alone. With a separate working copy (the one `kitbag init`
+   creates), adoption cannot keep links or renderings that name the old clone;
+   the next sync replaces them in place instead (see below). Either way use a
+   `kitbag.toml` that declares the same layout
    ([example](../schemas/examples/kitbag/valid/agent-config.toml)).
 2. **Declare the legacy roots.** Adoption refuses to run without explicit
    `migration.legacy_roots`; the real paths are a maintainer decision, never
@@ -58,8 +61,19 @@ file modification times). Candidates come from `plan.Candidates`; adoption then
 builds a plan with them owned and drops every candidate that still has an
 operation, repeating to a fixpoint. Everything else stays unowned and appears
 under `remaining` with the operation sync would perform: links into a legacy
-root that point elsewhere are relinked, hand-written files are backed up once,
-real directories are conflicts.
+root that point elsewhere are relinked, the script's renderings for an old clone
+are rewritten with KitBag's marker, hand-written files are backed up once, real
+directories are conflicts.
+
+**Separate working copy.** When `repo.path` differs from the old clone, the
+script's links point into a legacy root and its instruction and settings files
+name the old clone. Sync re-points those links in place and rewrites a file
+holding exactly the script's rendering for a clone at a legacy root (apart from
+the clone path and markers, it equals KitBag's output). Neither keeps a backup:
+a link is journaled by its text, and the rendering is reproducible. A file with
+any other difference is backed up once, as before, and a live link outside the
+legacy roots stays a conflict. After this one sync, a repeat sync is silent
+(`adopt_relocated.txtar`).
 
 **Marker policy.** The legacy markers are accepted, not migrated. A declared
 generated target carries `Target.Legacy` (the script's rendering) and a
@@ -69,7 +83,8 @@ destination holding exactly that rendering as in sync (see
 next sync writes KitBag's marker through the normal, visible update path,
 keeping the adopted bytes in a backup. Rendering differs when the repository
 path differs from the one in the script's marker (it used `pwd -P`); such a
-file is reported as remaining instead.
+file is reported as remaining and is rewritten in place when that path is a
+legacy root.
 
 Adoption is journaled as one plan whose changes carry `adopted: true` and no
 previous entry. Reverting it forgets the ownership again, still without
@@ -142,6 +157,11 @@ an occupied move-aside directory). Dry runs exit 0.
   modification times, hashes, link texts) and the Git configuration are equal
   before and after, `plan` reports no changes, `sync` is silent and changes
   nothing; a later source change rewrites the marker visibly.
+- `adopt_relocated.txtar`: the same recorded HOME moves to the working copy
+  `kitbag init` creates. Adoption adopts nothing; one sync re-points every link
+  and rewrites CLAUDE.md, AGENTS.md and settings.json with KitBag's markers and
+  paths, otherwise byte-equal to the script's output. The only backup is of a
+  hand-written file; every skill appears once; a repeat sync is silent.
 - `unmanage.txtar`: originals restored, user files untouched, then a fresh
   sync converges and repeats silently; changed output is a conflict.
 - `revert.txtar`: a bad change is reverted (bytes, links, absence), changed
@@ -150,8 +170,8 @@ an occupied move-aside directory). Dry runs exit 0.
   every unmanage/revert row and convergence after every injected filesystem
   interruption.
 
-Regenerate the recorded HOME (read-only use of the script, throwaway HOME,
-isolated Git configuration, no network):
+Regenerate the recorded HOME of both scripts (read-only use of the script,
+throwaway HOME, isolated Git configuration, no network):
 
 ```sh
 python3 scripts/legacy-home.py /path/to/agent-config/bin/agent-config-sync

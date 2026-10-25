@@ -69,6 +69,7 @@ Exit codes remain 0 success, 1 warning/operational failure, 2 usage/configuratio
 3 conflict, 4 tool too old and 5 unsupported OS. Read-only inspection exits 0 when
 it succeeds even when it describes drift. A development build reports `dev` and
 checks minimum versions as `0.0.0-dev`; it cannot bypass a newer-tool requirement.
+Release builds set the version with `go build -ldflags "-X main.version=<semver>"`.
 Windows is refused before any command runs. The [foreground daemon](daemon.md) polls remote changes and serves the local API;
 service installation remains separate work. Init prints the manual sync command.
 
