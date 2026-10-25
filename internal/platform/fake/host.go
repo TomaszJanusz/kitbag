@@ -19,6 +19,7 @@ var errMountNotEmpty = errors.New("mount point is not an empty directory")
 
 // Host is an in-memory platform.Host. Create it with [New].
 type Host struct {
+	listeners  map[string]*localListener
 	volumes    map[string]*node
 	locks      map[*node]bool
 	env        map[string]string
@@ -61,6 +62,7 @@ func WithTerminal(fds ...uintptr) Option {
 // New returns an empty host whose filesystem holds only the root directory.
 func New(opts ...Option) *Host {
 	h := &Host{
+		listeners: map[string]*localListener{},
 		volumes:   map[string]*node{},
 		locks:     map[*node]bool{},
 		env:       map[string]string{},
@@ -125,6 +127,11 @@ func (h *Host) HomeDir() (string, error) {
 // Dirs returns kitbag's XDG directories.
 func (h *Host) Dirs() (platform.Dirs, error) {
 	return xdg.Dirs(h.LookupEnv)
+}
+
+// RuntimeDir returns the private local socket directory.
+func (h *Host) RuntimeDir() (string, error) {
+	return xdg.RuntimeDir(h.LookupEnv)
 }
 
 // AgentHome resolves an agent's home directory.

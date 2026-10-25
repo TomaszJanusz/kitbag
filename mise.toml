@@ -101,3 +101,11 @@ run = "KITBAG_UPDATE_CONFIG=1 go test ./cmd/kitbag -run '^TestConfigDocumentatio
 [tasks."docs:config:check"]
 description = "Check machine settings documentation freshness"
 run = "go test ./cmd/kitbag -run '^TestConfigDocumentation$' -count=1"
+
+[tasks."docs:api"]
+description = "Generate the local API reference and contract tests from the schema"
+run = "KITBAG_UPDATE_API=1 go test ./cmd/kitbag -run '^TestAPIArtifacts$' -count=1"
+
+[tasks."docs:api:check"]
+description = "Check API reference and generated contract-test freshness"
+run = "go test ./cmd/kitbag -run '^TestAPIArtifacts$' -count=1"

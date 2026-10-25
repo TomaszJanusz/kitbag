@@ -26,6 +26,18 @@ var (
 // Lookup reads an environment variable, like os.LookupEnv.
 type Lookup func(key string) (string, bool)
 
+// RuntimeDir resolves the private local socket directory without creating it.
+func RuntimeDir(lookup Lookup) (string, error) {
+	if dir, _ := lookup("XDG_RUNTIME_DIR"); filepath.IsAbs(dir) {
+		return filepath.Join(dir, app), nil
+	}
+	dirs, err := Dirs(lookup)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dirs.State, "run"), nil
+}
+
 // Home returns the cleaned value of HOME, which must be absolute.
 func Home(lookup Lookup) (string, error) {
 	home, _ := lookup("HOME")

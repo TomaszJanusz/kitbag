@@ -25,6 +25,7 @@ type commandLine struct {
 	host           platform.Host
 	stdout, stderr io.Writer
 	selection      vcs.Selection
+	configPath     string
 	flags          globalFlags
 	config         config.Config
 	code           apply.Code
@@ -62,6 +63,7 @@ func (c *commandLine) prepare(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return classified(err)
 	}
+
 	envBackend, _ := c.host.LookupEnv(vcs.EnvVar)
 	c.selection, err = vcs.Select(c.flags.gitBackend, envBackend, cfg.Git.Backend)
 	if err != nil {
@@ -136,11 +138,7 @@ func (c *commandLine) syncCommand() *cobra.Command {
 func (c *commandLine) planCommand() *cobra.Command {
 	var asJSON bool
 	cmd := &cobra.Command{Use: "plan", Short: "Show the local synchronization diff without applying it", Long: "Build a dry-run plan from the existing working tree. No fetch or recovery is performed. The logical target diff is coloured only on a terminal with NO_COLOR unset. JSON excludes file contents.", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
-		service, err := c.service(cmd.Context())
-		if err != nil {
-			return classified(err)
-		}
-		result, err := service.Inspect()
+		result, err := c.inspect(cmd.Context())
 		if err != nil {
 			return classified(err)
 		}
@@ -153,11 +151,7 @@ func (c *commandLine) planCommand() *cobra.Command {
 func (c *commandLine) statusCommand() *cobra.Command {
 	var asJSON bool
 	cmd := &cobra.Command{Use: "status", Short: "Show upstream relation, last sync and local drift", Long: "Report ahead/behind against the cached upstream, the last sync attempt for this clone, drift and warnings. This command never fetches; use sync to refresh remote knowledge.", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
-		service, err := c.service(cmd.Context())
-		if err != nil {
-			return classified(err)
-		}
-		result, err := service.Status(cmd.Context())
+		result, err := c.status(cmd.Context())
 		if err != nil {
 			return classified(err)
 		}
@@ -179,5 +173,6 @@ func (c *commandLine) loadConfig() (config.Config, error) {
 		}
 		filename = absolute
 	}
+	c.configPath = filename
 	return config.Load(c.host, filename)
 }

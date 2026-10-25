@@ -1,8 +1,10 @@
 package platform
 
 import (
+	"context"
 	"errors"
 	"io/fs"
+	"net"
 	"runtime"
 )
 
@@ -24,6 +26,8 @@ var (
 	ErrNotLink = errors.New("not a symbolic link")
 	// ErrLocked reports a lock that another holder already owns.
 	ErrLocked = errors.New("locked by another holder")
+	// ErrNoDaemon means no listener is running; clients may execute locally.
+	ErrNoDaemon = errors.New("local daemon is not running")
 )
 
 // Host is the complete set of host operations. Only cmd/kitbag constructs one;
@@ -79,6 +83,13 @@ type FS interface {
 	// another process, fails with ErrLocked. The lock is released by Unlock or
 	// when the process exits; the file itself is left in place.
 	TryLock(path string) (Unlocker, error)
+	// ListenLocal creates a 0600 socket in an owned, real 0700 directory.
+	// Existing entries are never removed. Accept verifies the peer UID and
+	// silently closes foreign connections. Close removes the owned socket.
+	ListenLocal(path string) (net.Listener, error)
+	// DialLocal verifies directory/socket permissions, ownership and peer UID.
+	// Only a missing socket or connection refusal matches ErrNoDaemon.
+	DialLocal(ctx context.Context, path string) (net.Conn, error)
 }
 
 // Unlocker releases a lock taken with [FS.TryLock]. A second Unlock fails with
@@ -97,6 +108,9 @@ type Env interface {
 	HomeDir() (string, error)
 	// Dirs returns kitbag's own directories. They may not exist yet.
 	Dirs() (Dirs, error)
+	// RuntimeDir returns the socket directory: XDG_RUNTIME_DIR/kitbag, or
+	// State/run when XDG_RUNTIME_DIR is absent or relative. It may not exist.
+	RuntimeDir() (string, error)
 	// AgentHome resolves an agent's home directory. When the environment
 	// variable named override holds a value it must be an absolute path and
 	// is returned cleaned; an empty or unset variable, or an empty override,

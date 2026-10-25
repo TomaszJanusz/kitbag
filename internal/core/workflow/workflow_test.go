@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/fs"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -287,5 +288,25 @@ func assertDriftSync(t *testing.T, f *fixture) {
 	result, err := f.s.Status(context.Background())
 	if err != nil || len(result.Warnings) != 2 {
 		t.Fatalf("no upstream: %+v, %v", result, err)
+	}
+}
+
+func TestSyncProgressPhases(t *testing.T) {
+	t.Parallel()
+	f := setup(t)
+	var phases []string
+	f.s.Progress = func(phase string) { phases = append(phases, phase) }
+	syncOK(t, f, false)
+	want := []string{"pull", "plan", "apply", "includes"}
+	if !slices.Equal(phases, want) {
+		t.Fatalf("progress=%v, want %v", phases, want)
+	}
+	phases = nil
+	f.git.fetch = func() error { return fs.ErrPermission }
+	if _, err := f.s.Sync(t.Context(), false, false); err == nil {
+		t.Fatal("fetch unexpectedly succeeded")
+	}
+	if !slices.Equal(phases, []string{"pull"}) {
+		t.Fatalf("failed sync emitted later phases: %v", phases)
 	}
 }
