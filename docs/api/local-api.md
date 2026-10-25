@@ -33,8 +33,10 @@ JSON/envelopes receive an error with null ID.
 
 Responses and notifications can be interleaved. Match responses by ID and ignore
 unknown optional result/notification fields. The Go client bounds response
-frames to 8 MiB and ordinary calls to 30 seconds; custom streaming clients can
-use the wire contract with their own deadline. The server closes connections
+frames to 8 MiB and ordinary calls to 30 seconds; `Stream` drops the call bound
+for long methods such as `sync.run`, and custom streaming clients can use the
+wire contract with their own deadline. `Subscribe` holds a subscription open
+with a `version.get` keepalive every minute; [view models](../ui.md) use both. The server closes connections
 idle on reads for two minutes, or blocked on writes for two seconds. Reconnect
 and resubscribe after a disconnect; snapshots remain authoritative.
 

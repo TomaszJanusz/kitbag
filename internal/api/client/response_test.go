@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bufio"
 	"errors"
 	"strings"
 	"testing"
@@ -35,7 +36,7 @@ func TestMalformedResponses(t *testing.T) {
 		`{"jsonrpc":"2.0","id":1}`, `{"jsonrpc":"2.0","id":1,"error":{},"result":{}}`,
 	} {
 		var result any
-		if err := readResponse(strings.NewReader(frame+"\n"), &result, nil, "1.0"); err == nil {
+		if err := readResponse(bufio.NewReader(strings.NewReader(frame+"\n")), &result, nil, "1.0"); err == nil {
 			t.Fatalf("accepted %s", frame)
 		}
 	}
@@ -47,7 +48,7 @@ func TestResponseNotificationsAndErrors(t *testing.T) {
 	wire := `{"jsonrpc":"2.0","method":"sync.progress","params":{"kind":"sync.progress"}}` + "\n" +
 		`{"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"unauthorized","data":{"exit_code":2}}}` + "\n"
 	var result any
-	err := readResponse(strings.NewReader(wire), &result, func(api.Notification) { count++ }, "1.0")
+	err := readResponse(bufio.NewReader(strings.NewReader(wire)), &result, func(api.Notification) { count++ }, "1.0")
 	var remote *api.Error
 	if !errors.As(err, &remote) || remote.Code != api.Unauthorized || count != 1 {
 		t.Fatalf("notifications=%d, error=%v", count, err)

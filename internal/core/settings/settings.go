@@ -65,47 +65,23 @@ func (s Service) List() ([]Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	entries := make([]Entry, 0, len(settingskey.Registry()))
-	for _, key := range settingskey.Registry() {
-		value, source, resolveErr := config.Resolve(s.Host, values, key.Path, s.Flags[key.Flag])
-		if resolveErr != nil {
-			return nil, resolveErr
-		}
-		entries = append(entries, Entry{Key: key, Value: value, Source: source})
-	}
-	return entries, nil
+	return entries(s.Host, values, s.Flags)
 }
 
-// Change sets a validated value or removes a key when unset is true. It refuses
-// comment-bearing files rather than silently discarding comments during encoding.
+// Change sets a validated value or removes a key when unset is true, through
+// Changed under the settings lock.
 func (s Service) Change(path, text string, unset bool) error {
-	key, err := settingskey.Find(path)
-	if err != nil {
+	if _, err := settingskey.Find(path); err != nil {
 		return err
 	}
 	return s.locked(func() error {
-		data, values, readErr := s.Read()
+		data, _, readErr := s.Read()
 		if readErr != nil {
 			return readErr
 		}
-		if bytes.ContainsRune(data, '#') {
-			return fmt.Errorf("config contains # content; use config edit to preserve comments: %w", fs.ErrInvalid)
-		}
-		if unset {
-			delete(values, path)
-		} else {
-			value, parseErr := config.ParseValue(key, text)
-			if parseErr != nil {
-				return parseErr
-			}
-			values[path] = value
-		}
-		if len(data) == 0 {
-			values["schema"] = int64(1)
-		}
-		candidate, encodeErr := config.EncodeValues(values)
-		if encodeErr != nil {
-			return encodeErr
+		candidate, err := Changed(data, path, text, unset)
+		if err != nil {
+			return err
 		}
 		return s.Host.WriteAtomic(s.Filename, candidate, filePerm)
 	})
