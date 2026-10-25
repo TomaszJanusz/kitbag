@@ -16,7 +16,7 @@ checks; it does not assert that they passed.
 | Manifest/host | Load the local `kitbag.toml` and resolve the selected host; correct the working-copy path, manifest or host. |
 | Tool version | Compare the running semantic version with `min_tool_version`; upgrade kitbag. Development builds use `0.0.0-dev`. |
 | Git backend | Requested/active backend, version and selection source from `vcs.Open`; install suitable Git or select an available backend. An automatic fallback warns with its reason. |
-| Remote | Read origin refs through the backend's optional `vcs.RemoteProber`; check URL, connectivity and authentication. No fetch, ref update, or commit. Unsupported backends warn. |
+| Remote | Read origin refs through the backend's optional `vcs.RemoteProber`; check URL, connectivity and authentication. No fetch, ref update, or commit. Embedded SSH reports the successful credential source (agent or identity filename only); unsupported backends warn. |
 | SSH agent | `SSH_AUTH_SOCK` must name an existing socket; start an agent/export its socket. Missing is WARN, including for non-SSH remotes where it may be irrelevant. No key listing. |
 | Commit identity | System Git reads effective `user.name` and `user.email`; set missing keys. Values are never returned. |
 | Commit signing | System Git reads `commit.gpgsign` and presence of `user.signingkey`; configure a key or explicitly disable signing. Signing enabled with an implicit default key warns conservatively. Key availability, passphrases, and a successful signature are not verified. |
@@ -30,7 +30,7 @@ checks; it does not assert that they passed.
 
 Legacy checks skip when `migration.legacy_roots` is empty. They only detect;
 no link, instruction, setting, timer, or service is changed. Service health,
-credential-source discovery, and API socket checks belong to later milestones.
+HTTPS credential-source discovery and API socket checks belong to later milestones.
 
 Every network/process check has a two-second context deadline. Agent probes run
 serially with only PATH and `LC_ALL=C`, without HOME, agent settings overrides or
@@ -72,7 +72,11 @@ assignments and email addresses. The current home prefix becomes `~`, as do
 other users' `/home/<user>`, `/Users/<user>` and Windows `C:\Users\<user>`
 prefixes. This is defense in depth for diagnostic text, not a scanner for
 arbitrary unknown secret formats. Do not add raw configuration/helper dumps to
-new checks. Unit and end-to-end tests seed secrets/emails/home paths and assert
+new checks. SSH provenance uses only an identity filename, never its directories,
+key material, key comments or passphrase. Failed SSH probes use fixed diagnostics
+and actionable agent/IdentityFile/known_hosts hints. Embedded doctor always
+disables interaction, even when a caller supplied a prompter; `--report` skips it
+entirely. Unit and end-to-end tests seed secrets/emails/home paths and assert
 that they reach unredacted input and cannot occur in the saved report.
 
 After the minimum-version gate passes, doctor may create kitbag's private state

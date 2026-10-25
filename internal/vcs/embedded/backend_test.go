@@ -10,8 +10,10 @@ import (
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 
+	"github.com/TomaszJanusz/kitbag/internal/platform"
 	"github.com/TomaszJanusz/kitbag/internal/platform/fake"
 	"github.com/TomaszJanusz/kitbag/internal/vcs"
+	"github.com/TomaszJanusz/kitbag/internal/vcs/embedded/sshauth"
 )
 
 type testWorld struct {
@@ -22,7 +24,7 @@ type testWorld struct {
 func setup(t *testing.T) testWorld {
 	t.Helper()
 	home, root := t.TempDir(), t.TempDir()
-	b := New(Options{Env: fake.New(fake.WithEnv(map[string]string{"HOME": home, "PATH": ""})), Identity: vcs.Identity{Name: "Fallback Publisher", Email: "fallback@example.com"}, NoSystemConfig: true})
+	b := New(Options{SSH: sshauth.Options{FS: sshTestFS{}}, Env: fake.New(fake.WithEnv(map[string]string{"HOME": home, "PATH": ""})), Identity: vcs.Identity{Name: "Fallback Publisher", Email: "fallback@example.com"}, NoSystemConfig: true})
 	remote, clone := filepath.Join(root, "remote.git"), filepath.Join(root, "clone")
 	repo, err := git.PlainInit(remote, true)
 	must(t, err)
@@ -192,3 +194,12 @@ func TestUnsupportedNonFastForward(t *testing.T) {
 		t.Fatalf("classification = %v", err)
 	}
 }
+
+// sshTestFS reads only explicitly named test fixtures.
+type sshTestFS struct{ platform.FS }
+
+// ReadFile reads an explicit test fixture.
+func (sshTestFS) ReadFile(path string) ([]byte, error) { return os.ReadFile(path) } //nolint:gosec // G304: test-created fixtures only.
+
+// Stat reads fixture metadata.
+func (sshTestFS) Stat(path string) (os.FileInfo, error) { return os.Stat(path) }

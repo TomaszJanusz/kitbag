@@ -60,6 +60,9 @@ linters:
       # Examples must respect the same architectural rules as other source.
       exclude-godoc-examples: false
       forbid:
+        - pattern: '^ssh\.InsecureIgnoreHostKey$'
+          pkg: '^golang.org/x/crypto/ssh$'
+          msg: SSH host verification must never be bypassed.
         - pattern: '^fmt\.Print.*$'
           pkg: '^fmt$'
           msg: Console output belongs in cmd/.
@@ -85,6 +88,12 @@ linters:
             # KIT-22: Go Git operations and SSH agent authentication, confined below.
             - github.com/go-git/go-git/v5/
             - github.com/go-git/go-git/v5$
+            # KIT-32: ssh_config parsing, signing and known_hosts verification
+            # (skeema adds host key algorithm selection); confined to embedded below.
+            - github.com/kevinburke/ssh_config$
+            - github.com/skeema/knownhosts$
+            - golang.org/x/crypto/ssh$
+            - golang.org/x/crypto/ssh/knownhosts$
             - golang.org/x/crypto/ssh/agent$
             # Schema-gate test dependencies; the schema-check rule confines them.
             - github.com/BurntSushi/toml$
@@ -106,11 +115,15 @@ linters:
             - pkg: github.com/fsnotify/fsnotify
               desc: OS notifications belong in internal/platform/watch.
         embedded-git:
-          files: ["$all", "!**/internal/vcs/embedded/*.go"]
+          files: ["$all", "!**/internal/vcs/embedded/*.go", "!**/internal/vcs/embedded/**/*.go"]
           deny:
             - pkg: github.com/go-git/go-git/v5
               desc: go-git belongs only in internal/vcs/embedded; system uses its shared tree renderer.
-            - pkg: golang.org/x/crypto/ssh/agent
+            - pkg: github.com/kevinburke/ssh_config
+              desc: SSH configuration belongs in the embedded Git backend.
+            - pkg: github.com/skeema/knownhosts
+              desc: SSH host verification belongs in the embedded Git backend.
+            - pkg: golang.org/x/crypto/ssh
               desc: SSH agent authentication belongs in the embedded Git backend.
         cli-cobra:
           # Cobra belongs to the binary; core policy remains renderer-independent.
