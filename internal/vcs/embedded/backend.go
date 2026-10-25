@@ -12,9 +12,11 @@ import (
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport/client"
+	gitssh "github.com/go-git/go-git/v5/plumbing/transport/ssh"
 
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 	"github.com/TomaszJanusz/kitbag/internal/vcs"
+	"github.com/TomaszJanusz/kitbag/internal/vcs/embedded/sshauth"
 )
 
 // go-git has a process-wide transport registry. Install its Go file transport
@@ -24,6 +26,8 @@ var installFileTransport sync.Once //nolint:gochecknoglobals // go-git's global 
 // Options configure the backend without reading the process environment.
 type Options struct {
 	Env platform.Env
+	// SSH supplies the filesystem and optional prompt/keyring services.
+	SSH sshauth.Options
 	// Identity is the fallback when Git configuration has no complete identity.
 	Identity vcs.Identity
 	// NoSystemConfig isolates tests from /etc/gitconfig and /etc/ssh/ssh_config.
@@ -37,7 +41,13 @@ var _ vcs.Backend = (*Backend)(nil)
 
 // New constructs a backend; it never probes for or starts system Git.
 func New(opts Options) *Backend {
-	installFileTransport.Do(func() { client.InstallProtocol("file", newLocalClient()) })
+	installFileTransport.Do(func() {
+		client.InstallProtocol("file", newLocalClient())
+		// Like the file transport, SSH must never consult go-git's process HOME.
+		// Freeze this default once, before any embedded operation starts.
+		gitssh.DefaultSSHConfig = nil
+		client.InstallProtocol("ssh", sshTransport{Transport: gitssh.NewClient(nil)})
+	})
 	return &Backend{opts: opts}
 }
 

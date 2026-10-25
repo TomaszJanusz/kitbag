@@ -153,12 +153,16 @@ those boundaries. An empty local remote keeps its symbolic default branch; for
 an empty network remote go-git cannot discover an unborn default branch, so an
 explicit clone branch is preferred and otherwise `main` is used.
 
-Authentication is deliberately limited to public HTTPS and SSH agent signing
-through the platform's `SSH_AUTH_SOCK`. SSH verifies the real hostname against
-`~/.ssh/known_hosts`; unknown or changed keys fail, without prompting. There is
-no key-file search, HTTPS credential helper, token storage or interactive login
-until credential discovery (M2). SSH aliases, identity files and general SSH
-configuration are not applied; use an actual hostname and agent-loaded keys.
+Embedded SSH discovers the agent, SSH configuration and identity files through
+KitBag's credential resolver. It applies `Host` patterns, `HostName`, `User`,
+`Port`, `IdentityFile`, `IdentityAgent`, `IdentitiesOnly` and
+`UserKnownHostsFile`. Host verification uses OpenSSH known_hosts, including hashed
+entries; unknown keys require explicit consent and changed keys are always
+rejected. CLI and daemon operations remain non-interactive: load encrypted keys
+into an agent and verify/add host keys before running them. Prompt and keyring
+interfaces are injectable; terminal renderers and a real OS keyring are follow-up
+work. See [SSH credentials](ssh.md) for the order, trust policy and test scope.
+HTTPS remains public-only, without credential helpers or token storage.
 
 Embedded commits read identity from system Git configuration (unless disabled
 for tests), XDG Git config, `~/.gitconfig`, then repository config, with later
@@ -182,11 +186,11 @@ authentication error instead.
 | Merge drivers | Named `merge` configuration subsections, before commit, fetch, push and update | `merge=` attributes in `.gitattributes`; no merge ever runs | No merge driver is invoked. |
 | rerere | Enabled `rerere.enabled` | — | No rerere state is recorded or applied. |
 | Signed commits | Enabled `commit.gpgSign`, before staging | — | Embedded commits are unsigned. |
-| SSH ProxyJump / ProxyCommand | Directives in `~/.ssh/config` or `/etc/ssh/ssh_config`, on SSH operations, even in an unrelated `Host` block | — | Conservative: the backend does not evaluate `Host` matching. |
+| SSH ProxyJump / ProxyCommand | Directives in `~/.ssh/config` or `/etc/ssh/ssh_config`, on SSH operations, even in an unrelated `Host` block | — | Conservative unsupported-feature detection checks even unmatched blocks; supported settings do evaluate `Host` matching. |
 | TLS client certificates | `http.sslCert` / `http.sslKey`, including URL subsections | Certificates required only by the server | The server's requirement cannot be inferred before connecting. |
 | Kerberos | `http.emptyAuth` and SSH `GSSAPIAuthentication` | Negotiate/GSSAPI required only by the server | An ordinary authentication failure may be the only signal. |
 | insteadOf rewrites | `url.*.insteadOf` and `pushInsteadOf`, before remote operations | — | URLs are used verbatim. |
-| Git / SSH config includes | `include` / `includeIf` and SSH `Include` | — | Rejected rather than silently ignoring signing, credentials or unsupported settings behind them; included files are not read. |
+| Git / SSH config includes and SSH Match | `include` / `includeIf` and SSH `Include` / `Match` | — | Rejected rather than silently ignoring signing, credentials or unsupported settings behind them; included files are not read. |
 | Hooks and advanced configuration | — | Git hooks, aliases, filters and general Git/SSH configuration | Never executed or applied; only the settings above are diagnosed. |
 
 Go-git's checkout protections remain enabled. Its current worktree validator
@@ -237,10 +241,10 @@ compares both backends' exact preview bytes on the same repository.
 
 ## Remaining work
 
-- Embedded credential discovery and broader SSH/configuration support (M2).
-- Doctor capabilities for the embedded backend: it implements neither
-  `vcs.RemoteProber` nor `vcs.CommitInspector`, so doctor reports those checks
-  as skipped or unsupported (see [Doctor capabilities](#doctor-capabilities)).
+- HTTPS credential discovery, CLI/TUI SSH prompts and real OS keyring storage (M2).
+- Doctor capabilities for the embedded backend: it implements `vcs.RemoteDiagnoser` for remote authentication
+  provenance; it does not implement `vcs.CommitInspector`, so signing inspection
+  is skipped (see [Doctor capabilities](#doctor-capabilities)).
 - Windows: the environment pass-through list needs Windows variables
   (`USERPROFILE`, `APPDATA`, ...) with M6.
 
@@ -260,7 +264,10 @@ environment, adding only that override for global commands.
 refs (`git ls-remote` in the system backend). `vcs.CommitInspector` exposes only
 identity/signing configuration presence, not values; system Git implements it
 by querying four named keys. Doctor bounds both operations with a context and
-reports unsupported capabilities explicitly. Agent version probes reuse
+reports unsupported capabilities explicitly. Embedded `vcs.RemoteDiagnoser` lists
+origin refs with safe credential provenance (SSH agent or identity filename);
+SSH diagnostics use a context-bound connection even during handshake and exec.
+Agent version probes reuse
 `system.Runner` with a separate minimal environment; they never inherit agent
 credentials or home/config variables. See [doctor.md](doctor.md).
 

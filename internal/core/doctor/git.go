@@ -25,9 +25,14 @@ func (s Service) gitChecks(ctx context.Context) []Check {
 	return append(checks, s.commitChecks(ctx, backend)...)
 }
 
+const remoteFix = "check origin URL, connectivity and authentication; retry doctor"
+
 func (s Service) remoteCheck(ctx context.Context, backend vcs.Backend) Check {
 	if s.Offline {
 		return Check{ID: "remote", Status: OK, Message: "skipped: --report performs no network operations"}
+	}
+	if probe, ok := backend.(vcs.RemoteDiagnoser); ok {
+		return s.diagnoseRemote(ctx, probe)
 	}
 	probe, ok := backend.(vcs.RemoteProber)
 	if !ok {
@@ -40,7 +45,26 @@ func (s Service) remoteCheck(ctx context.Context, backend vcs.Backend) Check {
 	if err != nil {
 		err = errors.New("origin is unreachable or the working copy is unavailable")
 	}
-	return result("remote", "remote reachability", "check origin URL, connectivity and authentication; retry doctor", err, Fail)
+	return result("remote", "remote reachability", remoteFix, err, Fail)
+}
+
+// diagnoseRemote reports credential provenance; errors may hold unsafe text and
+// are never copied into the check.
+func (s Service) diagnoseRemote(ctx context.Context, probe vcs.RemoteDiagnoser) Check {
+	bounded, cancel := context.WithTimeout(ctx, Timeout)
+	defer cancel()
+	diagnosis, err := probe.DiagnoseRemote(bounded, s.Repository)
+	if err != nil {
+		if diagnosis.Fix == "" {
+			diagnosis.Fix = remoteFix
+		}
+		return result("remote", "origin is unreachable or SSH authentication/host verification failed", diagnosis.Fix, errors.New("remote probe failed"), Fail)
+	}
+	home, err := s.Host.HomeDir()
+	if err != nil {
+		home = ""
+	}
+	return Check{ID: "remote", Status: OK, Message: "remote reachability; credentials: " + RedactText(diagnosis.Source, home)}
 }
 
 func (s Service) commitChecks(ctx context.Context, backend vcs.Backend) []Check {

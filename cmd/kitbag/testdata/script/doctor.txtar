@@ -35,6 +35,18 @@ execstatus 1 kitbag doctor
 stdout 'remote: .*fix: check origin URL, connectivity and authentication'
 exec git -C $HOME/checkout remote set-url origin $WORK/config.git
 
+# Embedded diagnostics report safe provenance and actionable unsupported hints.
+exec kitbag --git-backend=embedded doctor
+stdout 'remote: remote reachability; credentials: none required'
+mkdir $HOME/.ssh
+cp unsupported-ssh $HOME/.ssh/config
+exec git -C $HOME/checkout remote set-url origin ssh://fixture.invalid/repo
+execstatus 1 kitbag --git-backend=embedded doctor
+stdout 'remote: .*fix: install git or resolve in the working copy'
+! stdout 'fixture.invalid'
+exec git -C $HOME/checkout remote set-url origin $WORK/config.git
+rm $HOME/.ssh/config
+
 # Identity and signing are independent named checks and never print values.
 exec git -C $HOME/checkout config user.name ''
 exec git -C $HOME/checkout config commit.gpgsign true
@@ -150,3 +162,7 @@ this is not valid TOML
 # agent-config-managed
 -- plain --
 plain
+
+-- unsupported-ssh --
+Host *
+ ProxyJump fixture.invalid

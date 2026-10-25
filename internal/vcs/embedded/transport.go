@@ -1,21 +1,14 @@
 package embedded
 
 import (
-	"bufio"
 	"context"
-	"errors"
-	"io/fs"
-	"net"
-	"os"
-	"path/filepath"
 	"strings"
 
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	gitssh "github.com/go-git/go-git/v5/plumbing/transport/ssh"
-	"golang.org/x/crypto/ssh/agent"
 
-	"github.com/TomaszJanusz/kitbag/internal/vcs"
+	"github.com/TomaszJanusz/kitbag/internal/vcs/embedded/sshauth"
 )
 
 func (b *Backend) auth(ctx context.Context, r *git.Repository, url string) (transport.AuthMethod, func() error, error) {
@@ -31,6 +24,11 @@ func (b *Backend) auth(ctx context.Context, r *git.Repository, url string) (tran
 	if err != nil {
 		return nil, noop, err
 	}
+	return b.protocolAuth(ctx, ep, url)
+}
+
+func (b *Backend) protocolAuth(ctx context.Context, ep *transport.Endpoint, url string) (transport.AuthMethod, func() error, error) {
+	noop := func() error { return nil }
 	switch ep.Protocol {
 	case "file":
 		return nil, noop, nil
@@ -40,6 +38,9 @@ func (b *Backend) auth(ctx context.Context, r *git.Repository, url string) (tran
 		}
 		return nil, noop, nil
 	case "ssh":
+		if !strings.Contains(url, "://") && ep.Port == gitssh.DefaultPort {
+			ep.Port = 0
+		}
 		return b.sshAuth(ctx, ep)
 	default:
 		return nil, noop, unsupported("transport " + ep.Protocol)
@@ -48,66 +49,44 @@ func (b *Backend) auth(ctx context.Context, r *git.Repository, url string) (tran
 
 func (b *Backend) sshAuth(ctx context.Context, ep *transport.Endpoint) (transport.AuthMethod, func() error, error) {
 	noop := func() error { return nil }
-	if b.opts.Env == nil {
-		return nil, noop, vcs.ErrInvalidArgument
-	}
-	home, err := b.opts.Env.HomeDir()
+
+	target, err := sshauth.Resolve(b.opts.Env, b.opts.SSH.FS, ep.Host, ep.User, ep.Port, !b.opts.NoSystemConfig)
 	if err != nil {
 		return nil, noop, err
 	}
-	paths := []string{filepath.Join(home, ".ssh", "config")}
-	if !b.opts.NoSystemConfig {
-		paths = append(paths, "/etc/ssh/ssh_config")
-	}
-	for _, path := range paths {
-		if err = checkSSHConfig(path); err != nil {
-			return nil, noop, err
-		}
-	}
-	callback, err := gitssh.NewKnownHostsCallback(filepath.Join(home, ".ssh", "known_hosts"))
+	auth, err := sshauth.New(ctx, target, b.opts.SSH)
 	if err != nil {
 		return nil, noop, err
 	}
-	socket, _ := b.opts.Env.LookupEnv("SSH_AUTH_SOCK")
-	if socket == "" {
-		return nil, noop, unsupported("SSH requires SSH_AUTH_SOCK (agent authentication only)")
-	}
-	conn, err := (&net.Dialer{}).DialContext(ctx, "unix", socket)
-	if err != nil {
-		return nil, noop, err
-	}
-	user := ep.User
-	if user == "" {
-		user = "git"
-	}
-	auth := &gitssh.PublicKeysCallback{User: user, Callback: agent.NewClient(conn).Signers, HostKeyCallbackHelper: gitssh.HostKeyCallbackHelper{HostKeyCallback: callback}}
-	return auth, conn.Close, nil
+	return auth, auth.Close, nil
 }
 
-func checkSSHConfig(path string) error {
-	data, err := os.ReadFile(path) //nolint:gosec // G304: explicit system and HOME SSH config paths, never a remote-supplied filename.
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil
+type sshTransport struct{ transport.Transport }
+
+func resolvedEndpoint(ep *transport.Endpoint, auth transport.AuthMethod) (*transport.Endpoint, error) {
+	credentials, ok := auth.(*sshauth.Auth)
+	if !ok {
+		return nil, transport.ErrInvalidAuthMethod
 	}
+	target := *ep
+	target.Host, target.User, target.Port = credentials.Target.Host, credentials.Target.User, credentials.Target.Port
+	return &target, nil
+}
+
+// NewUploadPackSession applies the already resolved SSH endpoint.
+func (t sshTransport) NewUploadPackSession(ep *transport.Endpoint, auth transport.AuthMethod) (transport.UploadPackSession, error) {
+	target, err := resolvedEndpoint(ep, auth)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	scanner := bufio.NewScanner(strings.NewReader(string(data)))
-	for scanner.Scan() {
-		fields := strings.Fields(strings.ReplaceAll(scanner.Text(), "=", " "))
-		if len(fields) == 0 {
-			continue
-		}
-		switch strings.ToLower(fields[0]) {
-		case "proxyjump":
-			return unsupported("SSH ProxyJump")
-		case "proxycommand":
-			return unsupported("SSH ProxyCommand")
-		case "gssapiauthentication":
-			return unsupported("Kerberos authentication")
-		case "include":
-			return unsupported("SSH config includes")
-		}
+	return t.Transport.NewUploadPackSession(target, auth)
+}
+
+// NewReceivePackSession applies the already resolved SSH endpoint.
+func (t sshTransport) NewReceivePackSession(ep *transport.Endpoint, auth transport.AuthMethod) (transport.ReceivePackSession, error) {
+	target, err := resolvedEndpoint(ep, auth)
+	if err != nil {
+		return nil, err
 	}
-	return scanner.Err()
+	return t.Transport.NewReceivePackSession(target, auth)
 }
