@@ -76,7 +76,7 @@ func Scaffold(ctx context.Context, host platform.Host, backend vcs.Backend, dir 
 	}
 	files := []templateFile{
 		{"kitbag.toml", data},
-		{"README.md", []byte("# Agent configuration\n\nEdit AGENTS.md for shared instructions. Targets and instances live in kitbag.toml.\n\nCommit and push this repository, then run `kitbag init <git-url>` on each machine.\nReview `kitbag plan` before `kitbag sync`. Service installation arrives in M2.\n")},
+		{"README.md", []byte("# Agent configuration\n\nEdit AGENTS.md for shared instructions. Targets and instances live in kitbag.toml.\n\nCommit and push this repository, then run `kitbag init <git-url>` on each machine.\nReview `kitbag plan` before `kitbag sync`. Optionally run `kitbag service install` for background sync.\n")},
 		{"AGENTS.md", []byte("# Shared agent instructions\n\nDescribe project conventions and safe working practices here.\n")},
 	}
 	complete, err := scaffoldPreflight(host, dir, filesNames(files))
