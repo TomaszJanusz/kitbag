@@ -111,7 +111,7 @@ stamp_is() { [[ "$(cat "$home/.local/bin/kitbag.install-source")" == "$1" ]]; }
 platform_is() { grep -Fqx "# $1" "$home/.local/bin/kitbag"; }
 untouched() { [[ ! -e "$home/.local/bin/kitbag" && ! -e "$home/.local/bin/kitbag.install-source" ]]; }
 no_staging() { [[ -z "$(find "$home/.local/bin" -name '.kitbag.*' 2>/dev/null)" ]]; }
-sh_exact_stamp() { [[ "$(od -An -c "$home/.local/bin/kitbag.install-source" | tr -s ' ')" == " i n s t a l l - s c r i p t \n" ]]; }
+sh_exact_stamp() { printf 'install-script\n' | cmp -s - "$home/.local/bin/kitbag.install-source"; }
 
 run "fresh stable install" ok
 check "installs latest stable" installed 1.2.4

@@ -42,7 +42,8 @@ expect_command() {
 
 case $channel in
 deb)
-  dir=$2
+  # apt-get reads a relative "dir/file.deb" as package/release; use a path.
+  dir=$(cd "$2" && pwd)
   version=$(metadata "$dir" version)
   package=$(echo "$dir"/kitbag_*_"$(dpkg --print-architecture)".deb)
   dpkg-deb --info "$package"
@@ -58,7 +59,7 @@ deb)
   [[ ! -e /usr/lib/kitbag/kitbag.install-source && ! -e /usr/bin/kitbag ]]
   ;;
 rpm)
-  dir=$2
+  dir=$(cd "$2" && pwd)
   version=$(metadata "$dir" version)
   package=$(echo "$dir"/kitbag-*."$(uname -m)".rpm)
   rpm -qpi "$package"
