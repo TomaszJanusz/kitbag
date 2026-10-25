@@ -42,6 +42,7 @@ description = "Run the complete local quality gate (read-only)"
 run = [
   "bash scripts/quality.sh format-check",
   "bash scripts/coverage-test.sh",
+  "bash scripts/quality-test.sh",
   "golangci-lint config verify",
   "golangci-lint run ./...",
   "go vet ./...",

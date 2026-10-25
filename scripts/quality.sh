@@ -76,7 +76,31 @@ staged-lint)
   done
   if ((${#packages[@]})); then
     golangci-lint config verify
-    golangci-lint run "${packages[@]}"
+    # Batch only changed packages for each supported OS. Checking every target
+    # also covers OS-specific files in packages that build on the host OS.
+    # The linter's package cache can reuse findings across GOOS values. Keep
+    # target caches separate so one target cannot hide another target's issues.
+    lint_cache=${GOLANGCI_LINT_CACHE:-$(go env GOCACHE)/kitbag-golangci-lint}
+    for target in linux darwin windows; do
+      target_packages=()
+      for package in "${packages[@]}"; do
+        # -e exposes only this package's loading error; dependency and compiler
+        # errors must still reach the linter rather than being silently skipped.
+        result=$(GOOS="$target" go list -e -f '{{if .Error}}{{.Error.Err}}{{else}}ok{{end}}' "$package")
+        case "$result" in
+        'build constraints exclude all Go files in '* | 'no Go files in '*) continue ;;
+        ok) target_packages+=("$package") ;;
+        *)
+          printf '%s: %s: %s\n' "$target" "$package" "$result" >&2
+          exit 1
+          ;;
+        esac
+      done
+      if ((${#target_packages[@]})); then
+        GOOS="$target" GOLANGCI_LINT_CACHE="$lint_cache/staged-$target" \
+          golangci-lint run "${target_packages[@]}"
+      fi
+    done
   fi
   ;;
 staged-typos)
