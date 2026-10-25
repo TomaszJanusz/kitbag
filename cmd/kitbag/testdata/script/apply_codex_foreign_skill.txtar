@@ -1,0 +1,38 @@
+# A foreign real directory in the shared ~/.agents/skills root is reported as
+# an unmanaged obstacle and left untouched on every run; other skills and the
+# Codex files are still applied.
+env CODEX_HOME=
+gitremote $WORK/config.git config
+exec git clone --quiet $WORK/config.git $WORK/checkout
+agentdirs .agents/skills/alpha
+cp foreign.md $HOME/.agents/skills/alpha/SKILL.md
+execstatus 3 kitbag __e2e_apply -adapter=codex $WORK/checkout
+stderr '/home/\.agents/skills/alpha: .*directory obstacle'
+stdout '^materialize .*/home/\.agents/skills/beta$'
+stdout '^write .*/home/\.codex/AGENTS\.md$'
+! linktarget $HOME/.agents/skills/alpha
+cmp $HOME/.agents/skills/alpha/SKILL.md foreign.md
+linktarget $HOME/.agents/skills/beta $WORK/checkout/skills/beta
+
+# Still warned and untouched on a repeat; nothing else changes.
+execstatus 3 kitbag __e2e_apply -adapter=codex $WORK/checkout
+stderr '/home/\.agents/skills/alpha: .*directory obstacle'
+! stdout .
+cmp $HOME/.agents/skills/alpha/SKILL.md foreign.md
+
+-- config/kitbag.toml --
+schema = 1
+[instructions]
+source = "global/AGENTS.md"
+[skills]
+dirs = ["skills"]
+[targets.codex]
+agent = "codex"
+-- config/global/AGENTS.md --
+Shared rules.
+-- config/skills/alpha/SKILL.md --
+Repository alpha.
+-- config/skills/beta/SKILL.md --
+Repository beta.
+-- foreign.md --
+Foreign alpha installed by another tool.

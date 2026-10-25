@@ -1,0 +1,111 @@
+/home/user/.codex/AGENTS.md
+  kind: generated
+  instance: /home/user/.codex
+  backup: once
+  owner: instructions codex:codex/main
+  content: <!-- Managed by kitbag. Edit the source in the configuration repository, not this file. -->
+  | 
+  | # Shared instructions
+  | 
+  | Rules every coding agent follows on every machine.
+  | 
+  | - Keep changes small and focused.
+  | - Run the project checks before opening a pull request.
+  | 
+  | # Host: example
+  | 
+  | A shared build machine; keep parallelism low.
+/home/user/.agents/skills/alpha
+  kind: materialized
+  source: /repo/skills/alpha
+  owner: skills codex:codex/main
+/home/user/.agents/skills/beta
+  kind: materialized
+  source: /repo/skills/beta
+  owner: skills codex:codex/main
+/home/user/.agents/skills/gamma
+  kind: materialized
+  source: /repo/vendor/gamma
+  owner: skills codex:codex/main
+/home/user/.codex/prompts/build.toml
+  kind: materialized
+  mode: copy
+  instance: /home/user/.codex
+  warning: codex: command build.toml is not a Markdown prompt file; not supported
+  owner: commands codex:codex/main
+/home/user/.codex/prompts/nested
+  kind: materialized
+  mode: copy
+  instance: /home/user/.codex
+  warning: codex: command nested is not a Markdown prompt file; not supported
+  owner: commands codex:codex/main
+/home/user/.codex/prompts/review.md
+  kind: materialized
+  mode: copy
+  source: /repo/commands/review.md
+  instance: /home/user/.codex
+  owner: commands codex:codex/main
+/home/user/.codex/prompts/shared.md
+  kind: materialized
+  mode: copy
+  source: /repo/codex-commands/shared.md
+  instance: /home/user/.codex
+  owner: commands codex:codex/main
+/home/user/.codex/config.toml
+  kind: merged
+  instance: /home/user/.codex
+  warning: codex: settings are not synchronized; remove targets.codex.settings
+  owner: settings codex:codex/main
+/home/user/.codex-plain/AGENTS.md
+  kind: generated
+  instance: /home/user/.codex-plain
+  backup: once
+  owner: instructions codex:codex/plain
+  content: <!-- Managed by kitbag. Edit the source in the configuration repository, not this file. -->
+  | 
+  | # Shared instructions
+  | 
+  | Rules every coding agent follows on every machine.
+  | 
+  | - Keep changes small and focused.
+  | - Run the project checks before opening a pull request.
+  | 
+  | # Host: example
+  | 
+  | A shared build machine; keep parallelism low.
+/home/user/.agents/skills/alpha
+  kind: materialized
+  source: /repo/skills/alpha
+  owner: skills codex:codex/plain
+/home/user/.agents/skills/beta
+  kind: materialized
+  source: /repo/skills/beta
+  owner: skills codex:codex/plain
+/home/user/.agents/skills/gamma
+  kind: materialized
+  source: /repo/vendor/gamma
+  owner: skills codex:codex/plain
+/home/user/.codex-plain/prompts/build.toml
+  kind: materialized
+  mode: copy
+  instance: /home/user/.codex-plain
+  warning: codex: command build.toml is not a Markdown prompt file; not supported
+  owner: commands codex:codex/plain
+/home/user/.codex-plain/prompts/nested
+  kind: materialized
+  mode: copy
+  instance: /home/user/.codex-plain
+  warning: codex: command nested is not a Markdown prompt file; not supported
+  owner: commands codex:codex/plain
+/home/user/.codex-plain/prompts/review.md
+  kind: materialized
+  mode: copy
+  source: /repo/commands/review.md
+  instance: /home/user/.codex-plain
+  owner: commands codex:codex/plain
+/home/user/.codex-plain/prompts/shared.md
+  kind: materialized
+  mode: copy
+  source: /repo/codex-commands/shared.md
+  instance: /home/user/.codex-plain
+  owner: commands codex:codex/plain
