@@ -87,7 +87,7 @@ func (c *commandLine) service(ctx context.Context) (workflow.Service, error) {
 	if err != nil {
 		return workflow.Service{}, err
 	}
-	backend, resolution, err := vcs.Open(ctx, c.selection, gitFactories(c.host, c.config))
+	backend, resolution, err := vcs.Open(ctx, c.selection, gitFactories(c.host, c.config.Git.Identity))
 	if err != nil {
 		return workflow.Service{}, err
 	}

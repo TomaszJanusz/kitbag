@@ -170,19 +170,24 @@ Unsupported features return `*vcs.UnsupportedError`, matching `ErrUnsupported`,
 with **"install git or resolve in the working copy"**. Non-fast-forward errors
 also retain `ErrNotFastForward`.
 
-| Feature | Detection and behavior |
-| --- | --- |
-| Non-fast-forward merge | Divergence is detected from commit ancestry; `FastForward` fails without moving HEAD. `Pull` reports `PullDiverged` and leaves the copy alone. |
-| Rebase | No rebase API exists. Commit/update reject visible `rebase-apply` / `rebase-merge` state. |
-| Merge drivers | Named `merge` configuration subsections are rejected before commit/fetch/push/update. No merge driver is invoked. |
-| rerere | Enabled `rerere.enabled` is rejected. No rerere state is applied. |
-| Signed commits | Enabled `commit.gpgSign` is rejected before staging. Embedded commits are unsigned. |
-| SSH ProxyJump / ProxyCommand | Directives in user/system SSH config are conservatively rejected on SSH operations, even in an unrelated Host block. |
-| TLS client certificates | `http.sslCert` / `sslKey`, including URL subsections, are rejected. Certificate requirements imposed only by a server cannot be inferred before connecting. |
-| Kerberos | `http.emptyAuth` and SSH `GSSAPIAuthentication` are detected. Server authentication requirements and external configuration are documented limitations; ordinary authentication failures may be the only available signal. |
-| insteadOf rewrites | `url.*.insteadOf` and `pushInsteadOf` in the explicit configuration files are rejected before remote operations. |
-| Git / SSH config includes | Rejected rather than silently ignoring signing, credentials or unsupported settings hidden behind includes. Included files are not traversed. |
-| Hooks and advanced configuration | Git hooks, aliases, custom filters and general Git/SSH configuration are not executed. Only the settings described here are supported; unrelated settings are not exhaustively diagnosed. |
+"Detected" means the backend checks for the feature and returns the typed
+error before changing anything; "documented only" means the limitation cannot
+be seen in advance, so the operation may fail with an ordinary transport or
+authentication error instead.
+
+| Feature | Detected | Documented only | Behavior |
+| --- | --- | --- | --- |
+| Non-fast-forward merge | Divergence, from commit ancestry | — | `FastForward` fails without moving HEAD and also matches `ErrNotFastForward`; `Pull` reports `PullDiverged` and leaves the copy alone. |
+| Rebase | `rebase-apply` / `rebase-merge` state, on commit and update | `pull.rebase` / `branch.*.rebase`: the interface never rebases, so they have no effect | No rebase API exists. |
+| Merge drivers | Named `merge` configuration subsections, before commit, fetch, push and update | `merge=` attributes in `.gitattributes`; no merge ever runs | No merge driver is invoked. |
+| rerere | Enabled `rerere.enabled` | — | No rerere state is recorded or applied. |
+| Signed commits | Enabled `commit.gpgSign`, before staging | — | Embedded commits are unsigned. |
+| SSH ProxyJump / ProxyCommand | Directives in `~/.ssh/config` or `/etc/ssh/ssh_config`, on SSH operations, even in an unrelated `Host` block | — | Conservative: the backend does not evaluate `Host` matching. |
+| TLS client certificates | `http.sslCert` / `http.sslKey`, including URL subsections | Certificates required only by the server | The server's requirement cannot be inferred before connecting. |
+| Kerberos | `http.emptyAuth` and SSH `GSSAPIAuthentication` | Negotiate/GSSAPI required only by the server | An ordinary authentication failure may be the only signal. |
+| insteadOf rewrites | `url.*.insteadOf` and `pushInsteadOf`, before remote operations | — | URLs are used verbatim. |
+| Git / SSH config includes | `include` / `includeIf` and SSH `Include` | — | Rejected rather than silently ignoring signing, credentials or unsupported settings behind them; included files are not read. |
+| Hooks and advanced configuration | — | Git hooks, aliases, filters and general Git/SSH configuration | Never executed or applied; only the settings above are diagnosed. |
 
 Go-git's checkout protections remain enabled. Its current worktree validator
 rejects control characters in paths: locally inspecting/staging such names uses
@@ -233,8 +238,9 @@ compares both backends' exact preview bytes on the same repository.
 ## Remaining work
 
 - Embedded credential discovery and broader SSH/configuration support (M2).
-- `doctor` output from `vcs.Resolution` (KIT-24); everyday commands already
-  use Cobra persistent flags and read `git.backend` from machine configuration.
+- Doctor capabilities for the embedded backend: it implements neither
+  `vcs.RemoteProber` nor `vcs.CommitInspector`, so doctor reports those checks
+  as skipped or unsupported (see [Doctor capabilities](#doctor-capabilities)).
 - Windows: the environment pass-through list needs Windows variables
   (`USERPROFILE`, `APPDATA`, ...) with M6.
 

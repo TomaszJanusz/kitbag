@@ -141,16 +141,27 @@ func (b *Backend) Push(ctx context.Context, dir string, opts vcs.PushOptions) (e
 	if errors.Is(err, git.NoErrAlreadyUpToDate) {
 		err = nil
 	}
+	if pushRejected(err) {
+		return fmt.Errorf("%w: %w", vcs.ErrPushRejected, err)
+	}
 	if err != nil {
-		if strings.Contains(err.Error(), "non-fast-forward") || strings.Contains(err.Error(), "failed to update ref") {
-			return fmt.Errorf("%w: %w", vcs.ErrPushRejected, err)
-		}
 		return err
 	}
 	if opts.SetUpstream {
 		return setUpstream(r, branch)
 	}
 	return nil
+}
+
+// pushRejected matches refusals that go-git reports only as text: its own
+// non-fast-forward check, and any per-ref status from the receiving side
+// (non-fast-forward, fetch first, hook declined), like system Git's "!" lines.
+func pushRejected(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.HasPrefix(msg, "non-fast-forward update: ") || strings.HasPrefix(msg, "command error on ")
 }
 
 func setUpstream(r *git.Repository, branch string) error {
