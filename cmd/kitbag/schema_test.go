@@ -2,9 +2,11 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"testing"
 
+	"github.com/BurntSushi/toml"
 	"github.com/rogpeppe/go-internal/testscript"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
@@ -124,5 +126,21 @@ func TestDoctorSchemaRejectsDrift(t *testing.T) {
 		if err = schema.Validate(doc); err == nil {
 			t.Fatalf("accepted invalid doctor report: %s", data)
 		}
+	}
+}
+
+func validateConfigCommand(schema *jsonschema.Schema) func(*testscript.TestScript, bool, []string) {
+	return func(ts *testscript.TestScript, neg bool, args []string) {
+		if neg || len(args) != 1 {
+			ts.Fatalf("usage: configschema file")
+		}
+		var tree map[string]any
+		_, err := toml.Decode(ts.ReadFile(args[0]), &tree)
+		ts.Check(err)
+		data, err := json.Marshal(tree)
+		ts.Check(err)
+		value, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+		ts.Check(err)
+		ts.Check(schema.Validate(value))
 	}
 }

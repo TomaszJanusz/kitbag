@@ -47,13 +47,16 @@ func (c *commandLine) root() *cobra.Command {
 	flags.BoolVar(&c.flags.verbose, "verbose", false, "Show backend selection and working copy diagnostics")
 	flags.BoolVar(&c.flags.quiet, "quiet", false, "Suppress successful sync change output")
 	root.MarkFlagsMutuallyExclusive("verbose", "quiet")
-	root.AddCommand(c.syncCommand(), c.planCommand(), c.statusCommand(), c.doctorCommand(), c.adoptCommand(), c.unmanageCommand(), c.revertCommand(), c.versionCommand())
+	root.AddCommand(c.initCommand(), c.syncCommand(), c.planCommand(), c.statusCommand(), c.doctorCommand(), c.adoptCommand(), c.unmanageCommand(), c.revertCommand(), c.versionCommand())
 	return root
 }
 
 func (c *commandLine) prepare(cmd *cobra.Command, _ []string) error {
 	if err := cmd.ValidateFlagGroups(); err != nil {
 		return err
+	}
+	if cmd.Name() == "init" {
+		return nil // Init must work before an explicit configuration file exists.
 	}
 	filename := c.flags.config
 	if filename == "" {

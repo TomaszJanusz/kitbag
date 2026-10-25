@@ -7,7 +7,8 @@ every generated page byte for byte and rejecting stale extra files. Generated
 pages omit timestamps. The generator is test-only; it does not add a public CLI
 command.
 
-Configure an existing clone in machine-local `config.toml`:
+Start with [`kitbag init <git-url>`](init.md), or configure an existing clone in
+machine-local `config.toml`:
 
 ```toml
 schema = 1
@@ -21,8 +22,8 @@ mode = "link"
 ```
 
 `repo.path` defaults to `vcs.WorkingCopyDir`, the platform data directory plus
-`repos/<URL basename without .git>`. Cloning and changing a clone's branch belong
-to future `init`; these commands use an existing clone and its upstream.
+`repos/<URL basename without .git>`. Init prepares that clone and writes machine
+configuration after displaying a dry plan; sync can also create a missing clone.
 When `repo.branch` is set, sync refuses a different checked-out branch before
 fetching or applying; it never switches branches automatically. The
 configuration parser rejects unknown fields, invalid values and unsupported
@@ -68,8 +69,8 @@ Exit codes remain 0 success, 1 warning/operational failure, 2 usage/configuratio
 3 conflict, 4 tool too old and 5 unsupported OS. Read-only inspection exits 0 when
 it succeeds even when it describes drift. A development build reports `dev` and
 checks minimum versions as `0.0.0-dev`; it cannot bypass a newer-tool requirement.
-Windows is refused before any command runs. No init, service or daemon command
-is introduced.
+Windows is refused before any command runs. Service and daemon installation
+remain planned for M2; init prints the manual sync command.
 
 See [last-sync persistence](state.md#last-sync-attempt-kit-23),
 [explicit migration roots](manifest.md#configtoml-reference), and

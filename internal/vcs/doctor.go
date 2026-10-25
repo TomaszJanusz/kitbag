@@ -9,7 +9,8 @@ type RemoteProber interface {
 }
 
 // CommitInspector reads effective commit configuration without making a commit.
-// Only the system backend implements it; it returns presence, never identity/key values.
+// It returns presence, never identity/key values. Embedded Git reports identity
+// presence only; doctor requires the system backend for signing inspection.
 type CommitInspector interface {
 	InspectCommit(ctx context.Context, dir string) (CommitConfig, error)
 }

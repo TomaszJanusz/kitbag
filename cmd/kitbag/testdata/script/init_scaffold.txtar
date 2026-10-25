@@ -1,0 +1,48 @@
+env KITBAG_CONFIG=$WORK/config.toml
+env CODEX_HOME=
+env CLAUDE_CONFIG_DIR=
+env KITBAG_HOST=test
+exec kitbag init --scaffold $WORK/new --yes --git-backend=embedded --agents=claude,codex --instance=claude.main=~/.claude --instance=codex.main=~/.codex
+stdout 'Created configuration repository:'
+exists $WORK/new/.git
+exists $WORK/new/README.md
+exists $WORK/new/AGENTS.md
+exists $WORK/new/kitbag.toml
+! exists $WORK/config.toml
+exec git -C $WORK/new symbolic-ref --short HEAD
+stdout '^main$'
+cp $WORK/new/kitbag.toml before.toml
+exec kitbag init --scaffold $WORK/new --yes --git-backend=embedded --agents=codex
+stdout 'Already scaffolded:'
+cmp $WORK/new/kitbag.toml before.toml
+
+# The generated manifest is accepted by the real planning pipeline.
+cp machine.toml $WORK/config.toml
+cp $WORK/new/kitbag.toml $HOME/template-manifest
+mkdir $HOME/clone
+cp $WORK/new/kitbag.toml $HOME/clone/kitbag.toml
+cp $WORK/new/AGENTS.md $HOME/clone/AGENTS.md
+agentdirs .claude .codex
+exec kitbag plan --git-backend=embedded
+stdout 'CLAUDE.md'
+stdout 'AGENTS.md'
+! stdout 'skip|unsupported'
+
+# Preexisting files, including dangling links, are never replaced.
+mkdir occupied
+cp mine occupied/README.md
+! exec kitbag init --scaffold $WORK/occupied --yes --git-backend=embedded --agents=claude
+stderr 'already exist'
+cmp occupied/README.md mine
+! exists occupied/kitbag.toml
+! exec kitbag init --scaffold $WORK/bad --yes --agents=unknown
+stderr 'unsupported.*scaffold agent'
+! exists $WORK/bad
+
+-- machine.toml --
+schema=1
+[repo]
+url='https://example.com/template.git'
+path='~/clone'
+-- mine --
+keep me

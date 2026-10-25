@@ -88,6 +88,9 @@ linters:
             - github.com/BurntSushi/toml$
             # KIT-12: positioned TOML parsing is confined to pkg/manifest.
             - github.com/pelletier/go-toml/v2$
+            # KIT-26: terminal forms and model tests, confined to cmd/kitbag.
+            - github.com/charmbracelet/huh$
+            - github.com/charmbracelet/bubbletea$
             # KIT-23: Cobra command tree and test-only Markdown reference generation.
             - github.com/spf13/cobra$
             - github.com/spf13/cobra/doc$
@@ -108,6 +111,14 @@ linters:
           deny:
             - pkg: github.com/spf13/cobra
               desc: Cobra belongs in cmd/kitbag.
+        cli-forms:
+          # ADR 5: huh is a replaceable renderer; policy stays in core.
+          files: ["$all", "!**/cmd/kitbag/*.go"]
+          deny:
+            - pkg: github.com/charmbracelet/huh
+              desc: Terminal forms belong in cmd/kitbag.
+            - pkg: github.com/charmbracelet/bubbletea
+              desc: Bubble Tea messages belong to CLI form model tests.
         cli-docs:
           files: ["$all", "!**/cmd/kitbag/docs_test.go"]
           deny:
