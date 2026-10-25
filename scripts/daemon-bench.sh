@@ -23,7 +23,8 @@ with tempfile.TemporaryDirectory(prefix="kitbag-daemon-bench-", dir="/tmp") as d
     subprocess.run(["go", "build", "-trimpath", "-ldflags=-s -w", "-o", str(executable), "./cmd/kitbag"], check=True)
     environment = {"HOME": str(home), "PATH": os.environ["PATH"],
                    "GIT_CONFIG_GLOBAL": str(home / ".gitconfig"), "GIT_CONFIG_NOSYSTEM": "1",
-                   "XDG_RUNTIME_DIR": str(root / "run"), "GOMAXPROCS": "2"}
+                   "XDG_RUNTIME_DIR": str(root / "run")}
+    # GOMAXPROCS/GOGC stay unset: the daemon applies its own runtime defaults.
     remote, seed = root / "remote.git", root / "seed"
     def git(*args):
         subprocess.run(["git", *map(str, args)], env=environment, check=True, stdout=subprocess.DEVNULL)
@@ -31,9 +32,11 @@ with tempfile.TemporaryDirectory(prefix="kitbag-daemon-bench-", dir="/tmp") as d
     git("clone", "--quiet", remote, seed)
     (seed / "kitbag.toml").write_text('schema=1\n[[files]]\nsrc="source"\ndest="~/output"\n')
     (seed / "source").write_text("idle fixture\n")
-    git("-C", seed, "add", ".")
-    git("-C", seed, "-c", "user.name=Benchmark", "-c", "user.email=bench@example.invalid", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "Seed")
-    git("-C", seed, "push", "--quiet", "origin", "HEAD:main")
+    def push(message):
+        git("-C", seed, "add", ".")
+        git("-C", seed, "-c", "user.name=Benchmark", "-c", "user.email=bench@example.invalid", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", message)
+        git("-C", seed, "push", "--quiet", "origin", "HEAD:main")
+    push("Seed")
     config = home / ".config/kitbag/config.toml"
     config.parent.mkdir(parents=True)
     config.write_text(f'schema=1\n[repo]\nurl="{remote}"\npath="~/repo"\n[git]\nbackend="system"\n[daemon]\nupdate_check=false\n')
@@ -49,23 +52,33 @@ with tempfile.TemporaryDirectory(prefix="kitbag-daemon-bench-", dir="/tmp") as d
             time.sleep(2)
             def usage():
                 stat = Path(f"/proc/{process.pid}/stat").read_text().split()
-                rss = int(next(line.split()[1] for line in Path(f"/proc/{process.pid}/status").read_text().splitlines() if line.startswith("VmRSS:")))
-                return rss, int(stat[13]) + int(stat[14]), sum(int(stat[i]) for i in (13, 14, 15, 16))
-            _, cpu_start, total_start = usage()
+                fields = dict(line.split(":", 1) for line in Path(f"/proc/{process.pid}/status").read_text().splitlines())
+                memory = {key: int(fields[key].split()[0]) for key in ("VmRSS", "RssAnon", "RssFile")}
+                return memory, int(stat[13]) + int(stat[14]), sum(int(stat[i]) for i in (13, 14, 15, 16))
+            first, cpu_start, total_start = usage()
             start = time.monotonic()
             samples = []
+            # One upstream change mid-run proves polling still applies it.
+            push_at, pushed = min(120, minutes * 30), False
             while time.monotonic() - start < minutes * 60:
                 if process.poll() is not None:
                     raise RuntimeError("daemon exited during measurement")
-                rss, cpu, total = usage()
-                samples.append(rss)
+                if not pushed and time.monotonic() - start >= push_at:
+                    (seed / "source").write_text("upstream change\n")
+                    push("Upstream change")
+                    pushed = True
+                memory, cpu, total = usage()
+                samples.append(memory["VmRSS"])
                 time.sleep(min(1, max(0, minutes * 60 - (time.monotonic() - start))))
-            rss, cpu, total = usage()
-            samples.append(rss)
+            memory, cpu, total = usage()
+            samples.append(memory["VmRSS"])
             elapsed = time.monotonic() - start
             ticks = os.sysconf("SC_CLK_TCK")
             print(json.dumps({"elapsed_seconds": round(elapsed, 3), "samples": len(samples),
-                              "peak_rss_kib": max(samples), "mean_rss_kib": round(sum(samples) / len(samples), 1),
+                              "start_rss_kib": first["VmRSS"], "peak_rss_kib": max(samples), "end_rss_kib": memory["VmRSS"],
+                              "mean_rss_kib": round(sum(samples) / len(samples), 1),
+                              "end_rss_anon_kib": memory["RssAnon"], "end_rss_file_kib": memory["RssFile"],
+                              "upstream_applied": (home / "output").read_text() == "upstream change\n",
                               "daemon_cpu_seconds": round((cpu - cpu_start) / ticks, 3),
                               "cpu_including_git_children_seconds": round((total - total_start) / ticks, 3),
                               "poll_interval": "60s", "update_check": False}, indent=2), flush=True)

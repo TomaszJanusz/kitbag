@@ -29,7 +29,7 @@ func run(goos string, host platform.Host, args []string, stdout, stderr io.Write
 	if err := platform.CheckOS(goos); err != nil {
 		return report(stderr, exitUnsupportedOS, err)
 	}
-	cli := &commandLine{host: host, stdout: stdout, stderr: stderr}
+	cli := &commandLine{host: host, stdout: stdout, stderr: stderr, process: true}
 	root := cli.root()
 	root.SetArgs(args)
 	if err := root.Execute(); err != nil {

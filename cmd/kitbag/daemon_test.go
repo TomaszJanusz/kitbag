@@ -15,6 +15,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
+	"runtime/metrics"
 	"slices"
 	"strconv"
 	"strings"
@@ -410,4 +412,133 @@ func failedPollTimes(t *testing.T, data []byte) []time.Time {
 		}
 	}
 	return times
+}
+
+// TestDaemonIdleHeap re-executes itself so the measured heap and runtime
+// settings belong to one daemon only. Live heap must stay small and must not
+// grow across applied remote changes (docs/daemon.md); RSS is measured manually.
+func TestDaemonIdleHeap(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		t.Skip("starts a daemon and applies several remote changes")
+	}
+	if slices.Index(os.Args, "--") < 0 {
+		runHeapChild(t)
+		return
+	}
+	assertExplicitRuntimeSettingsWin(t)
+	const (
+		heapBound   = 8 << 20
+		growthBound = 1 << 20
+	)
+	f := newDaemonFixture(t)
+	writeHeapTree(t, f)
+	defer startTunedDaemon(t, f)()
+	waitDaemonFile(t, f, "first")
+	if procs, percent := runtime.GOMAXPROCS(0), debug.SetGCPercent(daemonGCPercent); procs > daemonProcs || percent != daemonGCPercent {
+		t.Fatalf("daemon runtime not tuned: GOMAXPROCS=%d GOGC=%d", procs, percent)
+	}
+	waitDaemonTrim(t)
+	baseline := liveHeap()
+	for i := range 3 {
+		want := fmt.Sprintf("remote update %d", i)
+		f.write(t, filepath.Join(f.seed, "source"), want)
+		f.push(t, want)
+		waitDaemonFile(t, f, want)
+	}
+	after := liveHeap()
+	t.Logf("live heap: baseline alloc=%d inuse=%d; after alloc=%d inuse=%d", baseline.HeapAlloc, baseline.HeapInuse, after.HeapAlloc, after.HeapInuse)
+	if after.HeapInuse > heapBound || after.HeapAlloc > baseline.HeapAlloc+growthBound {
+		t.Fatalf("daemon heap retained across cycles: baseline=%d after=%d inuse=%d", baseline.HeapAlloc, after.HeapAlloc, after.HeapInuse)
+	}
+}
+
+func runHeapChild(t *testing.T) {
+	t.Helper()
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	output, err := exec.CommandContext(ctx, executable, "-test.run=^TestDaemonIdleHeap$", "-test.v", "--").CombinedOutput() //nolint:gosec // G204: re-exec the test binary with fixed arguments.
+	if err != nil {
+		t.Fatalf("heap child: %v\n%s", err, output)
+	}
+	t.Logf("%s", output)
+}
+
+// startTunedDaemon runs production wiring in this process, including the
+// daemon-only runtime tuning, and returns a function that stops it.
+func startTunedDaemon(t *testing.T, f daemonFixture) func() {
+	t.Helper()
+	cli := &commandLine{host: f.host, stdout: io.Discard, stderr: io.Discard, process: true}
+	root := cli.root()
+	root.SetArgs([]string{"daemon"})
+	ctx, cancel := context.WithCancel(t.Context())
+	root.SetContext(ctx)
+	done := make(chan error, 1)
+	go func() { done <- root.Execute() }()
+	return func() {
+		cancel()
+		if err := <-done; err != nil {
+			t.Error(err)
+		}
+	}
+}
+
+// writeHeapTree adds 1 MiB of managed files, so retaining file data or trees
+// between cycles would exceed the growth bound.
+func writeHeapTree(t *testing.T, f daemonFixture) {
+	t.Helper()
+	const files, size = 32, 32 << 10
+	for i := range files {
+		f.write(t, filepath.Join(f.seed, "tree", fmt.Sprintf("file-%02d", i)), strings.Repeat(strconv.Itoa(i%10), size))
+	}
+	f.write(t, filepath.Join(f.seed, "kitbag.toml"), "schema=1\n[[files]]\nsrc='source'\ndest='~/output'\nmode='copy'\n[[files]]\nsrc='tree'\ndest='~/tree'\nmode='copy'\n")
+	f.push(t, "tree")
+}
+
+func assertExplicitRuntimeSettingsWin(t *testing.T) {
+	t.Helper()
+	const procs, percent = 4, 100
+	runtime.GOMAXPROCS(procs)
+	debug.SetGCPercent(percent)
+	explicit := &commandLine{host: unix.New(unix.WithEnv(func(key string) (string, bool) { return "1", key == "GOMAXPROCS" || key == "GOGC" }))}
+	explicit.tuneDaemonRuntime()
+	if got, gc := runtime.GOMAXPROCS(0), debug.SetGCPercent(percent); got != procs || gc != percent {
+		t.Fatalf("explicit runtime settings overridden: GOMAXPROCS=%d GOGC=%d", got, gc)
+	}
+}
+
+// waitDaemonTrim observes the scheduler's idle trim (debug.FreeOSMemory) as a
+// forced collection; this test forces none before its first heap sample.
+func waitDaemonTrim(t *testing.T) {
+	t.Helper()
+	forced := []metrics.Sample{{Name: "/gc/cycles/forced:gc-cycles"}}
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		if metrics.Read(forced); forced[0].Value.Uint64() > 0 {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("daemon did not trim idle memory after the initial sync")
+}
+
+// liveHeap keeps the smallest of several samples: retained memory shows in
+// every sample, while a poll or scan in flight during one sample does not.
+func liveHeap() runtime.MemStats {
+	var least runtime.MemStats
+	for i := range 10 {
+		runtime.GC()
+		runtime.GC()
+		var stats runtime.MemStats
+		runtime.ReadMemStats(&stats)
+		if i == 0 || stats.HeapAlloc < least.HeapAlloc {
+			least = stats
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return least
 }

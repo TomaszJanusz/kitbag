@@ -106,27 +106,73 @@ checks with `daemon.update_check = false`. Restart after changing daemon schedul
 settings. Workflow/API operations reload repository and materialization settings
 for each call; token rotation also requires restart.
 
+## Memory
+
+The idle budget is **under 20 MB RSS** (`VmRSS`) with the default 60s interval.
+Most of it is the binary itself: on Linux about 13.5 MiB is clean file-backed
+text and read-only data paged in at startup. Package initialization touches
+pages across the whole binary, and the kernel maps neighbouring cached pages
+too. The Go heap holds about 1 MiB live while idle. Each inspection allocates
+transient planner and validation data that is not retained between cycles.
+
+The daemon command therefore tunes only its own process. It caps `GOMAXPROCS`
+at **2**, because the scheduler is serial and two Ps serve it and the API.
+It sets `GOGC=50` to bound heap growth within a cycle. An explicit `GOMAXPROCS`
+or `GOGC` environment variable wins. After timer-driven work (initial sync,
+poll, periodic scan, update check), the scheduler calls `debug.FreeOSMemory`
+and returns free heap pages to the OS. That is at most a few forced
+collections per poll interval of a roughly 1 MiB heap, never one per watch
+hint. Debounced watch scans rely on the next periodic trim.
+
 ## Reproducible idle measurement
 
 On Linux, the following builds the production binary and runs it against a
 throwaway HOME and local bare remote. It disables update checks, uses system Git
 and the default 60s polling interval, waits for initial apply, and samples `/proc`
-once per second. It records peak/mean RSS and process CPU time, plus CPU including
-Git children. Startup/build cost is outside the timed window. The tool sends
-SIGTERM and removes only its own temporary directory on exit.
+once per second. It pushes one upstream change mid-run (at 120s, or half of a
+shorter run) and reports whether it was applied. It records start/peak/end/mean
+RSS, the anonymous/file-backed split at the end, process CPU time, and CPU
+including Git children. Startup/build cost is outside the timed window. The
+tool sends SIGTERM and removes only its own temporary directory on exit.
 
 ```sh
 mise exec -- bash scripts/daemon-bench.sh 2
-# Manual runner02 acceptance measurement (NOT verified in this change):
 mise exec -- bash scripts/daemon-bench.sh 10
 ```
 
-A short runner02 run on 2026-10-25 recorded 120.001 seconds, 121 samples,
-18,464 KiB peak RSS, 17,858.0 KiB mean RSS, 0.03 seconds daemon CPU and 0.07 seconds
-including Git children. Peak RSS was below the 20 MB budget for this fixture;
-the ten-minute acceptance run, production repository sizes, authenticated network
-remotes, and memory after a real GitHub update check are **not verified** by that
-measurement. Run the longer command on an otherwise representative machine.
+The acceptance measurement uses a realistic machine instead. Run it as an
+unprivileged account with a real HOME, outside `mise`, so `GOMAXPROCS` is unset:
+
+1. Build with `go build -ldflags "-X main.version=0.1.0" ./cmd/kitbag`.
+2. Create the configuration repository as that account: a local bare remote of
+   an agent-configuration tree (12 skills, about 40 files). Then run
+   `kitbag init --yes <remote>`, `adopt` and `sync`. Init defaults apply:
+   automatic Git backend, links and the daily release check, which contacts
+   GitHub at startup.
+3. Start `kitbag daemon`. Sample `VmRSS`, `RssAnon` and `RssFile` from
+   `/proc/<pid>/status` every 10s for 600s. Push one upstream change at 120s.
+4. Confirm the change was applied, record user+system CPU from
+   `/proc/<pid>/stat`, then stop the daemon with SIGTERM and check exit 0.
+
+Results on runner02 (Linux, 8 vCPU) on 2026-10-25, 60 samples per run:
+
+| Build | Start RSS | Max RSS | End RSS | CPU in 600s |
+| --- | --- | --- | --- | --- |
+| Before (`634b2fc`) | 21,456 KiB | 22,780 KiB | 22,300 KiB | 0.89s |
+| After | 18,652 KiB | 19,136 KiB | 18,964 KiB | 1.40s |
+
+After the change, about 13.6 MiB of RSS was file-backed and 5.0–5.4 MiB
+anonymous (before: 7.9–9.1 MiB anonymous). The upstream change was applied,
+and SIGTERM exited 0. macOS RSS, production-sized repositories, authenticated
+network remotes and long uptimes beyond ten minutes are **not verified**.
+
+`TestDaemonIdleHeap` is the automated regression guard. It re-executes the test
+binary, runs production daemon wiring in that isolated process against a local
+remote with 1 MiB of managed files, and applies three remote changes. It then
+requires live heap growth (minimum of several samples after two collections) to
+stay under 1 MiB, and `HeapInuse` under 8 MiB. It also checks that the tuning,
+the explicit-environment override and the idle trim are in effect. It asserts
+no RSS or timing; `-short` skips it.
 
 The fast test suite covers local-remote push/application, process exclusion,
 SIGTERM and context shutdown, stale sockets, target drift preservation, scheduler

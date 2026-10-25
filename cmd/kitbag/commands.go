@@ -29,6 +29,9 @@ type commandLine struct {
 	flags          globalFlags
 	config         config.Config
 	code           apply.Code
+	// process is set by run: the command owns the whole Go runtime, so the
+	// daemon may tune it. In-process tests leave it false.
+	process bool
 }
 
 func (c *commandLine) root() *cobra.Command {
