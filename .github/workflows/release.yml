@@ -96,7 +96,9 @@ jobs:
     needs: build
     permissions:
       actions: read
-      contents: read
+      # GitHub validates every upstream job, including upload-assets when skipped.
+      # Its contents: write declaration is required even with upload-assets: false.
+      contents: write
       id-token: write
     # Upstream requires an exact version tag for slsa-verifier (see docs/release.md).
     # Verified upstream commit: f7dd8c54c2067bafc12ca7a55595d5ee9b75204a.

@@ -123,11 +123,35 @@ No schedule is enabled by this implementation.
 ## Hardening, rotation and reproducibility
 
 Top-level permissions are empty. Build/sign gets contents-read and
-id-token-write; the provenance job gets actions-read, contents-read and
-id-token-write; only the final publisher gets contents-write. Checkouts never
+id-token-write; the provenance call gets actions-read, contents-write and
+id-token-write; the final publisher gets contents-write. Checkouts never
 persist credentials. PR snapshots have contents-read only, no signing or
 publication. Jobs have timeouts and release runs serialize without cancellation.
 All ordinary third-party action pins were resolved to full commits via `gh api`.
+
+GitHub [does not allow permission elevation in nested reusable workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/reusing-workflow-configurations#access-and-permissions-for-nested-workflows).
+Startup validation includes jobs that will be skipped. The SLSA generator's
+[`v2.1.0` workflow](https://github.com/slsa-framework/slsa-github-generator/blob/v2.1.0/.github/workflows/generator_generic_slsa3.yml)
+declares these permissions for every job (unspecified permissions are none):
+
+- `detect-env`: id-token-write.
+- `generator`: actions-read, contents-read, id-token-write.
+- `upload-assets`: contents-write, even though `upload-assets: false` skips it.
+- `final`: contents-read, inherited from the upstream workflow default.
+
+It makes no further reusable workflow calls. Its minimum caller grant is
+therefore actions-read, contents-write and id-token-write. The `provenance` call
+must grant that union even though KitBag uploads provenance in its own `publish`
+job. The Release Please `release` and Nightly prerelease `nightly` calls already
+grant the same union: it covers `release.yml`'s build, provenance and publish
+jobs and the nested generator. Neither caller needs issues or pull-requests
+permissions; those remain confined to Release Please's separate `propose` job.
+
+To validate GitHub startup without publishing, dispatch only **Release Please**
+on a reviewed non-main branch. Its `propose` main-ref guard skips that job;
+`release` depends on `propose` and requires its `created` output to be `true`, so
+it is skipped too. The run must complete with skipped jobs rather than
+`startup_failure`. This proves startup validation, not signing or publication.
 
 One explicit exception is the SLSA generic generator at `v2.1.0`, resolved to
 `f7dd8c54c2067bafc12ca7a55595d5ee9b75204a`. Its
