@@ -1,0 +1,151 @@
+# KIT-78: false positives from a real macOS migration off agent-config-sync.
+# The script ran with host "mac" (not the hostname), linked Claude skills
+# through ~/.agents/skills, and its timer was already disabled and booted out.
+[windows] stop 'Windows refuses commands before 1.x'
+env KITBAG_CONFIG=$WORK/machine.toml
+env KITBAG_HOST=
+env CODEX_HOME=
+env CLAUDE_CONFIG_DIR=
+env PATH=$WORK/bin:$PATH
+exec chmod +x bin/systemctl bin/launchctl
+gitremote $WORK/config.git seed
+exec git clone --quiet $WORK/config.git $HOME/checkout
+homefixture legacyhome
+linktarget $HOME/.claude/skills/review $HOME/.agents/skills/review
+linktarget $HOME/.agents/skills/review $HOME/checkout/skills/review
+
+# Without host configured the hostname selects no addition: every command says
+# which host files exist and how to choose one, but never picks one.
+exec kitbag plan
+stderr 'host ".+" is the system hostname \(host is not configured\) and has no host addition hosts/.+\.md, so instructions omit every host addition; the repository has hosts/mac\.md for host\(s\) mac: if this machine is one of them, run kitbag config set host <name>'
+exec kitbag doctor
+stdout 'host: host ".+" is the system hostname .*hosts/mac\.md.*; fix: set this machine''s host explicitly: kitbag config set host <name>'
+exec kitbag adopt --dry-run
+stderr 'the repository has hosts/mac\.md for host\(s\) mac'
+exec kitbag config set host mac
+exec kitbag plan
+! stderr 'system hostname'
+exec kitbag doctor
+stdout 'host: host mac \(host in config.toml\)$'
+
+# The chained skill link reaches its source through the declared root
+# ~/.agents/skills: adoption takes it over without changing anything.
+treesnap $HOME $WORK/before.snap .local/state checkout .unit-state .manager-calls
+exec kitbag adopt
+! stderr .
+stdout '^adopt .*/\.agents/skills/review \[link\]$'
+stdout '^adopt .*/\.claude/skills/review \[link\]$'
+stdout '^adopt .*/\.claude/CLAUDE\.md \[generated\] \(agent-config-sync marker'
+stdout '^adopt .*/\.codex/AGENTS\.md \[generated\] \(agent-config-sync marker'
+! stdout 'next sync'
+treesnap $HOME $WORK/after.snap .local/state checkout .unit-state .manager-calls
+cmp $WORK/before.snap $WORK/after.snap
+linktarget $HOME/.claude/skills/review $HOME/.agents/skills/review
+exec kitbag plan
+stdout '^No changes\.$'
+
+# Doctor reports only what is still legacy: the script's own executable link
+# and no adopted destination; the disabled, booted-out timer is ignored.
+[linux] cp plain $HOME/.config/systemd/user/agent-config-sync.timer
+[darwin] cp plain $HOME/Library/LaunchAgents/com.example.agent-config-sync.plist
+exec kitbag doctor
+stdout 'legacy-links: legacy links: .*/\.local/bin/agent-config-sync; fix:'
+! stdout 'legacy-links: .*(\.claude|\.agents)'
+stdout '^  legacy-markers: legacy instruction markers$'
+stdout '^  legacy-units: legacy timer/service definitions \(1 disabled and not loaded, ignored\)$'
+! grep '(^| )(start|stop|enable|disable|bootstrap|bootout|kickstart)( |$)' $HOME/.manager-calls
+
+# Unmanage treats the adopted chain as KitBag's own unchanged link.
+exec kitbag unmanage --dry-run
+stdout 'discard .*/\.claude/skills/review'
+! stdout 'changed since'
+
+# Without the shared root declared, the chain is a foreign link: never adopted.
+exec kitbag revert
+exec kitbag --config=$WORK/narrow.toml adopt --dry-run
+! stdout '\.claude/skills/review \[link\]'
+stdout 'skip .*/\.claude/skills/review'
+
+-- machine.toml --
+schema = 1
+[repo]
+url = "local-config"
+path = "~/checkout"
+[migration]
+legacy_roots = ["~/checkout", "~/.agents/skills"]
+-- narrow.toml --
+schema = 1
+host = "mac"
+[repo]
+url = "local-config"
+path = "~/checkout"
+[migration]
+legacy_roots = ["~/checkout"]
+-- plain --
+plain
+-- bin/systemctl --
+#!/bin/sh
+# Stand-in for systemctl --user show: the old timer is disabled and stopped.
+echo "$*" >> "$HOME/.manager-calls"
+printf 'LoadState=loaded\nActiveState=inactive\nUnitFileState=disabled\n'
+-- bin/launchctl --
+#!/bin/sh
+# Stand-in for launchctl: the old job is booted out and disabled.
+echo "$*" >> "$HOME/.manager-calls"
+case "$1" in
+print) exit 113 ;;
+print-disabled) printf '"com.example.agent-config-sync" => disabled\n' ;;
+esac
+-- seed/kitbag.toml --
+schema = 1
+
+[instructions]
+source = "global/AGENTS.md"
+hosts = "hosts/{host}.md"
+
+[skills]
+dirs = ["skills"]
+
+[targets.claude]
+agent = "claude"
+
+[targets.codex]
+agent = "codex"
+-- seed/global/AGENTS.md --
+# Global rules
+
+Rules every agent follows.
+-- seed/hosts/mac.md --
+# Host mac
+
+Additions for the Mac.
+-- seed/skills/review/SKILL.md --
+---
+name: review
+description: Review a change.
+---
+Review carefully.
+-- seed/bin/agent-config-sync --
+#!/bin/sh
+exit 0
+-- legacyhome/.claude/CLAUDE.md --
+<!-- Managed by agent-config-sync (@HOME@/checkout). Edit the repository, not this file. -->
+
+@@HOME@/checkout/global/AGENTS.md
+@@HOME@/checkout/hosts/mac.md
+-- legacyhome/.codex/AGENTS.md --
+<!-- Managed by agent-config-sync (@HOME@/checkout). Edit the repository, not this file. -->
+
+# Global rules
+
+Rules every agent follows.
+
+# Host mac
+
+Additions for the Mac.
+-- legacyhome/.config/systemd/user/.keep --
+-- legacyhome/Library/LaunchAgents/.keep --
+-- legacyhome.links --
+.agents/skills/review -> @HOME@/checkout/skills/review
+.claude/skills/review -> @HOME@/.agents/skills/review
+.local/bin/agent-config-sync -> @HOME@/checkout/bin/agent-config-sync

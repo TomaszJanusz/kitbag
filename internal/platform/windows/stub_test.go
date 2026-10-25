@@ -23,6 +23,7 @@ func TestStubsReportOperation(t *testing.T) {
 		"ServiceInspect": func() error { _, err := h.ServiceInspect(context.Background(), false); return err },
 		"ServiceControl": func() error { return h.ServiceControl(context.Background(), "start", false) },
 		"ServiceLinger":  func() error { _, err := h.ServiceLinger(context.Background()); return err },
+		"UnitInspect":    func() error { _, err := h.UnitInspect(context.Background(), "unit"); return err },
 		"Lstat":          func() error { _, err := h.Lstat(`C:\x`); return err },
 		"Stat":           func() error { _, err := h.Stat(`C:\x`); return err },
 		"ReadFile":       func() error { _, err := h.ReadFile(`C:\x`); return err },

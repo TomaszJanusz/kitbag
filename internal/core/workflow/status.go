@@ -27,7 +27,7 @@ func (s Service) Inspect() (Inspection, error) {
 		return result, err
 	}
 	err := s.Store.WithLock(func(session *state.Session) error {
-		m, mode, err := s.intent()
+		m, mode, err := s.intent(&result.Warnings)
 		if err != nil {
 			return err
 		}

@@ -22,6 +22,7 @@ type Host struct {
 	serviceCalls  []string
 	serviceState  map[bool]platform.ServiceStatus
 	serviceLayout *platform.ServiceLayout
+	units         map[string]platform.UnitStatus
 	listeners     map[string]*localListener
 	volumes       map[string]*node
 	locks         map[*node]bool
@@ -71,6 +72,7 @@ func New(opts ...Option) *Host {
 		env:       map[string]string{},
 		hostname:  defaultHostname,
 		terminals: map[uintptr]bool{},
+		units:     map[string]platform.UnitStatus{},
 	}
 	for _, opt := range opts {
 		opt(h)

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/TomaszJanusz/kitbag/internal/platform"
+	"github.com/TomaszJanusz/kitbag/internal/platform/internal/check"
 )
 
 // WithServiceLayout replaces the default systemd layout, for example with a
@@ -62,6 +63,24 @@ func (h *Host) ServiceInspect(ctx context.Context, timer bool) (platform.Service
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	return h.serviceState[timer], ctx.Err()
+}
+
+// SetUnit sets the state UnitInspect reports for another user unit; any other
+// valid name is an unknown unit.
+func (h *Host) SetUnit(name string, status platform.UnitStatus) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.units[name] = status
+}
+
+// UnitInspect reports the state set with [Host.SetUnit].
+func (h *Host) UnitInspect(ctx context.Context, name string) (platform.UnitStatus, error) {
+	if err := check.Unit(name); err != nil {
+		return platform.UnitStatus{}, err
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.units[name], ctx.Err()
 }
 
 // ServiceLinger reports enabled linger without executing loginctl.

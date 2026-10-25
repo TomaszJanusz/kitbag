@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/TomaszJanusz/kitbag/internal/core/apply"
+	"github.com/TomaszJanusz/kitbag/internal/core/state"
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 	"github.com/TomaszJanusz/kitbag/internal/platform/fake"
 	"github.com/TomaszJanusz/kitbag/internal/vcs"
@@ -72,7 +73,7 @@ func TestRegistryOrder(t *testing.T) {
 	s.Config.Migration.LegacyRoots = []string{"~/old"}
 	r := s.Run(t.Context())
 	assertChecks(t, r, []string{
-		"tool-version", "instance-codex/default",
+		"tool-version", "host", "instance-codex/default",
 		"git-backend", "remote", "commit-identity", "commit-signing",
 		"ssh-agent", "agent-claude", "agent-codex",
 		"state-lock", "state-health", "materialization-mode", "copy", "link", "service",
@@ -161,7 +162,7 @@ func manifestInstanceCases() []manifestCase {
 				"[targets.plain]\nagent=\"generic\"\n" +
 				"[targets.plain.instances.main]\ndir=\"~/plain\"\nroots={skills=\"~/plain/skills\"}\n",
 			dirs:  []string{filepath.Join(testHome(), "first")},
-			order: []string{"tool-version", "instance-codex/first", "instance-codex/second", "instance-plain/main"},
+			order: []string{"tool-version", "host", "instance-codex/first", "instance-codex/second", "instance-plain/main"},
 			expects: []expect{
 				{"instance-codex/first", filepath.Join(testHome(), "first"), "", OK},
 				{"instance-codex/second", filepath.Join(testHome(), "second"), "create or correct", Warn},
@@ -170,7 +171,8 @@ func manifestInstanceCases() []manifestCase {
 		{
 			name:     "host flag selects override",
 			manifest: codexManifest + "[hosts.laptop.targets.codex]\nenabled=false\n",
-			flag:     "laptop", order: []string{"tool-version"},
+			flag:     "laptop", order: []string{"tool-version", "host"},
+			expects: []expect{{"host", "host laptop (--host)", "", OK}},
 		},
 	}
 }
@@ -434,15 +436,16 @@ func TestLegacyLeftovers(t *testing.T) {
 		must(t, host.MkdirAll(filepath.Dir(path), probeDirPerm))
 		must(t, host.WriteAtomic(path, nil, probeFilePerm))
 	}
+	host.SetUnit("agent-config-sync.timer", platform.UnitStatus{Enabled: true})
 	r := Report{Checks: s.legacyChecks(t.Context())}
-	const linkFix, markerFix, unitFix = "migrate/adopt them explicitly", "review legacy managed instructions", "disable old agent-config-sync timers/services"
+	const linkFix, markerFix, unitFix = "migrate/adopt them explicitly", "review legacy managed instructions", "disable and unload old agent-config-sync timers/services"
 	assertChecks(t, r, nil, []expect{
 		{"legacy-links", linked, linkFix, Warn},
 		{"legacy-links", shared, linkFix, Warn},
 		{"legacy-markers", agentsMD, markerFix, Warn},
 		{"legacy-markers", claudeMD, markerFix, Warn},
-		{"legacy-units", unit, unitFix, Warn},
-		{"legacy-units", launch, unitFix, Warn},
+		{"legacy-units", unit + " (loaded=false enabled=true)", unitFix, Warn},
+		{"legacy-units", launch + " (activation not queried)", unitFix, Warn},
 	})
 	// Redaction maps the throwaway HOME to ~ in every serialized field.
 	assertChecks(t, r.Redact(testHome()), nil, []expect{
@@ -540,6 +543,129 @@ func TestExitCodeCombinations(t *testing.T) {
 			if got := r.Code(true); got != tc.strict {
 				t.Errorf("strict = %d, want %d", got, tc.strict)
 			}
+		})
+	}
+}
+
+// TestLegacyAdoptedNotReported reproduces a migrated macOS HOME: destinations
+// that adoption took over still point into a legacy root or keep the script's
+// marker, but they are KitBag's now; only what is still legacy is reported.
+func TestLegacyAdoptedNotReported(t *testing.T) {
+	t.Parallel()
+	s, host := legacySubject(t, nil)
+	old := filepath.Join(testHome(), "old")
+	must(t, host.MkdirAll(filepath.Join(codexHome(), "skills"), probeDirPerm))
+	adoptedLink, legacyLink := filepath.Join(codexHome(), "skills", "review"), filepath.Join(codexHome(), "skills", "browse")
+	must(t, host.Link(filepath.Join(old, "skills", "review"), adoptedLink))
+	must(t, host.Link(filepath.Join(old, "skills", "browse"), legacyLink))
+	adoptedMD, legacyMD := filepath.Join(codexHome(), "AGENTS.md"), filepath.Join(codexHome(), "CLAUDE.md")
+	must(t, host.WriteAtomic(adoptedMD, []byte("<!-- Managed by agent-config-sync -->\n"), probeFilePerm))
+	must(t, host.WriteAtomic(legacyMD, []byte("<!-- Managed by agent-config-sync -->\n"), probeFilePerm))
+	hash := "sha256:" + strings.Repeat("0", 64)
+	owner := []state.Owner{{Primitive: "skills", AgentInstance: "codex/default"}}
+	db := state.Database{SchemaVersion: state.CurrentVersion, Targets: []state.Target{
+		{Path: adoptedLink, Kind: state.Link, SourcePath: filepath.Join(old, "skills", "review"), SourceHash: hash, WrittenHash: hash, Owners: owner},
+		{Path: adoptedMD, Kind: state.Generated, WrittenHash: hash, Owners: owner},
+	}}
+	must(t, s.Store.WithLock(func(session *state.Session) error { return session.Save(db) }))
+	r := Report{Checks: s.legacyChecks(t.Context())}
+	assertChecks(t, r, nil, []expect{
+		{"legacy-links", legacyLink, "migrate/adopt", Warn},
+		{"legacy-markers", legacyMD, "review legacy managed instructions", Warn},
+	})
+	for _, check := range r.Checks {
+		if strings.Contains(check.Message, adoptedLink) || strings.Contains(check.Message, adoptedMD) {
+			t.Fatalf("adopted destination reported as legacy: %+v", check)
+		}
+	}
+	// Once everything is adopted, nothing is legacy any more.
+	db.Targets = append(db.Targets,
+		state.Target{Path: legacyLink, Kind: state.Link, SourcePath: filepath.Join(old, "skills", "browse"), SourceHash: hash, WrittenHash: hash, Owners: owner},
+		state.Target{Path: legacyMD, Kind: state.Generated, WrittenHash: hash, Owners: owner})
+	must(t, s.Store.WithLock(func(session *state.Session) error { return session.Save(db) }))
+	assertChecks(t, Report{Checks: s.legacyChecks(t.Context())}, nil, []expect{
+		{"legacy-links", "legacy links", "", OK},
+		{"legacy-markers", "legacy instruction markers", "", OK},
+	})
+}
+
+// TestLegacyUnitsState reports only units the native manager may still run;
+// a disabled, booted-out unit is no longer legacy. The fake manager is systemd.
+func TestLegacyUnitsState(t *testing.T) {
+	t.Parallel()
+	s, host := legacySubject(t, nil)
+	units := filepath.Join(testHome(), ".config", "systemd", "user")
+	agents := filepath.Join(testHome(), "Library", "LaunchAgents")
+	for _, path := range []string{
+		filepath.Join(units, "agent-config-sync.timer"), filepath.Join(units, "agent-config-sync.service"),
+		filepath.Join(units, "agent-config-pull.timer"), filepath.Join(units, "agent-config-push.timer"),
+		filepath.Join(units, "agent-config bad.timer"),
+	} {
+		must(t, host.MkdirAll(filepath.Dir(path), probeDirPerm))
+		must(t, host.WriteAtomic(path, nil, probeFilePerm))
+	}
+	host.SetUnit("agent-config-sync.timer", platform.UnitStatus{})
+	host.SetUnit("agent-config-pull.timer", platform.UnitStatus{Loaded: true})
+	host.SetUnit("agent-config-push.timer", platform.UnitStatus{Loaded: true, Enabled: true})
+	const unitFix = "disable and unload old agent-config-sync timers/services"
+	r := Report{Checks: s.legacyChecks(t.Context())}
+	assertChecks(t, r, nil, []expect{
+		{"legacy-units", "(2 disabled and not loaded, ignored)", unitFix, Warn},
+		{"legacy-units", "agent-config-pull.timer (loaded=true enabled=false)", unitFix, Warn},
+		{"legacy-units", "agent-config-push.timer (loaded=true enabled=true)", unitFix, Warn},
+		{"legacy-units", "agent-config bad.timer (state unknown:", unitFix, Warn},
+	})
+	for _, check := range r.Checks {
+		if strings.Contains(check.Message, "agent-config-sync.timer") || strings.Contains(check.Message, "agent-config-sync.service") {
+			t.Fatalf("disabled unit reported: %s", check.Message)
+		}
+	}
+	// With every unit disabled and not loaded the check passes; a LaunchAgent
+	// cannot be queried on this manager and is still reported by presence.
+	must(t, host.Remove(filepath.Join(units, "agent-config bad.timer")))
+	host.SetUnit("agent-config-pull.timer", platform.UnitStatus{})
+	host.SetUnit("agent-config-push.timer", platform.UnitStatus{})
+	assertChecks(t, Report{Checks: s.legacyChecks(t.Context())}, nil, []expect{
+		{"legacy-units", "legacy timer/service definitions (4 disabled and not loaded, ignored)", "", OK},
+	})
+	plist := filepath.Join(agents, "com.example.agent-config-sync.plist")
+	must(t, host.MkdirAll(agents, probeDirPerm))
+	must(t, host.WriteAtomic(plist, nil, probeFilePerm))
+	assertChecks(t, Report{Checks: s.legacyChecks(t.Context())}, nil, []expect{
+		{"legacy-units", plist + " (activation not queried)", unitFix, Warn},
+	})
+}
+
+// TestHostMismatch reproduces a Mac whose hostname (MBP-TJ) is not the host
+// agent-config-sync used (mac): the warning names the repository's host files
+// and the command, without choosing one.
+func TestHostMismatch(t *testing.T) {
+	t.Parallel()
+	const instructions = "[instructions]\nsource=\"AGENTS.md\"\nhosts=\"hosts/{host}.md\"\n"
+	for _, tc := range []struct {
+		want             expect
+		name, configured string
+		files            []string
+	}{
+		{
+			want:  expect{"host", `host "fake-host" is the system hostname (host is not configured) and has no host addition hosts/fake-host.md, so instructions omit every host addition; the repository has hosts/mac.md, hosts/runner02.md for host(s) mac, runner02: if this machine is one of them, run kitbag config set host <name>`, "kitbag config set host <name>", Warn},
+			files: []string{"hosts/mac.md", "hosts/runner02.md", "hosts/notes.txt"}, name: "other hosts only",
+		},
+		{name: "own addition exists", files: []string{"hosts/mac.md", "hosts/fake-host.md"}, want: expect{"host", "host fake-host (default)", "", OK}},
+		{name: "no addition at all", want: expect{"host", "host fake-host (default)", "", OK}},
+		{name: "explicitly configured", configured: "mac", files: []string{"hosts/runner02.md"}, want: expect{"host", "host mac (host in config.toml)", "", OK}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			s, host := subjectWith(t, nil, codexManifest+instructions)
+			s.Config.Host = tc.configured
+			must(t, host.WriteAtomic(filepath.Join(s.Repository, "AGENTS.md"), []byte("rules\n"), probeFilePerm))
+			for _, file := range tc.files {
+				path := filepath.Join(s.Repository, filepath.FromSlash(file))
+				must(t, host.MkdirAll(filepath.Dir(path), probeDirPerm))
+				must(t, host.WriteAtomic(path, []byte("host\n"), probeFilePerm))
+			}
+			assertChecks(t, Report{Checks: s.manifestChecks(t.Context())}, nil, []expect{tc.want})
 		})
 	}
 }

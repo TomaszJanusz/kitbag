@@ -166,7 +166,10 @@ created without another backup. [Apply](apply.md) defines the format, recovery,
 retention and permission policy.
 
 `Request.Force` authorizes only materialized drift replacement with the declared
-backup policy; it does not change settings reconciliation. `LegacyRoots` allows
+backup policy; it does not change settings reconciliation. An owned link
+also stays in sync when it reaches its recorded source through links directly
+inside legacy roots (`LinkReaches`, see [adopt.md](adopt.md#what-adoption-accepts)).
+`LegacyRoots` allows
 repair of links into known old clone/shared-skill roots and dangling links using
 the legacy replaceable rule, and in-place replacement of the old tool's exact
 renderings; live foreign links remain conflicts. `Target.Preserve` retains a declared path and any existing ownership without

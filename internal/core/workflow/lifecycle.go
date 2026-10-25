@@ -36,7 +36,7 @@ func (s Service) Adopt(moveRealDirs, dryRun bool) (AdoptResult, error) {
 		return result, fmt.Errorf("adopt clock: %w", invalidInput())
 	}
 	err := s.Store.WithLock(func(session *state.Session) error {
-		m, mode, err := s.intent()
+		m, mode, err := s.intent(&result.Warnings)
 		if err != nil {
 			return err
 		}
@@ -68,7 +68,7 @@ func (s Service) Unmanage(dryRun bool) (LifecycleResult, error) {
 		return result, err
 	}
 	err := s.Store.WithLock(func(session *state.Session) error {
-		m, mode, err := s.intent()
+		m, mode, err := s.intent(&result.Warnings)
 		if err != nil {
 			return err
 		}
@@ -80,7 +80,7 @@ func (s Service) Unmanage(dryRun bool) (LifecycleResult, error) {
 		if err != nil {
 			return err
 		}
-		result.Outcome, err = undo.Unmanage(s.Host, session, declarations, undo.Options{Now: s.Now, DryRun: dryRun})
+		result.Outcome, err = undo.Unmanage(s.Host, session, declarations, undo.Options{Now: s.Now, LegacyRoots: req.LegacyRoots, DryRun: dryRun})
 		return err
 	})
 	return result, err
@@ -94,8 +94,11 @@ func (s Service) Revert(to int, force, dryRun bool) (LifecycleResult, error) {
 		return result, err
 	}
 	err := s.Store.WithLock(func(session *state.Session) error {
-		var err error
-		result.Outcome, err = undo.Revert(s.Host, session, to, undo.Options{Now: s.Now, Force: force, DryRun: dryRun})
+		roots, err := s.legacyRoots()
+		if err != nil {
+			return err
+		}
+		result.Outcome, err = undo.Revert(s.Host, session, to, undo.Options{Now: s.Now, LegacyRoots: roots, Force: force, DryRun: dryRun})
 		return err
 	})
 	return result, err

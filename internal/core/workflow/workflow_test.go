@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -316,4 +317,26 @@ func badSyncRecord(exists bool, result int, code apply.Code) bool {
 		return exists && result != int(code)
 	}
 	return !exists || result != int(code)
+}
+
+// TestHostMismatchWarning: a host taken from the hostname that misses its
+// addition while another host has one warns on sync and status (and in every
+// other command); an explicitly configured host does not.
+func TestHostMismatchWarning(t *testing.T) {
+	t.Parallel()
+	f := setup(t)
+	f.write(t, "kitbag.toml", "schema=1\n[instructions]\nsource='AGENTS.md'\nhosts='hosts/{host}.md'\n[[files]]\nsrc='source'\ndest='~/output'")
+	f.write(t, "AGENTS.md", "rules")
+	f.write(t, "hosts/mac.md", "mac")
+	const want = "the repository has hosts/mac.md for host(s) mac: if this machine is one of them, run kitbag config set host <name>"
+	r, err := f.s.Sync(context.Background(), true, false)
+	if err != nil || r.Code() != apply.Warnings || len(r.Warnings) != 1 || !strings.Contains(r.Warnings[0], want) || !strings.Contains(r.Warnings[0], `host "fake-host"`) {
+		t.Fatalf("sync: %+v, %v", r, err)
+	}
+	inspection, err := f.s.Inspect()
+	if err != nil || len(inspection.Warnings) != 1 || !strings.Contains(inspection.Warnings[0], want) {
+		t.Fatalf("inspect: %+v, %v", inspection, err)
+	}
+	f.s.Config.Host = "mac"
+	syncOK(t, f, true)
 }

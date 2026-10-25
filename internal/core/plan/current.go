@@ -59,11 +59,13 @@ func (b *builder) currentLink(path string, previous state.Target) (current, erro
 	if err != nil {
 		return current{}, err
 	}
-	resolved := link
-	if !filepath.IsAbs(link) {
-		resolved = filepath.Join(filepath.Dir(path), link)
+	reaches := false
+	if previous.Kind == state.Link {
+		if reaches, err = LinkReaches(b.fsys, path, link, previous.SourcePath, b.legacyRoots); err != nil {
+			return current{}, err
+		}
 	}
-	if previous.Kind != state.Link || filepath.Clean(resolved) != previous.SourcePath {
+	if !reaches {
 		replaceable, repairErr := b.replaceable(path)
 		if repairErr != nil {
 			return current{}, repairErr
@@ -73,7 +75,8 @@ func (b *builder) currentLink(path string, previous state.Target) (current, erro
 		}
 		return current{exists: true, warning: "destination is a foreign or retargeted symbolic link"}, nil
 	}
-	// Link identity establishes ownership, even after source changes/deletion.
+	// Link identity establishes ownership, even after source changes/deletion;
+	// an adopted chain through legacy roots counts as the same link.
 	// The effective destination baseline is W, making plans mode-independent.
 	return current{exists: true, hash: previous.WrittenHash, link: true}, nil
 }

@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -21,10 +20,13 @@ import (
 
 // Options configures execution. Force only applies to revert: it moves a
 // changed destination aside to a backup instead of skipping it.
+// LegacyRoots lets an adopted link that reaches its source through declared
+// legacy roots count as unchanged (plan.LinkReaches).
 type Options struct {
-	Now    func() time.Time
-	Force  bool
-	DryRun bool
+	Now         func() time.Time
+	LegacyRoots []string
+	Force       bool
+	DryRun      bool
 }
 
 // Outcome is the plan that was (or would be) executed and the apply result.
@@ -105,19 +107,16 @@ func prepare(fsys platform.FS, session *state.Session, options Options) (state.D
 	return db, err
 }
 
-// owned reports whether entry is exactly what state recorded for t.
-func owned(entry state.Entry, t state.Target) bool {
+// owned reports whether entry is exactly what state recorded for t: a link
+// reaching its source (directly or through legacy roots) or the written bytes.
+func owned(fsys platform.FS, entry state.Entry, t state.Target, roots []string) (bool, error) {
 	if t.Kind == state.Link {
-		return entry.Kind == "link" && resolve(t.Path, entry.Link) == t.SourcePath
+		if entry.Kind != "link" {
+			return false, nil
+		}
+		return plan.LinkReaches(fsys, t.Path, entry.Link, t.SourcePath, roots)
 	}
-	return (entry.Kind == "file" || entry.Kind == "directory") && entry.Hash == t.WrittenHash
-}
-
-func resolve(path, link string) string {
-	if !filepath.IsAbs(link) {
-		link = filepath.Join(filepath.Dir(path), link)
-	}
-	return filepath.Clean(link)
+	return (entry.Kind == "file" || entry.Kind == "directory") && entry.Hash == t.WrittenHash, nil
 }
 
 func skip(path, warning string) plan.Operation {

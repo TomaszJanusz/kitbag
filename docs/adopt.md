@@ -25,7 +25,10 @@ reach the host only through `platform.FS`.
    ```
 
 3. **Stop the old timer** (systemd user timer or LaunchAgent; `kitbag doctor`
-   lists units whose names contain `agent-config`). Both tools running would
+   lists units whose names contain `agent-config` that are still loaded or
+   enabled). **Set the host** the script used if it differs from the hostname
+   (`kitbag config set host mac`): otherwise the host addition is missing and
+   every command warns, naming the repository's host files. Both tools running would
    fight once KitBag rewrites a file with its own marker.
 4. **Preview, then adopt:**
 
@@ -50,7 +53,7 @@ plan, with that ownership, leaves **in sync**:
 
 | Destination | Adopted when | Recorded |
 | --- | --- | --- |
-| Link (link mode) | its lexical target is exactly the declared source | `link`, source hash |
+| Link (link mode) | its lexical target is exactly the declared source, or it reaches the source through a chain of links inside declared legacy roots (below) | `link`, source hash |
 | Copy (copy mode) | its tree hash equals the source's | `copy`, source hash |
 | Generated file | bytes equal KitBag's output, or the script's output with its `Managed by agent-config-sync (<repo>)` marker | `generated`, actual hash |
 | Merged settings | bytes equal the merge of themselves, or that merge with `# agent-config-managed` instead of `# kitbag-managed` | `merged`, fragment and actual hash |
@@ -64,6 +67,22 @@ under `remaining` with the operation sync would perform: links into a legacy
 root that point elsewhere are relinked, the script's renderings for an old clone
 are rewritten with KitBag's marker, hand-written files are backed up once, real
 directories are conflicts.
+
+**Chained links.** agent-config-sync on macOS linked Claude skills through the
+shared skill directory: `~/.claude/skills/x -> ~/.agents/skills/x ->
+<clone>/skills/x`. A destination link counts as reaching its source
+(`plan.LinkReaches`) when following it ends exactly at the declared source and
+every intermediate link sits **directly** in a declared legacy root (its parent
+directory is the root, compared lexically after cleaning). At most
+`plan.MaxLegacyHops` (2) intermediate links are followed; each hop resolves
+lexically like `IsManagedLink`; only those intermediate entries are read
+(`Lstat`, `ReadLink`), never anything outside the roots, and nothing at all
+without roots. A chain through an undeclared directory, a subdirectory of a
+root, a real directory, a missing entry, a loop or a longer chain is not
+adopted: it stays a foreign link (skipped as a conflict) exactly as before. The
+planner, `unmanage` and `revert` apply the same rule to owned links, so an
+adopted chain is in sync, and unmanage discards it as unchanged output. When the
+source changes, the next sync relinks it directly to the source, visibly.
 
 **Separate working copy.** When `repo.path` differs from the old clone, the
 script's links point into a legacy root and its instruction and settings files
@@ -157,6 +176,11 @@ an occupied move-aside directory). Dry runs exit 0.
   modification times, hashes, link texts) and the Git configuration are equal
   before and after, `plan` reports no changes, `sync` is silent and changes
   nothing; a later source change rewrites the marker visibly.
+- `adopt_macos.txtar` (KIT-78): the hostname host warns with the existing host
+  file until `host` is set; a skill chained through `~/.agents/skills` is adopted
+  with zero changes and unmanaged as unchanged, but not without that root;
+  doctor then reports only the script's executable link and ignores a disabled,
+  booted-out timer (stand-in `systemctl`/`launchctl`).
 - `adopt_relocated.txtar`: the same recorded HOME moves to the working copy
   `kitbag init` creates. Adoption adopts nothing; one sync re-points every link
   and rewrites CLAUDE.md, AGENTS.md and settings.json with KitBag's markers and

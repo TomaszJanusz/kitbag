@@ -13,6 +13,7 @@ import (
 	"github.com/TomaszJanusz/kitbag/internal/core/adopt"
 	"github.com/TomaszJanusz/kitbag/internal/core/plan"
 	"github.com/TomaszJanusz/kitbag/internal/core/state"
+	"github.com/TomaszJanusz/kitbag/internal/core/undo"
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 	"github.com/TomaszJanusz/kitbag/internal/platform/fake"
 	"github.com/TomaszJanusz/kitbag/internal/target"
@@ -319,4 +320,69 @@ func snapshot(t *testing.T, h platform.FS, root string) map[string]string {
 	}
 	walk(root)
 	return result
+}
+
+// TestAdoptChainThroughLegacyRoot reproduces the macOS layout agent-config-sync
+// left: ~/.claude/skills/x -> ~/.agents/skills/x -> <clone>/skills/x. Adoption
+// takes the chain over only when the intermediate's directory is a declared
+// legacy root, changes nothing, and unmanage later treats it as KitBag's own.
+func TestAdoptChainThroughLegacyRoot(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name    string
+		roots   []string
+		adopted []string
+	}{
+		{"declared root", []string{"/repo", "/home/.agents/skills"}, []string{"/home/.agents/skills/review", "/home/.claude/skills/review"}},
+		{"undeclared root", []string{"/repo"}, []string{"/home/.agents/skills/review"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			h := fake.New(fake.WithEnv(map[string]string{"HOME": "/home"}))
+			store, err := state.New(h, h, state.Options{HistoryLimit: 100})
+			must(t, err)
+			write(t, h, "/repo/skills/review/SKILL.md", "review")
+			link(t, h, "/repo/skills/review", "/home/.agents/skills/review")
+			link(t, h, "/home/.agents/skills/review", "/home/.claude/skills/review")
+			w := &world{h: h, store: store, roots: tc.roots, decls: []target.Target{skill(".agents/skills", "review"), skill(".claude/skills", "review")}}
+			before := snapshot(t, h, "/home/.claude")
+			report, err := w.adopt(t, adopt.Options{Now: clock})
+			must(t, err)
+			got := make([]string, 0, len(report.Adopted))
+			for _, a := range report.Adopted {
+				got = append(got, a.Path)
+			}
+			if !slices.Equal(got, tc.adopted) || !maps.Equal(before, snapshot(t, h, "/home/.claude")) {
+				t.Fatalf("adopted %v, want %v; files %v", got, tc.adopted, snapshot(t, h, "/home/.claude"))
+			}
+			assertChain(t, w, len(tc.adopted) == 2)
+		})
+	}
+}
+
+// assertChain checks the plan after adoption: an adopted chain is in sync and
+// unmanage discards it as unchanged; an unadopted one stays a foreign link.
+func assertChain(t *testing.T, w *world, adopted bool) {
+	t.Helper()
+	p := w.plan(t)
+	if !adopted {
+		if len(p.Operations) != 1 || p.Operations[0].Kind != plan.Skip {
+			t.Fatalf("plan = %+v", p.Operations)
+		}
+		return
+	}
+	if len(p.Operations) != 0 {
+		t.Fatalf("plan after adoption = %+v", p.Operations)
+	}
+	var outcome undo.Outcome
+	must(t, w.store.WithLock(func(session *state.Session) error {
+		var err error
+		outcome, err = undo.Unmanage(w.h, session, w.decls, undo.Options{Now: clock, LegacyRoots: w.roots, DryRun: true})
+		return err
+	}))
+	for _, op := range outcome.Plan.Operations {
+		if op.Kind != plan.Discard {
+			t.Fatalf("unmanage %s = %s %s", op.Path, op.Kind, op.Warning)
+		}
+	}
 }

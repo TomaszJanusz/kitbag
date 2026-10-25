@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/TomaszJanusz/kitbag/internal/platform"
+	"github.com/TomaszJanusz/kitbag/internal/platform/internal/check"
 )
 
 // ServiceLayout resolves the systemd user unit directory and executable.
@@ -72,6 +73,40 @@ func (h *Host) timerStatus(ctx context.Context, status platform.ServiceStatus) (
 	run, err := h.ServiceInspect(ctx, false)
 	status.LastRun, status.ExitCode = run.LastRun, run.ExitCode
 	return status, err
+}
+
+// UnitInspect reads another user unit's state without loading or starting it.
+// A unit file state other than disabled, masked, static or bad counts as
+// enabled, so an unrecognized state is reported conservatively.
+func (h *Host) UnitInspect(ctx context.Context, name string) (platform.UnitStatus, error) {
+	if err := check.Unit(name); err != nil {
+		return platform.UnitStatus{}, err
+	}
+	data, code, err := h.serviceCommand(ctx, "systemctl", "--user", "show", name, "--property=LoadState,ActiveState,UnitFileState")
+	if err != nil {
+		return platform.UnitStatus{}, err
+	}
+	if property(data, "LoadState") == "not-found" {
+		return platform.UnitStatus{}, nil
+	}
+	if code != 0 {
+		return platform.UnitStatus{}, fmt.Errorf("systemctl show failed (exit %d)", code)
+	}
+	switch property(data, "ActiveState") {
+	case "inactive", "failed", "":
+	default:
+		return platform.UnitStatus{Loaded: true, Enabled: unitEnabled(property(data, "UnitFileState"))}, nil
+	}
+	return platform.UnitStatus{Enabled: unitEnabled(property(data, "UnitFileState"))}, nil
+}
+
+func unitEnabled(state string) bool {
+	switch state {
+	case "", "disabled", "masked", "masked-runtime", "static", "bad":
+		return false
+	default:
+		return true
+	}
 }
 
 // ServiceLinger reports whether this user's manager survives logout.
