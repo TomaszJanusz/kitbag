@@ -43,7 +43,8 @@ Git helpers remain trusted executables; their behavior is outside this policy.
 
 The [shared exit table](apply.md#reports-and-exit-codes) applies: all OK or only
 ordinary WARN results exit **0**; any FAIL exits **1**; `--strict` also maps WARN
-to **1**. A failed `min_tool_version` check exits **4**, even with other failures.
+to **1**. A failed `min_tool_version` check exits **4** before further probes,
+state/cache locks or `--report` writes.
 Invalid flags/configuration exit **2** where classified as usage; operational
 setup/output/report-write failures exit **1**. Windows still exits **5** before
 running checks. Doctor never uses conflict exit 3.
@@ -74,7 +75,8 @@ arbitrary unknown secret formats. Do not add raw configuration/helper dumps to
 new checks. Unit and end-to-end tests seed secrets/emails/home paths and assert
 that they reach unredacted input and cannot occur in the saved report.
 
-Doctor may create kitbag's private state directory/lock and cache directory to
+After the minimum-version gate passes, doctor may create kitbag's private state
+directory/lock and cache directory to
 verify availability. It never writes state.json or last-sync.json; successful
 probes remove their scratch. A lock failure does not attempt to break the lock.
 Configuration must be parseable before checks can run; repair a configuration

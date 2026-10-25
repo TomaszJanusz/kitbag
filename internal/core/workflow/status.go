@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 
+	"github.com/TomaszJanusz/kitbag/internal/core/compatibility"
 	"github.com/TomaszJanusz/kitbag/internal/core/plan"
 	"github.com/TomaszJanusz/kitbag/internal/core/state"
 	"github.com/TomaszJanusz/kitbag/internal/vcs"
@@ -22,6 +23,9 @@ type Inspection struct {
 // Inspect plans without fetching, recovering or saving. A pending apply requires sync.
 func (s Service) Inspect() (Inspection, error) {
 	result := Inspection{Warnings: []string{}}
+	if err := s.compatible(); err != nil {
+		return result, err
+	}
 	err := s.Store.WithLock(func(session *state.Session) error {
 		m, mode, err := s.intent()
 		if err != nil {
@@ -53,6 +57,7 @@ type GitStatus struct {
 
 // Status is versioned independently of plan and state JSON.
 type Status struct {
+	ToolTooOld   *compatibility.Event        `json:"tool_too_old,omitempty"`
 	LastSync     *state.SyncRecord           `json:"last_sync"`
 	Drift        map[plan.Classification]int `json:"drift"`
 	Repository   string                      `json:"repository"`
@@ -66,7 +71,7 @@ type Status struct {
 func (s Service) Status(ctx context.Context) (Status, error) {
 	inspection, err := s.Inspect()
 	if err != nil {
-		return Status{}, err
+		return Status{StatusSchema: 1, Repository: s.Repository, ToolTooOld: compatibility.FromError(err, s.Repository), Warnings: []string{}, Drift: map[plan.Classification]int{plan.InSync: 0, plan.UpdateNeeded: 0, plan.LocalDrift: 0, plan.Conflict: 0, plan.UnmanagedObstacle: 0}}, err
 	}
 	git, err := s.Backend.Status(ctx, s.Repository)
 	if err != nil {

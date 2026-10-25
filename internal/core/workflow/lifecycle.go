@@ -26,6 +26,9 @@ type AdoptResult struct {
 // directories aside once. A dry run reads only.
 func (s Service) Adopt(moveRealDirs, dryRun bool) (AdoptResult, error) {
 	result := AdoptResult{Warnings: []string{}}
+	if err := s.compatible(); err != nil {
+		return result, err
+	}
 	if len(s.Config.Migration.LegacyRoots) == 0 {
 		return result, fmt.Errorf("%s: %w", legacyRootsHint, invalidInput())
 	}
@@ -61,6 +64,9 @@ type LifecycleResult struct {
 // reads the manifest only to find settings mergers; it never fetches.
 func (s Service) Unmanage(dryRun bool) (LifecycleResult, error) {
 	result := LifecycleResult{Warnings: []string{}}
+	if err := s.compatible(); err != nil {
+		return result, err
+	}
 	err := s.Store.WithLock(func(session *state.Session) error {
 		m, mode, err := s.intent()
 		if err != nil {
@@ -84,6 +90,9 @@ func (s Service) Unmanage(dryRun bool) (LifecycleResult, error) {
 // It needs neither the manifest nor the working copy.
 func (s Service) Revert(to int, force, dryRun bool) (LifecycleResult, error) {
 	result := LifecycleResult{Warnings: []string{}}
+	if err := s.compatible(); err != nil {
+		return result, err
+	}
 	err := s.Store.WithLock(func(session *state.Session) error {
 		var err error
 		result.Outcome, err = undo.Revert(s.Host, session, to, undo.Options{Now: s.Now, Force: force, DryRun: dryRun})
@@ -95,6 +104,9 @@ func (s Service) Revert(to int, force, dryRun bool) (LifecycleResult, error) {
 // History lists journaled plans, newest first, without changing anything.
 func (s Service) History() ([]undo.Applied, error) {
 	var history []undo.Applied
+	if err := s.compatible(); err != nil {
+		return nil, err
+	}
 	err := s.Store.WithLock(func(session *state.Session) error {
 		var err error
 		history, err = undo.List(session)

@@ -134,7 +134,9 @@ credentials or diagnostic text. Missing means no recorded attempt. Status shows
 
 Every sync that acquires the lock and reads valid record metadata records its
 result, including an unchanged success, skipped dirty pull, divergence, fetch
-failure, version refusal or partial apply failure. Configuration/backend failures
+failure, version refusal first discovered after pulling, or partial apply failure.
+A locally known minimum-version refusal happens before the lock and changes
+nothing, including this record. Configuration/backend failures
 before entering the workflow and lock contention cannot be recorded. A dirty
 pull skip alone is informational (exit 0); divergence exits 3 without applying.
 This is one machine-wide latest attempt, not a per-repository history.

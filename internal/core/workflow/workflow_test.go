@@ -193,7 +193,7 @@ func TestSyncFailureRecords(t *testing.T) {
 			}
 			if err = f.s.Store.WithLock(func(s *state.Session) error {
 				record, exists, loadErr := s.LoadSync()
-				if loadErr == nil && (!exists || record.Result != int(tc.code)) {
+				if loadErr == nil && badSyncRecord(exists, record.Result, tc.code) {
 					t.Errorf("record %+v", record)
 				}
 				return loadErr
@@ -309,4 +309,11 @@ func TestSyncProgressPhases(t *testing.T) {
 	if !slices.Equal(phases, []string{"pull"}) {
 		t.Fatalf("failed sync emitted later phases: %v", phases)
 	}
+}
+
+func badSyncRecord(exists bool, result int, code apply.Code) bool {
+	if code == apply.ToolTooOld {
+		return exists && result != int(code)
+	}
+	return !exists || result != int(code)
 }

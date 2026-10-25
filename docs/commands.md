@@ -100,3 +100,19 @@ daemon listens, and run in-process when none is available. Text/JSON renderers
 are shared. Permission, authentication and protocol failures do not fall back.
 Verbose inspection runs locally to preserve backend diagnostics; sync remains
 in-process. KIT-29 supplies the serving boundary without a daemon command.
+
+## Self-update and minimum versions
+
+`kitbag self-update [--channel stable|nightly] [--check|--dry-run]` respects the
+installer's source stamp and verifies direct release updates before atomic
+replacement. Package-managed installs print their update command. See
+[self-update.md](self-update.md) for the stamp, release protocol, trust anchor
+provisioning and failure recovery. `kitbag version --bare` prints the version
+without machine configuration or Git checks for replacement confirmation.
+
+A local manifest with an unmet `min_tool_version` blocks every manifest consumer
+before state locks or other writes, including revert and doctor reports. Status
+prints red `tool too old` when colour is enabled and returns exit 4; JSON includes
+a typed `tool_too_old` event. A minimum first discovered by pulling still records
+the failed sync but applies no targets. See the complete guard contract in
+[self-update.md](self-update.md#minimum-versions-and-verified-updates).

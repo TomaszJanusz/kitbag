@@ -27,7 +27,7 @@ func (c *commandLine) doctorCommand() *cobra.Command {
 		}
 		result := service.Run(cmd.Context())
 		c.code = result.Code(strict)
-		if reportPath != "" {
+		if reportPath != "" && result.ToolTooOld == nil {
 			if err = c.writeDoctorReport(reportPath, result); err != nil {
 				return classified(err)
 			}

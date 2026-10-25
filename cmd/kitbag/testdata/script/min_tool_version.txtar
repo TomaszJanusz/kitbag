@@ -1,0 +1,62 @@
+# Every manifest-consuming command must reject before ANY write, including locks.
+env KITBAG_CONFIG=$WORK/machine.toml
+mkdir $HOME/checkout
+cp future $HOME/checkout/kitbag.toml
+cp source $HOME/checkout/source
+cp machine.toml $HOME/machine.toml
+treesnap $HOME before
+execstatus 4 kitbag sync
+stderr 'requires kitbag 99.0.0'
+execstatus 4 kitbag sync --no-pull
+execstatus 4 kitbag plan
+execstatus 4 kitbag status
+stdout 'tool too old: requires kitbag 99.0.0'
+execstatus 4 kitbag status --json
+stdout '"type": "tool-too-old"'
+stdout '"required": "99.0.0"'
+execstatus 4 kitbag adopt
+execstatus 4 kitbag unmanage
+execstatus 4 kitbag revert
+execstatus 4 kitbag revert --list
+execstatus 4 kitbag doctor --json
+doctorschema stdout
+execstatus 4 kitbag doctor --report $HOME/report.json
+! exists $HOME/report.json
+treesnap $HOME after
+cmp before after
+
+# Existing state and materialized targets are equally protected.
+cp current $HOME/checkout/kitbag.toml
+exec kitbag sync --no-pull
+cp future $HOME/checkout/kitbag.toml
+treesnap $HOME before-state
+execstatus 4 kitbag sync --no-pull
+execstatus 4 kitbag plan
+execstatus 4 kitbag status
+execstatus 4 kitbag adopt
+execstatus 4 kitbag unmanage
+execstatus 4 kitbag revert --force
+execstatus 4 kitbag doctor
+treesnap $HOME after-state
+cmp before-state after-state
+
+-- machine.toml --
+schema=1
+[repo]
+url="unused"
+path="~/checkout"
+[migration]
+legacy_roots=["~/legacy"]
+-- future --
+schema=1
+min_tool_version="99.0.0"
+[[files]]
+src="source"
+dest="~/output"
+-- current --
+schema=1
+[[files]]
+src="source"
+dest="~/output"
+-- source --
+managed content
