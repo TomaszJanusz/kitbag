@@ -9,6 +9,12 @@ For workflow changes also run `mise run check:workflows`. Add tests for meaningf
 behavior changes; CLI scenarios use the isolated HOME testscript harness described
 in [README.md](README.md).
 
+The pre-commit lint step checks changed Go packages for Linux, macOS and Windows,
+skipping packages excluded by each target's build constraints. This includes
+platform-specific files inside otherwise portable packages. Changes to module or
+lint configuration retain the full host-platform lint check. Lefthook preserves
+partially staged edits; deleted packages are skipped.
+
 Use a feature branch and one focused PR against `main`. PR titles must follow
 Conventional Commits: `type(scope): description`, with an optional scope and an
 optional `!` for breaking changes. Allowed types are `feat`, `fix`, `docs`, `style`,
