@@ -271,8 +271,8 @@ func (s suite) writeAtomicForReaders(t *testing.T) {
 
 // linkAtomicForReaders repoints a link while reading: the entry must always
 // be a link, and reading through it must yield a complete target. Hosts with
-// transientLinkReads (macOS) may instead fail such a read with
-// fs.ErrInvalid, never with a missing entry.
+// transientLinkReads (EINVAL on macOS, EISDIR on Linux) may instead fail such
+// a read with exactly those errors, never with a missing entry.
 func (s suite) linkAtomicForReaders(t *testing.T) {
 	t.Parallel()
 	sub := s.subject(t)
@@ -291,7 +291,7 @@ func (s suite) linkAtomicForReaders(t *testing.T) {
 				return fmt.Errorf("entry is not a link: %v, %w", fi, err)
 			}
 			err := oneOf(h, path, contents)
-			if sub.transientLinkReads && errors.Is(err, fs.ErrInvalid) {
+			if tolerableLinkRead(sub.transientLinkReads, err) {
 				return nil
 			}
 			return err

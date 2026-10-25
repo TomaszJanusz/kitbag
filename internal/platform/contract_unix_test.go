@@ -51,10 +51,9 @@ func newUnixSubject(t *testing.T, env map[string]string) subject {
 		root:        root,
 		socketRoot:  shortSocketRoot,
 		permissions: os.Geteuid() != 0,
-		// Observed on macOS CI: open(2) through a symbolic link that a
-		// concurrent rename replaces can fail with EINVAL. The entry itself is
-		// never missing.
-		transientLinkReads: runtime.GOOS == "darwin",
+		// Reads through a link that a concurrent rename replaces can fail
+		// transiently; the entry itself is never missing.
+		transientLinkReads: transientLinkReadErrors(runtime.GOOS),
 		otherDevice:        otherDevice(t, root),
 		nonTerminal:        r.Fd(),
 		opened: func() []string {

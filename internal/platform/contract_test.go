@@ -24,13 +24,51 @@ type subject struct {
 	socketRoot func(*testing.T) string
 	// otherDevice is a writable directory on another filesystem, or "".
 	otherDevice string
+	// transientLinkReads lists the errors that a read through a link that is
+	// being replaced may fail with on this host; see transientLinkReadErrors.
+	transientLinkReads []error
 	// nonTerminal is a file descriptor known not to be a terminal.
 	nonTerminal uintptr
 	// permissions is false when permission bits are not enforced (root user).
 	permissions bool
-	// transientLinkReads is set where reading through a link that is being
-	// replaced can fail with EINVAL (macOS).
-	transientLinkReads bool
+}
+
+// transientLinkReadErrors returns the only errors that a read performed
+// through a link while it is atomically replaced may fail with on goos. The
+// entry itself is never missing on any host; these are failures of the read
+// alone:
+//
+//   - darwin: EINVAL (fs.ErrInvalid), observed on macOS CI.
+//   - linux: EISDIR (platform.ErrIsDir), a sporadic ext4 symlink inode
+//     eviction race below kitbag. The descriptor opened through the link
+//     refers to the parent directory, so read(2) reports "is a directory".
+//     Reproduced with seeds 1792888411943321778, 1792920710430825679,
+//     1792921526927703354 and 1792922222088678000, and by a reproducer using
+//     only raw syscall.Open/Read next to symlink replacement; keeping the
+//     replaced symlink inodes alive removed the failure (2.9M reads OK,
+//     against a failure after about 136k reads). See
+//     https://lkml.iu.edu/hypermail/linux/kernel/2111.1/06830.html for the
+//     corresponding eviction hazard.
+//
+// Every other host and every other error is a failure.
+func transientLinkReadErrors(goos string) []error {
+	switch goos {
+	case "darwin":
+		return []error{fs.ErrInvalid}
+	case "linux":
+		return []error{platform.ErrIsDir}
+	default:
+		return nil
+	}
+}
+
+// tolerableLinkRead reports whether err is nil or one of the transient errors
+// allowed by transient; anything else must fail the test.
+func tolerableLinkRead(transient []error, err error) bool {
+	if err == nil {
+		return true
+	}
+	return slices.ContainsFunc(transient, func(target error) bool { return errors.Is(err, target) })
 }
 
 // factory builds a fresh subject whose environment is exactly env.

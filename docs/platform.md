@@ -77,6 +77,22 @@ holds and tolerates only that error on macOS. Only a read that races the
 rename is affected; a later read sees the new link. Regular files replaced by
 `WriteAtomic` showed no such effect.
 
+On Linux, a reader *through* a link at the moment of the rename can, very
+rarely, get `EISDIR` (`ErrIsDir`) from the read: the descriptor opened through
+the old link refers to the parent directory. This is an ext4 symlink inode
+eviction race in the kernel, not in kitbag; a standalone program using only raw
+`open(2)`/`read(2)` next to symlink replacement fails the same way (about one
+failure in 10^5 reads), and keeping replaced symlink inodes alive makes it
+disappear (see the [kernel discussion of the eviction
+hazard](https://lkml.iu.edu/hypermail/linux/kernel/2111.1/06830.html)). As on
+macOS, the entry is never missing or partial: `Lstat` and `Readlink` always
+return the old or the new target. The contract suite tolerates exactly `EISDIR`
+on Linux and exactly `EINVAL` on macOS, only for reads through the link being
+replaced; every other error, and these errors on any other host, still fail
+it. Code that reads through a link while another process may replace it must
+treat these errors as transient and retry or re-inspect rather than report
+corruption.
+
 **Case.** Default macOS volumes are case-insensitive; Linux and the fake are
 case-sensitive. The platform does not normalize names, so callers must never
 rely on two names that differ only in case (manifest validation rejects such
