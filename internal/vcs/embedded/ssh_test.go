@@ -2,6 +2,7 @@ package embedded
 
 import (
 	"bytes"
+	"context"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/pem"
@@ -162,5 +163,30 @@ func TestSSHRemoteDiagnosisUnknownHost(t *testing.T) {
 	}
 	if !strings.Contains(diagnosis.Fix, "known_hosts") || !strings.Contains(err.Error(), "SHA256:") {
 		t.Fatalf("diagnosis=%+v, error=%v", diagnosis, err)
+	}
+}
+
+type consentingPrompt struct{ calls int }
+
+// Passphrase would unlock anything; doctor must never ask.
+func (p *consentingPrompt) Passphrase(context.Context, string) ([]byte, bool, error) {
+	p.calls++
+	return nil, false, nil
+}
+
+// TrustHost would accept any host; doctor must never ask.
+func (p *consentingPrompt) TrustHost(context.Context, string, string) (bool, error) {
+	p.calls++
+	return true, nil
+}
+
+func TestSSHRemoteDiagnosisNeverPrompts(t *testing.T) {
+	t.Parallel()
+	w := sshAliasWorld(t, false)
+	prompt := &consentingPrompt{}
+	opts := w.b.opts
+	opts.SSH.Interactive, opts.SSH.Prompter = true, prompt
+	if _, err := New(opts).DiagnoseRemote(t.Context(), w.clone); err == nil || prompt.calls != 0 {
+		t.Fatalf("doctor prompted %d times, error=%v", prompt.calls, err)
 	}
 }
