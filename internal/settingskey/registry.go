@@ -39,7 +39,7 @@ func Registry() []Key {
 		{Path: "ui.notifications", Type: "boolean", Default: "true", Env: "KITBAG_UI_NOTIFICATIONS", Description: "Show notifications after changes (desktop UI is planned).", Allowed: []string{"true", "false"}},
 		{Path: "ui.theme", Type: "string", Default: "auto", Env: "KITBAG_UI_THEME", Description: "UI theme (desktop UI is planned).", Allowed: []string{"auto", "dark", "light"}},
 		{Path: "ui.color", Type: "string", Default: "auto", Env: "KITBAG_UI_COLOR", Description: "Terminal color preference; NO_COLOR disables color.", Allowed: []string{"auto", "always", "never"}},
-		{Path: "migration.legacy_roots", Type: "array", Default: "[]", Env: "KITBAG_MIGRATION_LEGACY_ROOTS", Description: "Unique explicit legacy HOME-relative roots; TOML string array.", Pattern: "unique home paths, each at most 4096 bytes"},
+		{Path: "migration.legacy_roots", Type: "array", Default: "[]", Env: "KITBAG_MIGRATION_LEGACY_ROOTS", Description: "Unique explicit legacy HOME-relative roots; TOML string array.", Pattern: `TOML array of unique home paths, each at most 4096 bytes, such as ["~/src/agent-config"]`},
 	}
 }
 

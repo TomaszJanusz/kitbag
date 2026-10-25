@@ -25,7 +25,7 @@ stderr 'allowed: true, false'
 execstatus 2 kitbag config set schema 2
 stderr 'allowed 1'
 execstatus 2 kitbag config set migration.legacy_roots '["/absolute"]'
-stderr 'allowed: unique home paths'
+stderr 'allowed: TOML array of unique home paths'
 exec kitbag config get sync.mode
 stdout '^copy$'
 exec kitbag config unset sync.mode

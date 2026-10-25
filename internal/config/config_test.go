@@ -9,6 +9,7 @@ import (
 
 	"github.com/TomaszJanusz/kitbag/internal/config"
 	"github.com/TomaszJanusz/kitbag/internal/platform/fake"
+	"github.com/TomaszJanusz/kitbag/internal/settingskey"
 )
 
 func TestWorkingCopyLocations(t *testing.T) {
@@ -98,5 +99,25 @@ func TestCommitIdentity(t *testing.T) {
 				t.Fatalf("identity %+v", c.Git.Identity)
 			}
 		})
+	}
+}
+
+func TestLegacyRootsNeedATOMLArray(t *testing.T) {
+	t.Parallel()
+	key, err := settingskey.Find("migration.legacy_roots")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, text := range []string{"~/a,~/b", `"~/a"`, `["/absolute"]`, `["~/a", "~/a"]`} {
+		t.Run(text, func(t *testing.T) {
+			t.Parallel()
+			_, parseErr := config.ParseValue(key, text)
+			if !errors.Is(parseErr, fs.ErrInvalid) || !strings.Contains(parseErr.Error(), `TOML array`) || !strings.Contains(parseErr.Error(), `["~/src/agent-config"]`) {
+				t.Fatalf("error = %v; want the TOML array form", parseErr)
+			}
+		})
+	}
+	if _, err = config.ParseValue(key, `["~/src/agent-config", "~/.agents/skills"]`); err != nil {
+		t.Fatal(err)
 	}
 }

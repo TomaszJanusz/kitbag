@@ -30,4 +30,4 @@ Use `kitbag config get <key>`, `set <key> <value>`, `unset <key>`, `list`, `expl
 | `ui.notifications` | boolean | `true` | `KITBAG_UI_NOTIFICATIONS` | `` | true, false | false | Show notifications after changes (desktop UI is planned). |
 | `ui.theme` | string | `auto` | `KITBAG_UI_THEME` | `` | auto, dark, light | false | UI theme (desktop UI is planned). |
 | `ui.color` | string | `auto` | `KITBAG_UI_COLOR` | `` | auto, always, never | false | Terminal color preference; NO_COLOR disables color. |
-| `migration.legacy_roots` | array | `[]` | `KITBAG_MIGRATION_LEGACY_ROOTS` | `` | unique home paths, each at most 4096 bytes | false | Unique explicit legacy HOME-relative roots; TOML string array. |
+| `migration.legacy_roots` | array | `[]` | `KITBAG_MIGRATION_LEGACY_ROOTS` | `` | TOML array of unique home paths, each at most 4096 bytes, such as ["~/src/agent-config"] | false | Unique explicit legacy HOME-relative roots; TOML string array. |
