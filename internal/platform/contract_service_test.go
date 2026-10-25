@@ -24,6 +24,10 @@ func serviceContract(t *testing.T, h platform.Service) {
 	if !status.Loaded || !status.Active || !status.Enabled {
 		t.Fatal(status)
 	}
+	// A job that has not exited since it started has no exit code to report.
+	if status.ExitCode != nil {
+		t.Fatal("exit code for a job that never exited", *status.ExitCode)
+	}
 	mustNil(t, "stop", h.ServiceControl(t.Context(), "stop", false))
 	mustNil(t, "disable", h.ServiceControl(t.Context(), "disable", false))
 	mustNil(t, "reload", h.ServiceControl(t.Context(), "reload", false))

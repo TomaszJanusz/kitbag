@@ -54,5 +54,6 @@ func serviceContractReply(name string, args []string, active, enabled, loaded bo
 	if args[0] == "print-disabled" {
 		return `"dev.kitbag.agent" => ` + map[bool]string{true: "false", false: "true"}[enabled], 0, nil
 	}
-	return "state = running\nlast exit code = 0", 0, nil
+	// launchd's wording for a healthy job that is still running.
+	return "state = running\n\tlast exit code = (never exited)", 0, nil
 }

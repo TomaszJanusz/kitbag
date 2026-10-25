@@ -7,8 +7,9 @@ env XDG_STATE_HOME=$HOME/.local/state
 env XDG_DATA_HOME=$HOME/.local/share
 env OPENAI_API_KEY=service-secret-never-copy
 env USER=testing
-env PATH=$WORK/bin:$PATH
-exec chmod +x bin/launchctl
+# launchd gets only the directories of git and ssh plus the system PATH.
+env PATH=$WORK/bin:$WORK/not-a-tool-dir:$WORK/tools:$PATH
+exec chmod +x bin/launchctl tools/ssh not-a-tool-dir/node
 gitremote $WORK/config.git seed
 exec kitbag init $WORK/config.git --yes
 
@@ -20,6 +21,10 @@ exists $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
 grep '<key>StartInterval</key><integer>300</integer>' $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
 ! grep 'KeepAlive' $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
 ! grep 'service-secret-never-copy' $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
+grep '<key>PATH</key><string>([^<]*:)?'$WORK'/tools:' $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
+grep '<key>PATH</key><string>[^<]*/usr/sbin:/sbin</string>' $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
+! grep 'not-a-tool-dir' $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
+! grep $WORK'/bin[:<]' $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
 grep 'launchctl enable gui/[0-9]+/dev.kitbag.agent' $HOME/commands
 ! grep 'bootstrap' $HOME/commands
 ! exists $HOME/.loaded
@@ -50,6 +55,33 @@ stdout 'Last sync: \{"at":"[^"]+","repository":"[^"]+","schema_version":1,"resul
 exec kitbag service status --json
 stdout '"last_sync":\{"at":'
 ! stdout 'sync_error'
+
+# A healthy job that has not exited yet: no exit code, not an error.
+cp never $HOME/.never
+exec kitbag service status
+stdout 'loaded=true active=true'
+stdout 'exit code: unknown'
+exec kitbag service status --json
+stdout '"exit_code":null'
+exec kitbag doctor --json
+! stdout 'cannot inspect user service'
+! stdout 'exit_code='
+stdout '"message": "loaded=true active=true enabled=true stale=false'
+rm $HOME/.never
+
+# A definition whose executable was removed (brew upgrade and cleanup) is explained.
+cp $HOME/.local/state/kitbag/service.json $WORK/service.json.bak
+cp missing-binary.json $HOME/.local/state/kitbag/service.json
+exec kitbag service status
+stdout 'Service executable /kitbag-removed/Cellar/kitbag/0.0.1/bin/kitbag no longer exists.*run kitbag service install'
+exec kitbag service status --json
+stdout '"binary_missing":true'
+exec kitbag doctor --json
+stdout '"message": "service executable /kitbag-removed/Cellar/kitbag/0.0.1/bin/kitbag no longer exists'
+cp $WORK/service.json.bak $HOME/.local/state/kitbag/service.json
+exec kitbag service status --json
+stdout '"binary_missing":false'
+
 # Switching to daemon mode boots out the loaded job before replacing it.
 exec kitbag service install --mode=daemon
 stdout 'Service installed/updated'
@@ -70,12 +102,22 @@ stdout 'installed=false loaded=false'
 
 -- seed/kitbag.toml --
 schema=1
+-- never --
+-- missing-binary.json --
+{"environment":{},"binary":"/kitbag-removed/Cellar/kitbag/0.0.1/bin/kitbag","config":"/kitbag-removed/config.toml","mode":"timer","log_dir":"/kitbag-removed/log","interval":300000000000}
+-- tools/ssh --
+#!/bin/sh
+exit 0
+-- not-a-tool-dir/node --
+#!/bin/sh
+exit 0
 -- bin/launchctl --
 #!/bin/sh
 printf 'launchctl %s\n' "$*" >> "$HOME/commands"
 case "$1" in
 print)
   if [ ! -f "$HOME/.loaded" ]; then exit 113; fi
+  if [ -f "$HOME/.never" ]; then printf 'state = running\n\tlast exit code = (never exited)\n'; exit 0; fi
   printf 'state = running\n\tlast exit code = 0\n';;
 print-disabled)
   if [ -f "$HOME/.disabled" ]; then printf '\t"dev.kitbag.agent" => true\n'; fi;;

@@ -15,6 +15,7 @@ import (
 type Host struct {
 	lookup     xdg.Lookup
 	serviceRun ServiceRunner
+	executable func() (string, error)
 	run        func(name string, args ...string) error
 	// The durability hooks are replaced only by white-box tests.
 	syncFile func(*os.File) error
@@ -48,6 +49,7 @@ func New(opts ...Option) *Host {
 	h := &Host{
 		lookup:     os.LookupEnv,
 		serviceRun: execService,
+		executable: platform.Executable,
 		run:        runCommand,
 		syncFile:   (*os.File).Sync,
 		syncDir:    syncDir,

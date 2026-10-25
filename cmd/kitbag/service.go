@@ -108,6 +108,11 @@ func (c *commandLine) serviceStatusCommand() *cobra.Command {
 		if _, err = fmt.Fprintf(c.stdout, "Service: installed=%t loaded=%t active=%t enabled=%t stale=%t mode=%s\nLast run: %s; exit code: %s\n", report.Installed, report.Loaded, report.Active, report.Enabled, report.Stale, report.Mode, report.LastRun, serviceExit(report.ExitCode)); err != nil {
 			return classified(err)
 		}
+		if report.BinaryMissing {
+			if _, err = fmt.Fprintf(c.stdout, "Service executable %s no longer exists (removed by a package upgrade or uninstall?); run kitbag service install with the installed kitbag to point the service at it.\n", report.Binary); err != nil {
+				return classified(err)
+			}
+		}
 		return classified(c.printLastServiceSync(result))
 	}}
 	cmd.Flags().BoolVar(&asJSON, "json", false, "Print stable service_schema=1 JSON")

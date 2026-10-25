@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -18,6 +19,40 @@ type ServiceRunner func(context.Context, string, []string, []string) (string, in
 // WithServiceRunner injects supervisor execution without contacting a real manager.
 func WithServiceRunner(run ServiceRunner) Option {
 	return func(h *Host) { h.serviceRun = run }
+}
+
+// WithExecutable replaces discovery of the resolved running executable, so
+// tests can model package-manager layouts such as a Homebrew Cellar.
+func WithExecutable(executable func() (string, error)) Option {
+	return func(h *Host) { h.executable = executable }
+}
+
+// stableExecutable maps a versioned Homebrew keg path,
+// <prefix>/Cellar/<formula>/<version>/<rest>, to the version-independent
+// <prefix>/opt/<formula>/<rest> link, or for bin/<name> to <prefix>/bin/<name>,
+// but only when that link resolves to resolved now. A brew upgrade repoints
+// these links while cleanup deletes the old keg. Other paths are unchanged.
+func stableExecutable(resolved string) string {
+	const kegDepth = 3 // formula, version and at least one entry inside the keg
+	parts := strings.Split(resolved, string(filepath.Separator))
+	for i := len(parts) - 1 - kegDepth; i >= 1; i-- {
+		if parts[i] != "Cellar" {
+			continue
+		}
+		prefix := filepath.Join(append([]string{string(filepath.Separator)}, parts[1:i]...)...)
+		rest := filepath.Join(parts[i+kegDepth:]...)
+		candidates := []string{filepath.Join(prefix, "opt", parts[i+1], rest)}
+		if filepath.Dir(rest) == "bin" {
+			candidates = append(candidates, filepath.Join(prefix, rest))
+		}
+		for _, candidate := range candidates {
+			if target, err := filepath.EvalSymlinks(candidate); err == nil && target == resolved {
+				return candidate
+			}
+		}
+		return resolved
+	}
+	return resolved
 }
 
 func execService(ctx context.Context, name string, args, env []string) (string, int, error) {

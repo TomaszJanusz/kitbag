@@ -13,12 +13,16 @@ import (
 )
 
 // ServiceLayout resolves the per-user LaunchAgents directory and executable.
+// A Homebrew Cellar executable is replaced by its stable opt or bin link.
 func (h *Host) ServiceLayout() (platform.ServiceLayout, error) {
 	home, err := h.HomeDir()
 	if err != nil {
 		return platform.ServiceLayout{}, err
 	}
-	binary, err := platform.Executable()
+	binary, err := h.executable()
+	if err == nil {
+		binary = stableExecutable(binary)
+	}
 	user, _ := h.LookupEnv("USER")
 	return platform.ServiceLayout{Manager: "launchd", Directory: filepath.Join(home, "Library", "LaunchAgents"), Binary: binary, User: user}, err
 }
@@ -71,20 +75,31 @@ func (h *Host) ServiceInspect(ctx context.Context, timer bool) (platform.Service
 	}
 	status.Loaded = true
 	status.Active = timer || strings.Contains(data, "state = running")
-	for line := range strings.SplitSeq(data, "\n") {
-		value, ok := strings.CutPrefix(strings.TrimSpace(line), "last exit code = ")
-		if !ok {
-			continue
-		}
-		exit, parseErr := strconv.Atoi(value)
-		if parseErr != nil {
-			return status, parseErr
-		}
-		status.ExitCode = &exit
-	}
 	// launchd does not expose a reliable wall-clock last run timestamp; the
 	// persisted sync record provides it in the core report.
-	return status, nil
+	status.ExitCode, err = launchdExit(data)
+	return status, err
+}
+
+// launchdExit parses the "last exit code" value of launchctl print: a number,
+// optionally followed by ": <description>", or a parenthesized note such as
+// "(never exited)" for a job that has not exited since it was loaded, which is
+// no observation (nil).
+func launchdExit(data string) (*int, error) {
+	var exit *int
+	for line := range strings.SplitSeq(data, "\n") {
+		value, ok := strings.CutPrefix(strings.TrimSpace(line), "last exit code = ")
+		if !ok || strings.HasPrefix(value, "(") {
+			continue
+		}
+		number, _, _ := strings.Cut(value, ":")
+		code, err := strconv.Atoi(strings.TrimSpace(number))
+		if err != nil {
+			return nil, fmt.Errorf("launchctl print: unexpected last exit code %q: %w", value, err)
+		}
+		exit = &code
+	}
+	return exit, nil
 }
 
 // ServiceLinger is always true: launchd has no systemd linger setting.

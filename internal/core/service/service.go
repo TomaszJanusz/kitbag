@@ -7,6 +7,8 @@ import (
 	"errors"
 	"io/fs"
 	"path/filepath"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/TomaszJanusz/kitbag/internal/platform"
@@ -16,6 +18,7 @@ const (
 	directoryPerm fs.FileMode = 0o700
 	filePerm      fs.FileMode = 0o644
 	privatePerm   fs.FileMode = 0o600
+	executeBits   fs.FileMode = 0o111
 )
 
 // Service owns install policy; supervisor and filesystem operations are injected.
@@ -25,14 +28,21 @@ type Service struct {
 }
 
 // Report combines installed definitions and the supervisor's observation.
+// Binary is the executable the installed definition runs; BinaryMissing means
+// it no longer exists, typically after a package upgrade removed it.
 type Report struct {
 	Manager string `json:"manager"`
 	Mode    string `json:"mode"`
+	Binary  string `json:"binary,omitempty"`
 	platform.ServiceStatus
 	Installed     bool `json:"installed"`
 	Stale         bool `json:"stale"`
+	BinaryMissing bool `json:"binary_missing"`
 	ServiceSchema int  `json:"service_schema"`
 }
+
+// launchdSystemPath is launchd's own default PATH for user agents.
+func launchdSystemPath() []string { return []string{"/usr/bin", "/bin", "/usr/sbin", "/sbin"} }
 
 // Current resolves fresh, allow-listed input from the host.
 func (s Service) Current(mode string, interval time.Duration) (Options, error) {
@@ -54,7 +64,43 @@ func (s Service) Current(mode string, interval time.Duration) (Options, error) {
 			options.Environment[key] = value
 		}
 	}
+	if layout.Manager == "launchd" {
+		options.Environment["PATH"] = s.daemonPath(options.Environment["PATH"])
+	}
 	return options, options.validate()
+}
+
+// daemonPath keeps only the directories that hold git and ssh in the
+// installing shell's PATH, followed by launchd's default system PATH. Links
+// are not resolved, so a package manager's stable bin directory survives
+// upgrades.
+func (s Service) daemonPath(shell string) string {
+	var dirs []string
+	for _, name := range []string{"git", "ssh"} {
+		if dir, ok := s.lookPath(name, shell); ok && !slices.Contains(dirs, dir) {
+			dirs = append(dirs, dir)
+		}
+	}
+	for _, dir := range launchdSystemPath() {
+		if !slices.Contains(dirs, dir) {
+			dirs = append(dirs, dir)
+		}
+	}
+	return strings.Join(dirs, ":")
+}
+
+// lookPath returns the first absolute PATH entry holding an executable file name.
+func (s Service) lookPath(name, pathList string) (string, bool) {
+	for _, dir := range strings.Split(pathList, ":") {
+		if !filepath.IsAbs(dir) {
+			continue
+		}
+		info, err := s.Host.Stat(filepath.Join(dir, name))
+		if err == nil && info.Mode().IsRegular() && info.Mode().Perm()&executeBits != 0 {
+			return filepath.Clean(dir), true
+		}
+	}
+	return "", false
 }
 
 func (s Service) metadata() (string, error) {
@@ -272,12 +318,26 @@ func (s Service) installedStatus(ctx context.Context, result Report, layout plat
 		return result, err
 	}
 	result.Mode = saved.Mode
+	result.Binary = saved.Binary
+	if result.BinaryMissing, err = s.missing(saved.Binary); err != nil {
+		return result, err
+	}
 	result.Stale, err = s.different(layout, files)
 	if err != nil {
 		return result, err
 	}
 	result.ServiceStatus, err = s.Host.ServiceInspect(ctx, result.Mode == "timer")
 	return result, err
+}
+
+// missing reports whether path, following links, no longer exists. A dangling
+// Homebrew opt link after uninstall counts as missing.
+func (s Service) missing(path string) (bool, error) {
+	_, err := s.Host.Stat(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return true, nil
+	}
+	return false, err
 }
 
 func errUnlessMissing(err error) error {
