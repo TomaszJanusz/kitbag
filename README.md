@@ -61,6 +61,11 @@ checked in CI against snapshot builds, not against a published release.
    [background synchronization](docs/service.md)), and diagnose problems with
    `kitbag doctor`.
 
+   For an interactive view, run `kitbag tui`: Status, Drift, Settings and
+   Activity tabs (press `?` for keys). It uses the daemon when one runs and reads
+   this machine directly otherwise, honours `NO_COLOR`, and exits 2 when stdin or
+   stdout is not a terminal. See the [terminal UI](docs/tui.md).
+
 Coming from the `agent-config-sync` script? Follow the
 [migration guide](docs/guide-migrate-agent-config-sync.md). Every command and flag
 is in the [generated command reference](docs/cli/kitbag.md).
