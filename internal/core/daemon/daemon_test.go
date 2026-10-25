@@ -273,3 +273,32 @@ func TestBootstrapRetryAndBackoffCap(t *testing.T) {
 		t.Fatal("bootstrap was not retried", syncs.Load())
 	}
 }
+
+func TestTrimFollowsTimerWorkOnly(t *testing.T) {
+	t.Parallel()
+	options, deps := defaults()
+	options.UpdateCheck = true
+	var trims atomic.Int32
+	scans := make(chan struct{}, 8)
+	deps.Trim = func() { trims.Add(1) }
+	deps.Scan = func(context.Context) error { scans <- struct{}{}; return nil }
+	deps.Update = func(context.Context) (bool, error) { return false, nil }
+	r := start(t, options, deps)
+	receive(t, r.poll.resets)
+	// A watch-driven scan must not pay for a forced collection per hint.
+	r.hints <- struct{}{}
+	receive(t, r.debounce.resets)
+	r.debounce.tick <- time.Time{}
+	receive(t, scans)
+	r.poll.tick <- time.Time{}
+	receive(t, r.poll.resets)
+	r.scan.tick <- time.Time{}
+	receive(t, scans)
+	receive(t, r.scan.resets)
+	r.update.tick <- time.Time{}
+	receive(t, r.update.resets)
+	// Initial sync, poll, periodic scan and update check each trim once.
+	if got := trims.Load(); got != 4 {
+		t.Fatalf("trims=%d want 4", got)
+	}
+}

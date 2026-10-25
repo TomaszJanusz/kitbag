@@ -8,6 +8,8 @@ import (
 	"math/rand/v2"
 	"net"
 	"path/filepath"
+	"runtime"
+	"runtime/debug"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -25,14 +27,32 @@ import (
 const (
 	daemonDirectoryPerm fs.FileMode = 0o700
 	daemonProbeTimeout              = 15 * time.Second
+	// The scheduler is serial, so two Ps serve it and the local API; a lower GC
+	// target bounds heap growth within a cycle (idle budget in docs/daemon.md).
+	daemonProcs     = 2
+	daemonGCPercent = 50
 )
 
 func (c *commandLine) daemonCommand() *cobra.Command {
 	return &cobra.Command{Use: "daemon", Short: "Poll configuration, detect drift and serve the local API", Long: "Run in the foreground with a per-user lock, bounded JSON logs, debounced filesystem watches and daily release metadata checks. Remote changes use the normal safe sync workflow; local edits only trigger inspection. Stop with SIGINT or SIGTERM. Restart after changing daemon settings.", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		ctx, stop := platform.ShutdownContext(cmd.Context())
 		defer stop()
+		if c.process {
+			c.tuneDaemonRuntime()
+		}
 		return classified(c.runDaemon(ctx))
 	}}
+}
+
+// tuneDaemonRuntime trades negligible CPU for idle memory in the long-lived
+// process only. Explicit GOMAXPROCS or GOGC settings win.
+func (c *commandLine) tuneDaemonRuntime() {
+	if _, set := c.host.LookupEnv("GOMAXPROCS"); !set {
+		runtime.GOMAXPROCS(min(runtime.GOMAXPROCS(0), daemonProcs))
+	}
+	if _, set := c.host.LookupEnv("GOGC"); !set {
+		debug.SetGCPercent(daemonGCPercent)
+	}
 }
 
 func (c *commandLine) runDaemon(ctx context.Context) (err error) {
@@ -135,7 +155,7 @@ func (c *commandLine) serveDaemon(ctx context.Context, listener net.Listener, to
 		} else {
 			events.Publish(api.Event{Kind: kind})
 		}
-	}, Log: log, Jitter: pollJitter}
+	}, Log: log, Jitter: pollJitter, Trim: debug.FreeOSMemory}
 	if runtime.watcher != nil {
 		deps.Watch = runtime.watcher.Hints()
 	}

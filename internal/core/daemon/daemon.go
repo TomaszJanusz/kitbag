@@ -37,6 +37,9 @@ type Options struct {
 
 // Dependencies never run concurrently with one another. Watch hints may be
 // dropped/coalesced: periodic scans remain authoritative. Publish must not block.
+// Optional Trim returns idle memory after timer-driven work (initial sync, poll,
+// periodic scan, update check), so it runs at most a few times per poll interval
+// and never once per watch hint.
 type Dependencies struct {
 	Clock   Clock
 	Probe   func(context.Context) (string, error)
@@ -47,6 +50,7 @@ type Dependencies struct {
 	Log     func(string, error)
 	Jitter  func(time.Duration) time.Duration
 	Watch   <-chan struct{}
+	Trim    func()
 }
 
 // Run performs an initial synchronization, probes with bounded jitter/backoff,
@@ -71,6 +75,7 @@ func Run(ctx context.Context, options Options, deps Dependencies) error {
 	loop.head, err = synchronize(ctx, deps)
 	deps.Log("sync", err)
 	loop.checkUpdate(ctx)
+	loop.trim()
 	loop.poll.Reset(jitter(deps, loop.delay))
 	return loop.run(ctx)
 }
@@ -97,15 +102,23 @@ func (s *scheduler) run(ctx context.Context) error {
 			s.deps.Log("scan", s.deps.Scan(ctx))
 		case <-s.scan.C():
 			s.deps.Log("scan", s.deps.Scan(ctx))
+			s.trim()
 			s.scan.Reset(rescanInterval)
 		case <-s.update.C():
 			s.checkUpdate(ctx)
+			s.trim()
 			s.update.Reset(updateInterval)
 		case <-s.poll.C():
 			s.pollOnce(ctx)
 		}
 	}
 	return nil
+}
+
+func (s *scheduler) trim() {
+	if s.deps.Trim != nil {
+		s.deps.Trim()
+	}
 }
 
 func (s *scheduler) hint(open bool) {
@@ -130,6 +143,7 @@ func (s *scheduler) pollOnce(ctx context.Context) {
 	var err error
 	s.head, err = pollOnce(ctx, s.deps, s.head)
 	s.deps.Log("poll", err)
+	s.trim()
 	if err != nil {
 		s.delay = min(max(s.delay, s.options.Poll)*multiplier, max(maxBackoff, s.options.Poll))
 	} else {
