@@ -75,7 +75,7 @@ func TestRegistryOrder(t *testing.T) {
 		"tool-version", "instance-codex/default",
 		"git-backend", "remote", "commit-identity", "commit-signing",
 		"ssh-agent", "agent-claude", "agent-codex",
-		"state-lock", "state-health", "materialization-mode", "copy", "link",
+		"state-lock", "state-health", "materialization-mode", "copy", "link", "service",
 		"legacy-links", "legacy-markers", "legacy-settings-markers", "legacy-units",
 	}, nil)
 	if r.DoctorSchema != 1 {

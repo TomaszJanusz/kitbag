@@ -27,6 +27,7 @@ checks; it does not assert that they passed.
 | Legacy links | With `migration.legacy_roots`, inspect shared/instance skills, instructions, old executable and agent-browser links into those roots or `~/.agents/skills`; review them, then run `kitbag adopt` ([adopt.md](adopt.md)). Dangling links count. |
 | Legacy markers | Inspect instruction files for `agent-config-managed` or `Managed by agent-config-sync`; review/migrate them. |
 | Legacy settings markers | `legacy-settings-markers`: for every enabled Claude instance, a bounded byte search of `<dir>/settings.json` for the hook marker `# agent-config-managed`. It reports only the instance, the path and the number of occurrences; run `kitbag adopt`, then `kitbag sync` ([adopt.md](adopt.md)). A missing file is OK; an unreadable file, or one larger than 4 MiB (not read at all), WARNs with a permission/size hint. |
+| Service | Optional background service: OK when absent; WARN when unloaded, inactive, disabled, stale, or the last supervisor exit code is nonzero. Shows supervisor run/exit observations; reinstall with `kitbag service install` and inspect `kitbag service status`. |
 | Legacy units | Detect filenames containing `agent-config` under XDG `systemd/user` and `~/Library/LaunchAgents`; review/disable old timers/services manually. Presence does not prove activation. No service manager is invoked. |
 
 Legacy checks skip when `migration.legacy_roots` is empty. They only detect;
@@ -35,8 +36,7 @@ are read in exactly one place: the `legacy-settings-markers` byte search above,
 through the platform filesystem, only for Claude instances' `settings.json`.
 Nothing is parsed or interpreted, no settings content is ever displayed, stored
 or put in `--json`/`--report` output, and credentials files are never opened.
-Service health, HTTPS credential-source discovery and API socket checks belong
-to later milestones.
+HTTPS credential-source discovery and API socket checks belong to later milestones.
 
 Every network/process check has a two-second context deadline. Agent probes run
 serially with only PATH and `LC_ALL=C`, without HOME, agent settings overrides or

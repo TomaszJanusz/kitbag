@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>Label</key><string>dev.kitbag.agent</string>
+<key>ProgramArguments</key><array>
+<string>/opt/Kit Bag/bin/kitbag</string>
+<string>--config</string>
+<string>/home/test/Config &amp; &#34;files&#34;/config.toml</string>
+<string>sync</string>
+</array>
+<key>RunAtLoad</key><true/>
+<key>StartInterval</key><integer>900</integer>
+<key>ProcessType</key><string>Background</string>
+<key>StandardOutPath</key><string>/home/test/log/service.stdout.log</string>
+<key>StandardErrorPath</key><string>/home/test/log/service.stderr.log</string>
+<key>EnvironmentVariables</key><dict>
+<key>HOME</key><string>/home/test</string>
+<key>PATH</key><string>/opt/Kit Bag/bin:/usr/bin:/bin</string>
+</dict>
+</dict></plist>

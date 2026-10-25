@@ -3,7 +3,7 @@
 `kitbag daemon` keeps a configured machine current and serves the authenticated
 [local API](api/local-api.md). Run `kitbag init` first, then run the daemon in the
 foreground or under a user service supervisor. The command does not install a
-service. Linux and macOS are supported; Windows remains a compiling stub.
+service; use [service management](service.md) to install one. Linux and macOS are supported; Windows remains a compiling stub.
 
 ```sh
 kitbag daemon

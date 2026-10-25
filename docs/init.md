@@ -101,6 +101,7 @@ scripts also check the generated files with the ordinary plan command.
 
 ## Service installation
 
-Service management is planned for M2. Until it exists, init prints the manual
-sync command and explicitly identifies `kitbag service install` as unavailable.
-It does not offer or attempt to install a service.
+Init prints the manual sync command and `kitbag --config <path> service install`
+for optional background synchronization. Run that command after reviewing the
+dry plan; init itself does not start a background process. See
+[service management](service.md) for daemon/timer modes and headless Linux setup.

@@ -71,7 +71,8 @@ it succeeds even when it describes drift. A development build reports `dev` and
 checks minimum versions as `0.0.0-dev`; it cannot bypass a newer-tool requirement.
 Release builds set the version with `go build -ldflags "-X main.version=<semver>"`.
 Windows is refused before any command runs. The [foreground daemon](daemon.md) polls remote changes and serves the local API;
-service installation remains separate work. Init prints the manual sync command.
+[service management](service.md) installs it through systemd user or launchd.
+Init prints both manual sync and service install commands.
 
 See [last-sync persistence](state.md#last-sync-attempt-kit-23),
 [explicit migration roots](manifest.md#configtoml-reference), and

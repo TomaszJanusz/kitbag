@@ -2,7 +2,7 @@
 // use, so the core never learns which operating system it runs on.
 //
 // [Host] combines [FS] (materialization: links, atomic writes, permissions,
-// locks) and [Env] (environment, kitbag and agent directories, host name,
+// locks), [Service] (user supervisors) and [Env] (environment, kitbag and agent directories, host name,
 // opening URLs, terminal detection). Implementations live in subpackages:
 //
 //   - unix: macOS and Linux, the supported v1 hosts.
