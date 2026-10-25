@@ -86,7 +86,8 @@ func TestConfigurationPaths(t *testing.T) {
 		wantErr      bool
 	}{
 		{name: "defaults", identities: 3},
-		{name: "configured then defaults", config: "IdentityFile ~/.ssh/custom\n", identities: 4},
+		{name: "configured without defaults", config: "IdentityFile ~/.ssh/custom\n", identities: 1},
+		{name: "configured only, IdentitiesOnly unset", config: "IdentityFile ~/.ssh/a\nIdentityFile ~/.ssh/b\n", identities: 2},
 		{name: "only configured", config: "IdentityFile ~/.ssh/custom\nIdentitiesOnly yes\n", identities: 1},
 		{name: "quoted hosts", config: "UserKnownHostsFile \"~/.ssh/hosts one\" ~/.ssh/hosts_two\n", identities: 3},
 		{name: "literal percent", config: "IdentityFile ~/.ssh/%%key\nIdentitiesOnly yes\n", identities: 1},

@@ -22,13 +22,13 @@ Authentication advances through these sources without repeating credentials:
    `IdentityAgent none` disables agent access. Agents using the OpenSSH protocol,
    including 1Password, Secretive and gpg-agent, use the same injected dialer.
 2. Configured identity files.
-3. `~/.ssh/id_ed25519`, `~/.ssh/id_ecdsa`, `~/.ssh/id_rsa`.
+3. `~/.ssh/id_ed25519`, `~/.ssh/id_ecdsa`, `~/.ssh/id_rsa`, only when ssh_config
+   supplies no `IdentityFile` for the host (as in OpenSSH).
 
-With `IdentitiesOnly yes`, agent keys must match a configured identity (its `.pub`
-file, private key public component, or encrypted OpenSSH public header), and the
-default files are skipped when identities are configured. Without it, defaults
-follow configured identities (OpenSSH would skip them whenever `IdentityFile` is
-set; KitBag keeps the zero-configuration fallback). Missing or
+When any `IdentityFile` applies, the default key files are never tried, with or
+without `IdentitiesOnly`. With `IdentitiesOnly yes`, agent keys must match a
+configured identity (its `.pub` file, private key public component, or encrypted
+OpenSSH public header); without it every agent key is offered. Missing or
 unusable agents fall through to files. Encrypted files are decrypted only after
 earlier sources fail, so a working agent never triggers a passphrase prompt.
 

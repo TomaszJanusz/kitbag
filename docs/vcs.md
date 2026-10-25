@@ -156,7 +156,8 @@ explicit clone branch is preferred and otherwise `main` is used.
 Embedded SSH discovers the agent, SSH configuration and identity files through
 KitBag's credential resolver. It applies `Host` patterns, `HostName`, `User`,
 `Port`, `IdentityFile`, `IdentityAgent`, `IdentitiesOnly` and
-`UserKnownHostsFile`. Host verification uses OpenSSH known_hosts, including hashed
+`UserKnownHostsFile`. Default keys (`id_ed25519`, `id_ecdsa`, `id_rsa`) are tried only
+when no `IdentityFile` applies, as in OpenSSH. Host verification uses OpenSSH known_hosts, including hashed
 entries; unknown keys require explicit consent and changed keys are always
 rejected. CLI and daemon operations remain non-interactive: load encrypted keys
 into an agent and verify/add host keys before running them. Prompt and keyring
