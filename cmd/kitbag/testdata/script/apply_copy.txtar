@@ -1,0 +1,25 @@
+agentdirs .codex
+exec kitbag __e2e_apply --mode copy $WORK/config $HOME/.codex
+! linktarget $HOME/.codex/AGENTS.md
+content $HOME/.codex/AGENTS.md 'Shared rules.'
+exec kitbag __e2e_apply --mode copy $WORK/config $HOME/.codex
+nooutput
+cp local.md $HOME/.codex/AGENTS.md
+execstatus 1 kitbag __e2e_apply --mode copy $WORK/config $HOME/.codex
+stderr 'managed destination has local changes'
+content $HOME/.codex/AGENTS.md 'Local rules.'
+exec kitbag __e2e_apply --mode copy --force $WORK/config $HOME/.codex
+stdout '^backup '
+stdout '^materialize '
+content $HOME/.codex/AGENTS.md 'Shared rules.'
+exec sh -c 'cp "$HOME"/.codex/AGENTS.md.before-kitbag.* "$WORK"/original'
+content $WORK/original 'Local rules.'
+exec kitbag __e2e_apply --mode copy $WORK/config $HOME/.codex
+nooutput
+
+-- config/kitbag.toml --
+schema = 1
+-- config/global/AGENTS.md --
+Shared rules.
+-- local.md --
+Local rules.

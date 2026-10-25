@@ -42,16 +42,21 @@ const (
 // Manifest must be validated and host-resolved before Build. Adapters must obey
 // target.Adapter's purity contract. Repository uses host-native absolute syntax.
 type Request struct {
-	Manifest   *manifest.Manifest
-	Repository string
-	Adapters   []target.Adapter
-	State      state.Database
+	Manifest    *manifest.Manifest
+	Repository  string
+	Mode        string
+	Adapters    []target.Adapter
+	LegacyRoots []string
+	State       state.Database
+	Force       bool
 }
 
-// Desired is resolved output metadata. Content is available to the future apply
+// Desired is resolved output metadata. Content is available to the apply
 // engine for generated/merged writes, but never appears in either renderer.
 // SourceHash describes local bytes, not remote provenance (ADR 9).
 type Desired struct {
+	InstanceDir string        `json:"-"`
+	Mode        string        `json:"-"`
 	Path        string        `json:"path"`
 	Kind        target.Kind   `json:"kind"`
 	SourcePath  string        `json:"source_path,omitempty"`
@@ -64,6 +69,7 @@ type Desired struct {
 // Operation is one ordered logical action. A skip never authorizes mutation.
 // Apply must recheck preconditions under the state lock; a plan is not a lease.
 type Operation struct {
+	Expected       *state.Entry   `json:"-"`
 	Desired        *Desired       `json:"desired,omitempty"`
 	Kind           Kind           `json:"kind"`
 	Path           string         `json:"path"`
@@ -84,4 +90,5 @@ type Plan struct {
 	Operations   []Operation   `json:"operations"`
 	Observations []Observation `json:"observations"`
 	PlanSchema   int           `json:"plan_schema"`
+	Force        bool          `json:"-"`
 }

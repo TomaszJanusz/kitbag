@@ -18,12 +18,16 @@ type prepared struct {
 }
 
 type builder struct {
-	fsys       platform.FS
-	repository string
-	old        map[string]state.Target
-	desired    map[string]prepared
-	removed    map[string]bool
-	plan       Plan
+	fsys        platform.FS
+	repository  string
+	old         map[string]state.Target
+	desired     map[string]prepared
+	removed     map[string]bool
+	machineMode string
+	mode        string
+	legacyRoots []string
+	plan        Plan
+	force       bool
 }
 
 // Build reads the world through fsys and returns a logical plan. It never
@@ -38,8 +42,8 @@ func Build(fsys platform.FS, req Request) (Plan, error) {
 		return Plan{}, err
 	}
 	b := builder{
-		fsys: fsys, repository: req.Repository,
-		plan: Plan{PlanSchema: SchemaVersion, Operations: []Operation{}, Observations: []Observation{}},
+		fsys: fsys, repository: req.Repository, force: req.Force, mode: req.Manifest.Mode, machineMode: req.Mode, legacyRoots: slices.Clone(req.LegacyRoots),
+		plan: Plan{PlanSchema: SchemaVersion, Force: req.Force, Operations: []Operation{}, Observations: []Observation{}},
 		old:  map[string]state.Target{}, desired: map[string]prepared{}, removed: map[string]bool{},
 	}
 	for _, previous := range req.State.Targets {
@@ -60,6 +64,9 @@ func Build(fsys platform.FS, req Request) (Plan, error) {
 		}
 	}
 	b.sort()
+	if err = b.bind(); err != nil {
+		return Plan{}, err
+	}
 	return b.plan, nil
 }
 
@@ -69,6 +76,9 @@ func validateRequest(req Request) error {
 	}
 	if !validPath(req.Repository) || req.State.SchemaVersion != state.CurrentVersion {
 		return invalid("repository or state schema")
+	}
+	if err := validateRequestPolicy(req); err != nil {
+		return err
 	}
 	return validateStatePaths(req)
 }
@@ -89,6 +99,12 @@ func validateStatePaths(req Request) error {
 
 func (b *builder) prepare(declarations []target.Target) error {
 	for _, d := range declarations {
+		if d.Mode == "" {
+			d.Mode = b.manifestMode()
+		}
+		if err := b.instance(&d); err != nil {
+			return err
+		}
 		desired, err := prepare(b.fsys, d)
 		if errors.Is(err, fs.ErrNotExist) {
 			continue
@@ -104,7 +120,7 @@ func (b *builder) prepare(declarations []target.Target) error {
 }
 
 func prepare(fsys platform.FS, d target.Target) (Desired, error) {
-	desired := Desired{Path: d.Path, Kind: d.Kind, SourcePath: d.SourcePath, Owners: sortedOwners(d.Owners), Content: slices.Clone(d.Content)}
+	desired := Desired{InstanceDir: d.InstanceDir, Mode: d.Mode, Path: d.Path, Kind: d.Kind, SourcePath: d.SourcePath, Owners: sortedOwners(d.Owners), Content: slices.Clone(d.Content)}
 	if d.Warning != "" {
 		return desired, nil
 	}
@@ -188,3 +204,36 @@ const (
 	skipPhase
 	unknownPhase
 )
+
+func (b *builder) manifestMode() string { return b.mode }
+
+func (b *builder) instance(d *target.Target) error {
+	if d.InstanceDir == "" {
+		return nil
+	}
+	info, err := b.fsys.Lstat(d.InstanceDir)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		d.Warning = "instance directory is missing; skipped"
+	case err != nil:
+		return err
+	case !info.IsDir():
+		d.Warning = "instance directory is not a real directory; skipped"
+	}
+	return nil
+}
+
+func validateRequestPolicy(req Request) error {
+	if req.Mode != "" && req.Mode != "link" && req.Mode != "copy" {
+		return invalid("unknown machine mode")
+	}
+	if req.State.Pending != nil {
+		return invalid("recover pending step before planning")
+	}
+	for _, root := range req.LegacyRoots {
+		if !validPath(root) {
+			return invalid("invalid legacy root")
+		}
+	}
+	return nil
+}

@@ -15,6 +15,8 @@ type current struct {
 	warning   string
 	exists    bool
 	directory bool
+	repair    bool
+	link      bool
 }
 
 func (b *builder) current(path string, previous state.Target) (current, error) {
@@ -62,16 +64,27 @@ func (b *builder) currentLink(path string, previous state.Target) (current, erro
 		resolved = filepath.Join(filepath.Dir(path), link)
 	}
 	if previous.Kind != state.Link || filepath.Clean(resolved) != previous.SourcePath {
+		replaceable, repairErr := b.replaceable(path)
+		if repairErr != nil {
+			return current{}, repairErr
+		}
+		if replaceable {
+			return current{exists: true, repair: true, link: true}, nil
+		}
 		return current{exists: true, warning: "destination is a foreign or retargeted symbolic link"}, nil
 	}
 	// Link identity establishes ownership, even after source changes/deletion.
 	// The effective destination baseline is W, making plans mode-independent.
-	return current{exists: true, hash: previous.WrittenHash}, nil
+	return current{exists: true, hash: previous.WrittenHash, link: true}, nil
 }
 
 func (b *builder) stale() error {
 	for _, previous := range sortedState(b.old) {
 		if _, exists := b.desired[previous.Path]; exists {
+			continue
+		}
+		if b.storageReserved(previous.Path) {
+			b.skip(previous.Path, Conflict, "recovery storage overlaps a managed target")
 			continue
 		}
 		c, err := b.current(previous.Path, previous)
@@ -96,4 +109,17 @@ func sortedState(targets map[string]state.Target) []state.Target {
 	}
 	slices.SortFunc(result, func(a, b state.Target) int { return strings.Compare(a.Path, b.Path) })
 	return result
+}
+
+func (b *builder) replaceable(path string) (bool, error) {
+	replaceable, err := b.fsys.IsManagedLink(path, b.legacyRoots...)
+	if err != nil || replaceable || len(b.legacyRoots) == 0 {
+		return replaceable, err
+	}
+	// Explicit legacy migration also mirrors replaceable's dangling-link rule.
+	_, err = b.fsys.Stat(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return true, nil
+	}
+	return false, err
 }

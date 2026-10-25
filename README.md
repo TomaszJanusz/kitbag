@@ -62,6 +62,11 @@ stand-in with `exec kitbag <command>` and keeps all four scenarios: first run,
 repeat run prints nothing, a listed instance directory is missing, and the
 case the change is about.
 
+The apply acceptance scripts use a test-binary-only `__e2e_apply` entry and an
+`execstatus code command ...` assertion for exact exits; neither adds a public
+CLI command. See [apply.md](docs/apply.md) for the production engine contract and
+KIT-23 boundary.
+
 **HOME guard.** The harness refuses to run, and `kitbag` started by a script
 exits with status 125, when `HOME` is the real home directory or is not a
 directory inside `$WORK`, including after `env HOME=...` in a script. Never

@@ -70,8 +70,9 @@ New directories use 0700; state and new lock files use 0600. Existing directorie
 are not chmodded. Save uses `FS.WriteAtomic`, so partial staging writes and
 pre-rename failures preserve the previous snapshot. A failure syncing the directory
 after rename can report an error with the new state already visible: reload
-before retrying. State atomicity is not a crash journal for host operations that
-happen before Save; that is future apply-engine work.
+before retrying. The optional `pending` step is the write-ahead recovery contract used by
+[apply](apply.md). It is validated and serialized here; recovery and host
+execution remain in apply. Completed steps save ownership/history immediately.
 
 ## Reading and migrations
 

@@ -55,6 +55,13 @@ func TestLinkAndCopyHaveIdenticalLogicalPlans(t *testing.T) {
 			t.Parallel()
 			linked := modeScenario(t, state.Link, scenario)
 			copied := modeScenario(t, state.Copy, scenario)
+			// Physical entry preconditions necessarily differ; logical operations do not.
+			for i := range linked.Operations {
+				linked.Operations[i].Expected = nil
+			}
+			for i := range copied.Operations {
+				copied.Operations[i].Expected = nil
+			}
 			if !reflect.DeepEqual(linked, copied) {
 				t.Fatalf("link:\n%s\ncopy:\n%s", linked.Text(), copied.Text())
 			}

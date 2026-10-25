@@ -68,6 +68,7 @@ type AppliedPlan struct {
 
 // Database is one atomic snapshot. Empty collections serialize as arrays.
 type Database struct {
+	Pending       *Step         `json:"pending,omitempty"`
 	Targets       []Target      `json:"targets"`
 	History       []AppliedPlan `json:"history"`
 	SchemaVersion int           `json:"schema_version"`
@@ -85,4 +86,27 @@ type Migration interface {
 type Options struct {
 	Migration    Migration
 	HistoryLimit int
+}
+
+// Entry is a lexical filesystem precondition, never following a final link.
+// Kind is empty for absence, or file, directory, or link.
+type Entry struct {
+	Kind string `json:"kind"`
+	Hash string `json:"hash,omitempty"`
+	Link string `json:"link,omitempty"`
+}
+
+// Step is write-ahead recovery metadata for one authorized filesystem step.
+// Stage is a reserved sibling owned by this transaction. Backup retains the old
+// entry. Recovery either recognizes the complete output or restores the old one.
+type Step struct {
+	At       time.Time `json:"at"`
+	After    *Target   `json:"after,omitempty"`
+	Previous *Target   `json:"previous,omitempty"`
+	Before   Entry     `json:"before"`
+	Path     string    `json:"path"`
+	Stage    string    `json:"stage,omitempty"`
+	Backup   string    `json:"backup,omitempty"`
+	Action   string    `json:"action"`
+	ID       string    `json:"id"`
 }

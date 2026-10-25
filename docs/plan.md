@@ -106,9 +106,9 @@ a still-owned link, normalize effective C to W and compare the new source S to P
 Thus a source update produces the same `materialize` operation as an unchanged
 copy needing that update. Unchanged sources produce empty plans in both modes.
 A destination link retargeted elsewhere is a conflict; editing through a valid
-link is a source change, per ADR 3. Physical link/copy policy is intentionally
-absent from the logical plan. KIT-16 must resolve manifest/machine mode precedence
-and use Link or copy execution for `materialize`, without a silent fallback.
+link is a source change, per ADR 3. Logical output kinds remain independent of link/copy policy. Adapters can carry
+a resolved manifest mode and callers supply a machine mode for representation
+changes; [apply](apply.md) resolves copy-wins policy without a silent fallback.
 
 ## Removals, moves and backups
 
@@ -130,14 +130,21 @@ children are not themselves owned, so replacing such a directory needs explicit
 adoption. File/directory shape changes with an existing directory are also
 conservative conflicts; no implicit recursive adoption occurs.
 
-`Once` backs up only an unmanaged regular file to `<destination>.kitbag-backup`.
-That name must be unused and must not overlap desired/state targets or the repo.
-The plan never overwrites a backup and never creates a second numbered backup.
-After apply, state ownership prevents another backup even after history rotation.
-After a backup rename interrupted before output installation, the now-missing
-destination can be created without repeating the backup. If ownership is lost
-and an obstacle returns while the backup remains, skip. Retention, sensitive-file
-permissions and real crash recovery belong to KIT-16/state policy.
+`Once` authorizes a backup to the `<destination>.before-kitbag.` namespace,
+with the injected-clock timestamp selected by apply. Any existing backup with
+that prefix (or the older exact `.kitbag-backup` name) blocks another one-time
+backup. The namespace must not overlap desired/state targets or the repository.
+After a backup interrupted before installation, the missing destination can be
+created without another backup. [Apply](apply.md) defines the format, recovery,
+retention and permission policy.
+
+`Request.Force` authorizes only materialized drift replacement with the declared
+backup policy; it does not change settings reconciliation. `LegacyRoots` allows
+repair of links into known old clone/shared-skill roots and dangling links using
+the legacy replaceable rule; live foreign links remain conflicts. Optional `Target.InstanceDir` protects
+missing listed instances. Operations carry non-serialized entry preconditions
+bound after ordering, modeling earlier removals/backups. Apply rechecks these;
+plan JSON remains review output, never executable input.
 
 ## Order and rendering
 
@@ -161,11 +168,8 @@ planner filesystem is the in-memory fake. Update reviewed goldens explicitly:
 mise exec -- go test ./internal/plancheck -run '^TestPlanRenderings$' -args -update
 ```
 
-The fake-only test executor lives in `_test.go`, not production. A deterministic
-100-seed test generates repository trees, prior states, moves, deletions, missing
-destinations and unmanaged files in both modes, applies a plan, asserts the next
-plan has zero operations, and checks output contents independently. Conflict and
-warning plans intentionally remain nonempty until resolved: pretending to apply
-a skip cannot make local drift disappear. KIT-16 should reuse/replace the executor
-in its own property test with actual apply. Real host behavior, real adapters,
-execution atomicity and crash recovery are not verified by these tests.
+The 100-seed property test now invokes the real locked apply engine for both
+modes, then asserts an empty replan and independently verifies desired contents.
+Conflict/warning plans intentionally remain nonempty until resolved. Execution,
+interruption tests and the test-only binary fixture are documented in
+[apply.md](apply.md); the duplicate test executor has been removed.

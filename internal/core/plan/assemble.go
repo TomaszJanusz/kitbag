@@ -58,6 +58,9 @@ func addDeclaration(byPath map[string]target.Target, d target.Target, repository
 }
 
 func validateDeclaration(d target.Target, repository string) error {
+	if err := validatePolicy(d); err != nil {
+		return err
+	}
 	if !validPath(d.Path) || foldedOverlap(repository, d.Path) {
 		return invalid("destination overlaps repository or is not absolute and clean: " + d.Path)
 	}
@@ -118,7 +121,7 @@ func sortedOwners(owners []state.Owner) []state.Owner {
 
 func sameDeclaration(a, b target.Target) bool {
 	// Independently composed mergers cannot safely share a destination yet.
-	return a.Kind != target.Merged && a.Kind == b.Kind && a.SourcePath == b.SourcePath && bytes.Equal(a.Content, b.Content) && a.Backup == b.Backup && a.Warning == b.Warning
+	return a.Kind != target.Merged && a.Kind == b.Kind && a.Mode == b.Mode && a.InstanceDir == b.InstanceDir && a.SourcePath == b.SourcePath && bytes.Equal(a.Content, b.Content) && a.Backup == b.Backup && a.Warning == b.Warning
 }
 
 func foldedOverlap(a, b string) bool {
@@ -148,4 +151,14 @@ func materializedValid(d target.Target) bool {
 func generatedValid(d target.Target) bool { return d.SourcePath == "" && d.Merger == nil }
 func mergedValid(d target.Target) bool {
 	return d.Merger != nil && (d.SourcePath == "" || d.Content == nil)
+}
+
+func validatePolicy(d target.Target) error {
+	if d.Mode != "" && d.Mode != "link" && d.Mode != "copy" {
+		return invalid("unknown materialization mode")
+	}
+	if d.InstanceDir != "" && !validPath(d.InstanceDir) {
+		return invalid("invalid instance directory")
+	}
+	return nil
 }
