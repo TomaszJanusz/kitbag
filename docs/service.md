@@ -60,19 +60,56 @@ in `<state>/service.json`. Only HOME, PATH, XDG paths and supported agent home
 path overrides are persisted. API keys, tokens, the SSH agent environment and
 other variables are not copied. Keep service credentials in the user's normal
 Git credential configuration. Restart/reinstall when those path inputs change.
+
+On Linux, PATH is the installing shell's PATH. On macOS the plist's PATH holds
+only what the daemon runs: the directories in which the installing shell's PATH
+finds `git` and `ssh` (in that order, links not resolved), followed by launchd's
+default `/usr/bin:/bin:/usr/sbin:/sbin`. Programs that Git itself starts from
+other directories, such as credential helpers or `git-lfs`, need an absolute
+path in the Git configuration, or must live next to `git`. Reinstall after
+installing Git or OpenSSH somewhere else.
+
+### Homebrew on macOS
+
+Homebrew runs the binary from a versioned keg such as
+`/opt/homebrew/Cellar/kitbag/0.1.0/bin/kitbag`, which `brew upgrade` plus cleanup
+deletes. When the resolved executable lies in a keg, the plist uses the stable
+`<prefix>/opt/<formula>/bin/kitbag` link instead (or `<prefix>/bin/kitbag` when
+only that exists), but only if the link currently resolves to the running
+binary; otherwise the keg path is kept. Other installations keep the resolved
+path. Linux installations, including Homebrew on Linux, are unchanged.
+
+Caveats that remain after an upgrade:
+
+- A running daemon keeps executing the old version until it exits, and an
+  identical reinstall keeps it running. Restart it with
+  `launchctl kickstart -k gui/$(id -u)/dev.kitbag.agent`. Timer runs pick up
+  the new version on their next start.
+- A service installed by 0.1.0 still names the keg path and the whole shell
+  PATH, so status reports it stale. Run `kitbag service install` once.
+- `brew uninstall kitbag` removes the link; the job then fails to start.
+
+`kitbag service status` and `doctor` report a definition whose executable no
+longer exists (checked through links, so a dangling `opt` link counts) and tell
+you to run `kitbag service install` with the installed kitbag.
 Global materialization/backend/host flags belong in machine configuration for
 persistent operation; install's `--mode` selects daemon versus timer.
 
 Status reports installed, loaded, active, enabled and stale definitions, the
 supervisor's last run/exit code, and the existing per-repository last-sync record.
 Unknown timestamps/codes stay empty/null; they do not claim a successful run.
+Launchd prints `last exit code = (never exited)` for a job that has not exited
+since it was loaded, the normal state of a healthy daemon; status reports it as
+an unknown (null) exit code. JSON `binary` is the executable recorded at
+installation and `binary_missing` is true when it no longer exists.
 For timers, active means scheduling is active, and run/exit information comes
 from the oneshot service. Launchd does not expose a reliable wall-clock run
 stamp through `print`; use `last_sync` for its synchronization timestamp.
 JSON is versioned with `service_schema: 1`. Sync inspection failure is reported
 separately and does not hide supervisor health. Doctor's `service` check is OK
 when this optional feature is absent, and WARN when installed but inactive,
-disabled, unloaded, stale, or the last supervisor exit code is nonzero. Neither status nor doctor changes supervisor state.
+disabled, unloaded, stale, its executable is missing, or the last supervisor
+exit code is nonzero. Neither status nor doctor changes supervisor state.
 
 Uninstall stops/disables jobs, removes both systemd files or the plist and saved
 installation inputs, then reloads systemd. It is safe to repeat. Configuration,

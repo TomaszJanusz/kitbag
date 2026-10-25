@@ -17,7 +17,7 @@ func (h *Host) ServiceLayout() (platform.ServiceLayout, error) {
 	if err != nil {
 		return platform.ServiceLayout{}, err
 	}
-	binary, err := platform.Executable()
+	binary, err := h.executable()
 	user, _ := h.LookupEnv("USER")
 	return platform.ServiceLayout{Manager: "systemd", Directory: filepath.Join(filepath.Dir(dirs.Config), "systemd", "user"), Binary: binary, User: user}, err
 }

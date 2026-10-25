@@ -19,6 +19,8 @@ exists $HOME/.config/systemd/user/dev.kitbag.agent.timer
 grep 'Type=oneshot' $HOME/.config/systemd/user/dev.kitbag.agent.service
 grep 'OnUnitActiveSec=300s' $HOME/.config/systemd/user/dev.kitbag.agent.timer
 ! grep 'service-secret-never-copy' $HOME/.config/systemd/user/dev.kitbag.agent.service
+# systemd keeps the installing shell's whole PATH (only launchd narrows it).
+grep 'Environment="PATH='$WORK'/bin:' $HOME/.config/systemd/user/dev.kitbag.agent.service
 ! exists $HOME/.active
 exec kitbag service status
 stdout 'Service: installed=true loaded=true active=false enabled=true stale=false mode=timer'
@@ -38,6 +40,20 @@ stdout 'Last sync: \{"at":"[^"]+","repository":"[^"]+","schema_version":1,"resul
 exec kitbag service status --json
 stdout '"last_sync":\{"at":'
 ! stdout 'sync_error'
+# A definition whose executable was removed (package upgrade) is explained.
+cp $HOME/.local/state/kitbag/service.json $WORK/service.json.bak
+cp missing-binary.json $HOME/.local/state/kitbag/service.json
+exec kitbag service status
+stdout 'Service executable /kitbag-removed/Cellar/kitbag/0.0.1/bin/kitbag no longer exists.*run kitbag service install'
+exec kitbag service status --json
+stdout '"binary":"/kitbag-removed/Cellar/kitbag/0.0.1/bin/kitbag"'
+stdout '"binary_missing":true'
+exec kitbag doctor --json
+stdout '"message": "service executable /kitbag-removed/Cellar/kitbag/0.0.1/bin/kitbag no longer exists'
+cp $WORK/service.json.bak $HOME/.local/state/kitbag/service.json
+exec kitbag service status --json
+stdout '"binary_missing":false'
+! stdout 'no longer exists'
 exec kitbag service install --mode=daemon
 ! exists $HOME/.config/systemd/user/dev.kitbag.agent.timer
 grep 'Type=simple' $HOME/.config/systemd/user/dev.kitbag.agent.service
@@ -66,6 +82,8 @@ stderr 'none of the others can be'
 
 -- seed/kitbag.toml --
 schema=1
+-- missing-binary.json --
+{"environment":{},"binary":"/kitbag-removed/Cellar/kitbag/0.0.1/bin/kitbag","config":"/kitbag-removed/config.toml","mode":"timer","log_dir":"/kitbag-removed/log","interval":300000000000}
 -- bin/loginctl --
 #!/bin/sh
 printf 'Linger=no\n'

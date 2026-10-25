@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"path/filepath"
@@ -260,5 +261,94 @@ func TestRemovedUnitIsStale(t *testing.T) {
 	must(t, err)
 	if !report.Installed || !report.Stale {
 		t.Fatal("missing installed unit was treated as optional absence", report)
+	}
+}
+
+func executable(t *testing.T, host *fake.Host, path string, perm fs.FileMode) {
+	t.Helper()
+	must(t, host.MkdirAll(filepath.Dir(path), 0o755))
+	must(t, host.WriteAtomic(path, nil, perm))
+}
+
+func TestLaunchdPathKeepsOnlyGitAndSSH(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ name, shell, want string }{
+		{"tool-directories-first", "/home/test/.npm/bin:relative:/opt/homebrew/bin/:/usr/local/bin:/home/test/secret project/bin:/usr/bin:/bin", "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"},
+		{"system-tools-only", "/usr/bin:/home/test/.cargo/bin", "/usr/bin:/bin:/usr/sbin:/sbin"},
+		{"no-shell-path", "", "/usr/bin:/bin:/usr/sbin:/sbin"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			host := fake.New(fake.WithEnv(map[string]string{"HOME": "/home/test", "PATH": tc.shell}), fake.WithServiceLayout(platform.ServiceLayout{Manager: "launchd", Directory: "/home/test/Library/LaunchAgents", Binary: "/opt/homebrew/opt/kitbag/bin/kitbag"}))
+			// A non-executable git earlier in PATH is not what the daemon would run.
+			executable(t, host, "/home/test/.npm/bin/git", 0o644)
+			executable(t, host, "/home/test/.npm/bin/node", 0o755)
+			executable(t, host, "/opt/homebrew/bin/git", 0o755)
+			executable(t, host, "/usr/local/bin/ssh", 0o755)
+			executable(t, host, "/usr/bin/git", 0o755)
+			executable(t, host, "/usr/bin/ssh", 0o755)
+			options, err := Service{Host: host}.Current("daemon", DefaultInterval)
+			must(t, err)
+			if got := options.Environment["PATH"]; got != tc.want {
+				t.Fatalf("PATH %q, want %q", got, tc.want)
+			}
+			definitions, err := Generate("launchd", options)
+			must(t, err)
+			if plist := definitions[platform.ServiceLabel+".plist"]; !strings.Contains(plist, "<key>PATH</key><string>"+tc.want+"</string>") || strings.Contains(plist, ".npm") {
+				t.Fatal(plist)
+			}
+		})
+	}
+}
+
+func TestSystemdKeepsShellPath(t *testing.T) {
+	t.Parallel()
+	_, _, options := subject(t)
+	if got := options.Environment["PATH"]; got != "/usr/bin:/bin" {
+		t.Fatal("systemd PATH changed", got)
+	}
+}
+
+func TestMissingBinaryIsReported(t *testing.T) {
+	t.Parallel()
+	// Homebrew's stable links point into a versioned keg: opt links the keg
+	// directory, bin links the executable itself.
+	for _, tc := range []struct{ name, binary, link, target string }{
+		{"opt-directory-link", "/opt/homebrew/opt/kitbag/bin/kitbag", "/opt/homebrew/opt/kitbag", "../Cellar/kitbag/0.1.0"},
+		{"bin-executable-link", "/opt/homebrew/bin/kitbag", "/opt/homebrew/bin/kitbag", "../Cellar/kitbag/0.1.0/bin/kitbag"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			host := fake.New(fake.WithEnv(map[string]string{"HOME": "/home/test"}), fake.WithServiceLayout(platform.ServiceLayout{Manager: "launchd", Directory: "/home/test/Library/LaunchAgents", Binary: tc.binary}))
+			executable(t, host, "/opt/homebrew/Cellar/kitbag/0.1.0/bin/kitbag", 0o755)
+			must(t, host.MkdirAll(filepath.Dir(tc.link), 0o755))
+			must(t, host.Link(tc.target, tc.link))
+			checkMissingBinary(t, Service{Host: host}, host, tc.binary)
+		})
+	}
+}
+
+func checkMissingBinary(t *testing.T, s Service, host *fake.Host, binary string) {
+	t.Helper()
+	options, err := s.Current("daemon", DefaultInterval)
+	must(t, err)
+	_, err = s.Install(t.Context(), options, false)
+	must(t, err)
+	report, err := s.Status(t.Context())
+	must(t, err)
+	if report.BinaryMissing || report.Binary != binary || report.Stale {
+		t.Fatal(report)
+	}
+	// brew uninstall (or a cleanup of the only keg) leaves the link dangling.
+	must(t, host.Remove("/opt/homebrew/Cellar/kitbag/0.1.0/bin/kitbag"))
+	report, err = s.Status(t.Context())
+	must(t, err)
+	if !report.BinaryMissing || report.Binary != binary {
+		t.Fatal(report)
+	}
+	data, err := json.Marshal(report)
+	must(t, err)
+	if !strings.Contains(string(data), `"binary":"`+binary+`"`) || !strings.Contains(string(data), `"binary_missing":true`) {
+		t.Fatal(string(data))
 	}
 }

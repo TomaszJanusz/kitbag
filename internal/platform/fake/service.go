@@ -9,8 +9,18 @@ import (
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 )
 
+// WithServiceLayout replaces the default systemd layout, for example with a
+// launchd manager or a package-manager executable path. Like the default, the
+// executable is not created in the filesystem.
+func WithServiceLayout(layout platform.ServiceLayout) Option {
+	return func(h *Host) { h.serviceLayout = &layout }
+}
+
 // ServiceLayout supplies deterministic systemd paths without host discovery.
 func (h *Host) ServiceLayout() (platform.ServiceLayout, error) {
+	if h.serviceLayout != nil {
+		return *h.serviceLayout, nil
+	}
 	dirs, err := h.Dirs()
 	return platform.ServiceLayout{Manager: "systemd", Directory: filepath.Join(filepath.Dir(dirs.Config), "systemd", "user"), Binary: filepath.FromSlash("/usr/bin/kitbag"), User: "fake"}, err
 }
