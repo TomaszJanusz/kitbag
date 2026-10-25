@@ -47,16 +47,21 @@ constraint and is never saved; a failed save keeps the draft with the reason.
   exits 2 with `kitbag tui needs an interactive terminal on stdin and stdout`.
   Use `kitbag status`, `plan` and `config list` in scripts.
 - **Colour.** `NO_COLOR` (any value, even empty) and `ui.color = "never"` disable
-  colour; emphasis then uses bold, reverse and text markers only, so no state is
-  conveyed by colour alone. The profile comes from `TERM`/`COLORTERM`; the
+  colour and all other styling. No state depends on styling: the active tab is
+  bracketed, the selection is marked `>`, a pending draft `*` and an unavailable
+  action says so. The profile comes from `TERM`/`COLORTERM`; the
   terminal is never queried, which keeps SSH sessions free of stray replies.
 - **Size.** The layout follows resizes. Below 40×10 the screen asks for a larger
   terminal; narrow terminals wrap values and shorten the tab bar.
 - **Screen.** The alternate screen is used and restored on quit, `Ctrl-C`,
   `SIGINT`/`SIGTERM` and recovered panics. The cursor does not blink, so an idle
   screen is not redrawn.
-- **Shutdown.** Quitting cancels every worker, closing the event subscription, and
-  waits for them before the command returns.
+- **One operation at a time.** Loads, syncs and setting writes run in order on
+  one worker, because the in-process services and the daemon's per-request
+  services share the state lock; a newer queued reload replaces an older one. A
+  long sync therefore delays a refresh or save until it finishes.
+- **Shutdown.** Quitting cancels the worker and the event subscription and waits
+  for both before the command returns.
 
 ## Limitations
 

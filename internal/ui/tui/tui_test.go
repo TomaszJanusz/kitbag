@@ -310,8 +310,13 @@ func TestRunEndsWithItsContext(t *testing.T) {
 		time.Sleep(time.Millisecond)
 	}
 	cancel()
-	if err := <-done; !errors.Is(err, context.Canceled) {
-		t.Fatalf("err=%v", err)
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("err=%v", err)
+		}
+	case <-time.After(waitLimit):
+		t.Fatal("Run did not return after its context ended")
 	}
 	if client.unsubscribed.Load() != 1 {
 		t.Fatal("subscription still open")
