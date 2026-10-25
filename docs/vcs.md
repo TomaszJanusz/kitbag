@@ -183,3 +183,13 @@ separate lifecycle and dotfile protections. Global commands alone honour an
 absolute `GIT_CONFIG_GLOBAL`; repository commands still discard it and every
 other unlisted `GIT_*` variable. The same Runner supplies the explicit clean
 environment, adding only that override for global commands.
+
+## Doctor capabilities
+
+`vcs.RemoteProber` optionally lists origin refs without fetching or updating
+refs (`git ls-remote` in the system backend). `vcs.CommitInspector` exposes only
+identity/signing configuration presence, not values; system Git implements it
+by querying four named keys. Doctor bounds both operations with a context and
+reports unsupported capabilities explicitly. Agent version probes reuse
+`system.Runner` with a separate minimal environment; they never inherit agent
+credentials or home/config variables. See [doctor.md](doctor.md).

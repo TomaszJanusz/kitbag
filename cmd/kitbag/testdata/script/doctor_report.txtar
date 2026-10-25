@@ -1,0 +1,69 @@
+[windows] stop 'fixture probes are shell scripts'
+env KITBAG_CONFIG=$WORK/machine.toml
+env KITBAG_HOST=test
+env CODEX_HOME=
+env CLAUDE_CONFIG_DIR=
+env SSH_AUTH_SOCK=
+gitremote $WORK/config.git seed
+exec git clone --quiet $WORK/config.git $HOME/checkout
+chmod 0755 probes/claude
+chmod 0755 probes/codex
+env PATH=$WORK/probes${:}$PATH
+
+# A report skips the deliberately broken remote, stays local and redacts every
+# result, including agent output and fix hints containing the throwaway HOME.
+exec git -C $HOME/checkout remote set-url origin $WORK/missing.git
+exec kitbag doctor --json --report=$WORK/report.json
+doctorschema stdout
+doctorschema report.json
+stdout 'skipped: --report performs no network operations'
+# Negative controls assert the fixture reached the unredacted diagnostic.
+stdout 'person@example.invalid'
+stdout 'ghp_FAKE_doctor_token'
+stdout '/Users/someone'
+! grep 'person@example.invalid|ghp_FAKE_doctor_token|sk-FAKE_doctor_key|password|/Users/someone|/home/another|C:|opaque-secret|api_key=opaque-key' report.json
+! grep $HOME report.json
+grep '\[REDACTED\]' report.json
+grep '~/.codex' report.json
+# No applied files, no stored state, no last-sync record or leftover probes.
+! exists $HOME/.codex
+! exists $HOME/.local/state/kitbag/state.json
+! exists $HOME/.local/state/kitbag/last-sync.json
+
+# Report write failure must fail even when every diagnostic is only a warning.
+execstatus 1 kitbag doctor --report=$WORK/missing/report.json
+stderr 'kitbag:'
+
+# Version probe nonzero and timeout are warnings with actionable fixes.
+cp fails probes/claude
+chmod 0755 probes/claude
+exec kitbag doctor --report=$WORK/report.json
+stdout 'agent-claude: .*fix: install claude or check its PATH and --version command'
+cp waits probes/claude
+chmod 0755 probes/claude
+exec kitbag doctor --report=$WORK/report.json
+stdout 'agent-claude: .*timed out.*fix: install claude'
+
+-- machine.toml --
+schema=1
+[repo]
+url="local"
+path="~/checkout"
+-- seed/kitbag.toml --
+schema=1
+[targets.codex]
+agent="codex"
+-- probes/claude --
+#!/bin/sh
+# gitleaks:allow -- deliberately fake redaction inputs, never credentials.
+printf '%s\n' 'claude 1.2.3 person@example.invalid ghp_FAKE_doctor_token sk-FAKE_doctor_key https://username:password@example.invalid/path token=opaque-secret api_key=opaque-key /Users/someone/private /home/another/private C:\Users\another\private'
+-- probes/codex --
+#!/bin/sh
+echo 'codex-cli 1.2.3'
+-- fails --
+#!/bin/sh
+exit 7
+-- waits --
+#!/bin/sh
+# exec avoids leaving a descendant after context cancellation.
+exec /bin/sleep 30
