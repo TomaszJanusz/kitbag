@@ -119,8 +119,17 @@ differing only in its marker. For a **managed** destination holding exactly that
 rendering, the planner classifies the target in sync and records the hash of the
 bytes present (a `record` only when metadata differs). Once the desired output
 changes, the rendering no longer matches and the ordinary update rewrites the
-file with KitBag's marker. Unmanaged destinations are unaffected: only explicit
-[adoption](adopt.md) establishes ownership. `Candidates` lists unowned
+file with KitBag's marker. Only explicit [adoption](adopt.md) establishes
+ownership without writing.
+
+With `LegacyRoots` configured, an **unowned** destination holding exactly that
+rendering, for the active clone or for a clone at any legacy root, was the old
+tool's output: it is replaced in place like a legacy link (`update needed`, no
+backup), and `Operation.Replaces` tells apply to discard it rather than keep a
+backup. The rendering names its clone only as the repository path (marker,
+`@` import lines, expanded `@REPO@` hook commands), so the planner obtains an old
+clone's rendering by replacing the repository path with the root. Any other byte
+difference, such as a local edit, keeps the one-time backup. `Candidates` lists unowned
 declarations whose destinations already hold the desired output (or that
 rendering) without writing; `Declarations` exposes the assembled declarations.
 
@@ -159,7 +168,8 @@ retention and permission policy.
 `Request.Force` authorizes only materialized drift replacement with the declared
 backup policy; it does not change settings reconciliation. `LegacyRoots` allows
 repair of links into known old clone/shared-skill roots and dangling links using
-the legacy replaceable rule; live foreign links remain conflicts. `Target.Preserve` retains a declared path and any existing ownership without
+the legacy replaceable rule, and in-place replacement of the old tool's exact
+renderings; live foreign links remain conflicts. `Target.Preserve` retains a declared path and any existing ownership without
 reading a source or producing operations; adapters use it for settings opt-out.
 Optional `Target.InstanceDir` protects
 missing listed instances. Operations carry non-serialized entry preconditions

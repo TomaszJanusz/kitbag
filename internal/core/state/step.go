@@ -88,7 +88,8 @@ func validateStepTargets(s *Step) error {
 			return invalid("pending target path disagrees")
 		}
 	}
-	if s.Discard != "" && s.Previous == nil {
+	// A link is journaled by its exact text, so discarding an unowned one loses nothing.
+	if s.Discard != "" && s.Previous == nil && s.Before.Kind != "link" {
 		return invalid("pending discard of unowned entry")
 	}
 	return nil

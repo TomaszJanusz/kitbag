@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -118,6 +119,9 @@ func (b *builder) prepare(declarations []target.Target) error {
 		if errors.Is(err, fs.ErrNotExist) {
 			continue
 		}
+		if d.Kind == target.Generated {
+			desired.LegacyHashes = b.legacyHashes(d.Legacy)
+		}
 		if errors.Is(err, fs.ErrInvalid) {
 			d.Warning = err.Error()
 		} else if err != nil {
@@ -144,6 +148,24 @@ func prepare(fsys platform.FS, d target.Target) (Desired, error) {
 		desired.LegacyHash = HashBytes(d.Legacy)
 	}
 	return desired, nil
+}
+
+// legacyHashes hashes agent-config-sync's rendering for the active clone and,
+// with legacy roots configured, for a clone at each legacy root. The rendering
+// names the clone only as the repository path (marker, import lines, expanded
+// hook commands), so replacing that path gives the old clone's rendering; any
+// other mention of the path merely fails to match, keeping the backup.
+func (b *builder) legacyHashes(legacy []byte) []string {
+	if legacy == nil || len(b.legacyRoots) == 0 {
+		return nil
+	}
+	hashes := []string{HashBytes(legacy)}
+	for _, root := range b.legacyRoots {
+		if root != b.repository {
+			hashes = append(hashes, HashBytes(bytes.ReplaceAll(legacy, []byte(b.repository), []byte(root))))
+		}
+	}
+	return hashes
 }
 
 func (b *builder) skip(path string, classification Classification, warning string) {

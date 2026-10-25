@@ -186,6 +186,7 @@ func (b *builder) merge(p *prepared, c current) (bool, error) {
 	if renderer, ok := p.declaration.Merger.(target.LegacyRenderer); ok {
 		if legacy, legacyErr := renderer.Legacy(bytes.Clone(content)); legacyErr == nil {
 			p.desired.LegacyHash = HashBytes(legacy)
+			p.desired.LegacyHashes = b.legacyHashes(legacy)
 		}
 	}
 	return true, nil
@@ -193,7 +194,8 @@ func (b *builder) merge(p *prepared, c current) (bool, error) {
 
 func (b *builder) unmanaged(p prepared, c current) error {
 	classification := UpdateNeeded
-	if c.exists && !c.repair {
+	replaces := legacyOutput(p.desired, c)
+	if c.exists && !c.repair && replaces == nil {
 		classification = UnmanagedObstacle
 		allowed, err := b.backup(p, c, false)
 		if err != nil || !allowed {
@@ -201,8 +203,23 @@ func (b *builder) unmanaged(p prepared, c current) error {
 		}
 	}
 	b.observe(p.desired.Path, classification)
-	b.plan.Operations = append(b.plan.Operations, Operation{Kind: outputKind(p.desired.Kind), Path: p.desired.Path, Classification: classification, Desired: &p.desired})
+	b.plan.Operations = append(b.plan.Operations, Operation{Kind: outputKind(p.desired.Kind), Path: p.desired.Path, Classification: classification, Desired: &p.desired, Replaces: replaces})
 	return nil
+}
+
+// legacyOutput recognizes an unowned file holding exactly agent-config-sync's
+// rendering of the desired output (for the active clone or one at a legacy
+// root). It was that tool's managed output, reproducible from the repository,
+// so it is replaced in place like a legacy link, without a backup.
+func legacyOutput(d Desired, c current) *state.Target {
+	if !c.exists || c.directory || c.link || !slices.Contains(d.LegacyHashes, c.hash) {
+		return nil
+	}
+	kind := state.Generated
+	if d.Kind == target.Merged {
+		kind = state.Merged
+	}
+	return &state.Target{Path: d.Path, Kind: kind, WrittenHash: c.hash, Owners: slices.Clone(d.Owners)}
 }
 
 func (b *builder) backup(p prepared, c current, managed bool) (bool, error) {

@@ -24,7 +24,9 @@ The JSON snapshot contains:
   `previous.managed` optionally preserves the old target's ownership and source
   metadata; nil means the previous entry was unmanaged. A file without
   `backup_path` requires `managed`: unchanged KitBag output that unmanage or
-  revert discarded because the repository reproduces it. A change with
+  revert discarded because the repository reproduces it, or agent-config-sync
+  output that a migration sync replaced in place (recorded as that output's
+  ownership). A link never has a backup: its `link_target` restores it. A change with
   `adopted: true` and a null `previous` records ownership taken over by
   [adoption](adopt.md) without changing the entry.
 - `backups`: optional original-backup records, using the change format above.

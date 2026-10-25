@@ -125,7 +125,9 @@ func TestPendingStepVariants(t *testing.T) {
 		"discard remove": {Action: "remove", Discard: "/dest/file.kitbag-stage.s", Before: state.Entry{Kind: "link", Link: "/repo/config"}, Previous: &previous},
 		"restore backup": {Action: "restore", From: "/dest/file.before-kitbag.old", Restored: &state.Entry{Kind: "file", Hash: hash("c")}, Before: state.Entry{Kind: "file", Hash: hash("a")}, Discard: "/dest/file.kitbag-stage.s", Previous: &previous},
 		"restore link":   {Action: "restore", Restored: &state.Entry{Kind: "link", Link: "../repo/old"}, After: &previous, Plan: "plan-1"},
-		"adoption aside": {Action: "backup", Before: state.Entry{Kind: "directory", Hash: hash("a")}, Backup: "/home/kit/.agents/skills-before-kitbag/.claude/skills/file"},
+		// A replaced link is journaled by its text: no backup, even when unowned.
+		"discard unowned link": {Action: "output", Stage: "/dest/file.kitbag-stage.s", Discard: "/dest/file.kitbag-stage.s-old", Before: state.Entry{Kind: "link", Link: "/old/agent-config/file"}, After: &previous},
+		"adoption aside":       {Action: "backup", Before: state.Entry{Kind: "directory", Hash: hash("a")}, Backup: "/home/kit/.agents/skills-before-kitbag/.claude/skills/file"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()

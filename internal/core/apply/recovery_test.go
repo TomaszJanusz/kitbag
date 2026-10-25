@@ -28,7 +28,16 @@ func recoveryWorld(t *testing.T, mode string) (*fake.Host, *state.Store, plan.Re
 	write(t, h, tree.SourcePath+"/b", "tree new")
 	write(t, h, added.SourcePath, "new")
 	write(t, h, added.Path, "unmanaged")
-	return h, store, request(tree, added, generated)
+	// Legacy entries are replaced in place, after the tree, without backups.
+	legacyLink, legacyOutput := declaration("z-legacy-link"), declaration("z-legacy-output")
+	legacyOutput.Kind, legacyOutput.SourcePath = target.Generated, ""
+	legacyOutput.Content, legacyOutput.Legacy = []byte("kitbag output"), []byte("legacy output of /repo")
+	write(t, h, legacyLink.SourcePath, "relinked")
+	must(t, h.Link("/old/z-legacy-link", legacyLink.Path))
+	write(t, h, legacyOutput.Path, "legacy output of /old")
+	req := request(tree, added, generated, legacyLink, legacyOutput)
+	req.LegacyRoots = []string{"/old"}
+	return h, store, req
 }
 
 func TestEveryStateWriteInterruptionConverges(t *testing.T) {
@@ -88,11 +97,13 @@ func compareRecovered(t *testing.T, h *fake.Host, store *state.Store, expected s
 	content(t, h, "/home/instance/tree/a", "tree old")
 	content(t, h, "/home/instance/tree/b", "tree new")
 	content(t, h, "/home/instance/generated", "generated")
+	content(t, h, "/home/instance/z-legacy-link", "relinked")
+	content(t, h, "/home/instance/z-legacy-output", "kitbag output")
 	entries, err := h.ReadDir("/home/instance")
 	must(t, err)
 	originals := 0
 	for _, entry := range entries {
-		if strings.Contains(entry.Name(), ".kitbag-stage.") || entry.Name() == "old" {
+		if strings.Contains(entry.Name(), ".kitbag-stage.") || entry.Name() == "old" || strings.HasPrefix(entry.Name(), "z-legacy-link.") || strings.HasPrefix(entry.Name(), "z-legacy-output.") {
 			t.Fatalf("leftover %s", entry.Name())
 		}
 		if strings.HasPrefix(entry.Name(), "added.before-kitbag.") {

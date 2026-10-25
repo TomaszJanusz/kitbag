@@ -24,6 +24,10 @@ func prepareStep(fsys platform.FS, db *state.Database, op plan.Operation, option
 		return nil, err
 	}
 	s := &state.Step{Path: op.Path, Before: *op.Expected, ID: id, At: at, Plan: cmp.Or(group, id), Previous: previous(db, op.Path)}
+	if s.Previous == nil && op.Replaces != nil && s.Before.Kind == "file" {
+		replaced := *op.Replaces
+		s.Previous = &replaced // agent-config-sync's output, journaled as owned output
+	}
 	if err = prepareAction(s, op, options); err != nil {
 		return nil, err
 	}
@@ -34,8 +38,9 @@ func prepareStep(fsys platform.FS, db *state.Database, op plan.Operation, option
 }
 
 // setAside chooses where the old entry goes: a journaled backup, the explicit
-// adoption directory, or (for unchanged owned output in undo plans) a reserved
-// sibling that is deleted once the step completes.
+// adoption directory, or (for unchanged owned output in undo plans and for
+// reproducible replaced entries) a reserved sibling that is deleted once the
+// step completes.
 func setAside(s *state.Step, op plan.Operation) error {
 	switch {
 	case op.Kind == plan.Backup && op.BackupPath != "" && op.BackupPath != op.Path+".before-kitbag.":
@@ -44,14 +49,28 @@ func setAside(s *state.Step, op plan.Operation) error {
 		if s.Previous == nil || (s.Previous.Kind == state.Link) != (s.Before.Kind == "link") {
 			return errChanged()
 		}
-		s.Discard = op.Path + ".kitbag-stage." + s.ID
-		if s.Stage != "" {
-			s.Discard += "-old"
-		}
+		s.Discard = discardPath(*s)
+	case reproducible(*s, op):
+		s.Discard = discardPath(*s)
 	default:
 		s.Backup = op.Path + ".before-kitbag." + s.ID
 	}
 	return nil
+}
+
+func discardPath(s state.Step) string {
+	if s.Stage != "" {
+		return s.Path + ".kitbag-stage." + s.ID + "-old"
+	}
+	return s.Path + ".kitbag-stage." + s.ID
+}
+
+// reproducible reports whether output replaces an entry that needs no backup:
+// a link (the journal keeps its exact text) or agent-config-sync output that the
+// repository reproduces. A backup sibling of a skill link would be scanned by
+// agents as a second copy of that skill.
+func reproducible(s state.Step, op plan.Operation) bool {
+	return s.Action == "output" && (s.Before.Kind == "link" || (op.Replaces != nil && s.Previous != nil))
 }
 
 func undoKind(kind plan.Kind) bool {
