@@ -20,6 +20,10 @@ grep 'Type=oneshot' $HOME/.config/systemd/user/dev.kitbag.agent.service
 grep 'OnUnitActiveSec=300s' $HOME/.config/systemd/user/dev.kitbag.agent.timer
 ! grep 'service-secret-never-copy' $HOME/.config/systemd/user/dev.kitbag.agent.service
 ! exists $HOME/.active
+exec kitbag service status
+stdout 'Service: installed=true loaded=true active=false enabled=true stale=false mode=timer'
+stdout 'exit code: 0'
+stdout 'Last sync: unknown'
 exec kitbag service install --mode=timer --interval=5m --now
 stdout 'already installed and up to date'
 exists $HOME/.active
@@ -27,6 +31,13 @@ exec kitbag service status --json
 stdout '"installed":true'
 stdout '"active":true'
 stdout '"exit_code":0'
+# Status reports the persisted record of a manual sync.
+exec kitbag sync
+exec kitbag service status
+stdout 'Last sync: \{"at":"[^"]+","repository":"[^"]+","schema_version":1,"result":0,"changed":0\}'
+exec kitbag service status --json
+stdout '"last_sync":\{"at":'
+! stdout 'sync_error'
 exec kitbag service install --mode=daemon
 ! exists $HOME/.config/systemd/user/dev.kitbag.agent.timer
 grep 'Type=simple' $HOME/.config/systemd/user/dev.kitbag.agent.service
@@ -43,6 +54,9 @@ grep 'systemctl --user enable dev.kitbag.agent.timer' $HOME/commands
 grep 'systemctl --user stop dev.kitbag.agent.timer' $HOME/commands
 grep 'systemctl --user disable dev.kitbag.agent.timer' $HOME/commands
 exec kitbag service uninstall
+exec kitbag service status
+stdout 'installed=false loaded=false active=false enabled=false stale=false mode=$'
+stdout 'exit code: unknown'
 ! exec kitbag service install --mode=bad
 stderr 'service mode must be daemon or timer'
 ! exec kitbag service install --interval=0s

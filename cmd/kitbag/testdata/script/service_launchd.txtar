@@ -1,0 +1,88 @@
+[!darwin] skip 'launchd CLI commands; systemd is covered by service.txtar'
+env KITBAG_CONFIG=
+env KITBAG_MODE=
+env KITBAG_GIT_BACKEND=
+env XDG_CONFIG_HOME=$HOME/.config
+env XDG_STATE_HOME=$HOME/.local/state
+env XDG_DATA_HOME=$HOME/.local/share
+env OPENAI_API_KEY=service-secret-never-copy
+env USER=testing
+env PATH=$WORK/bin:$PATH
+exec chmod +x bin/launchctl
+gitremote $WORK/config.git seed
+exec kitbag init $WORK/config.git --yes
+
+# Timer mode without starting: written, enabled, never bootstrapped.
+exec kitbag service install --mode=timer --interval=5m --no-start
+stdout 'Service installed/updated'
+! stderr 'Linger'
+exists $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
+grep '<key>StartInterval</key><integer>300</integer>' $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
+! grep 'KeepAlive' $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
+! grep 'service-secret-never-copy' $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
+grep 'launchctl enable gui/[0-9]+/dev.kitbag.agent' $HOME/commands
+! grep 'bootstrap' $HOME/commands
+! exists $HOME/.loaded
+exec kitbag service status
+stdout 'Service: installed=true loaded=false active=false enabled=true stale=false mode=timer'
+stdout 'exit code: unknown'
+stdout 'Last sync: unknown'
+
+# The same installation is unchanged; --now bootstraps the unloaded job.
+exec kitbag service install --mode=timer --interval=5m --now
+stdout 'already installed and up to date'
+grep 'launchctl bootstrap gui/[0-9]+ .*/Library/LaunchAgents/dev.kitbag.agent.plist' $HOME/commands
+exists $HOME/.loaded
+exec kitbag service status --json
+stdout '"manager":"launchd"'
+stdout '"installed":true'
+stdout '"loaded":true'
+stdout '"active":true'
+stdout '"exit_code":0'
+exec kitbag service status
+stdout 'loaded=true active=true'
+stdout 'exit code: 0'
+
+# Status reports the persisted record of a manual sync.
+exec kitbag sync
+exec kitbag service status
+stdout 'Last sync: \{"at":"[^"]+","repository":"[^"]+","schema_version":1,"result":0,"changed":0\}'
+exec kitbag service status --json
+stdout '"last_sync":\{"at":'
+! stdout 'sync_error'
+# Switching to daemon mode boots out the loaded job before replacing it.
+exec kitbag service install --mode=daemon
+stdout 'Service installed/updated'
+grep 'launchctl bootout gui/[0-9]+/dev.kitbag.agent' $HOME/commands
+grep '<key>KeepAlive</key><true/>' $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
+! grep 'StartInterval' $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
+
+exec kitbag service uninstall
+stdout 'Configuration, working copies and sync state were kept'
+grep 'launchctl disable gui/[0-9]+/dev.kitbag.agent' $HOME/commands
+! exists $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
+! exists $HOME/.local/state/kitbag/service.json
+! exists $HOME/.loaded
+exists $HOME/.config/kitbag/config.toml
+exists $HOME/.local/share/kitbag/repos/config/.git
+exec kitbag service status
+stdout 'installed=false loaded=false'
+
+-- seed/kitbag.toml --
+schema=1
+-- bin/launchctl --
+#!/bin/sh
+printf 'launchctl %s\n' "$*" >> "$HOME/commands"
+case "$1" in
+print)
+  if [ ! -f "$HOME/.loaded" ]; then exit 113; fi
+  printf 'state = running\n\tlast exit code = 0\n';;
+print-disabled)
+  if [ -f "$HOME/.disabled" ]; then printf '\t"dev.kitbag.agent" => true\n'; fi;;
+enable) rm -f "$HOME/.disabled";;
+disable) touch "$HOME/.disabled";;
+bootstrap) touch "$HOME/.loaded";;
+kickstart) ;;
+bootout) rm -f "$HOME/.loaded";;
+*) exit 64;;
+esac
