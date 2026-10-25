@@ -1,0 +1,1 @@
+{"permissions": {"allow": ["shared", "repo", {"a": 1, "b": 2}, 1, true, "repo"]}}

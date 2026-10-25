@@ -142,7 +142,9 @@ retention and permission policy.
 `Request.Force` authorizes only materialized drift replacement with the declared
 backup policy; it does not change settings reconciliation. `LegacyRoots` allows
 repair of links into known old clone/shared-skill roots and dangling links using
-the legacy replaceable rule; live foreign links remain conflicts. Optional `Target.InstanceDir` protects
+the legacy replaceable rule; live foreign links remain conflicts. `Target.Preserve` retains a declared path and any existing ownership without
+reading a source or producing operations; adapters use it for settings opt-out.
+Optional `Target.InstanceDir` protects
 missing listed instances. Operations carry non-serialized entry preconditions
 bound after ordering, modeling earlier removals/backups. Apply rechecks these;
 plan JSON remains review output, never executable input.

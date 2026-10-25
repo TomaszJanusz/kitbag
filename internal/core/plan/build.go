@@ -13,8 +13,8 @@ import (
 )
 
 type prepared struct {
-	declaration target.Target
 	desired     Desired
+	declaration target.Target
 }
 
 type builder struct {
@@ -58,7 +58,7 @@ func Build(fsys platform.FS, req Request) (Plan, error) {
 	for _, declaration := range declarations {
 		p, exists := b.desired[declaration.Path]
 		if exists {
-			if err = b.active(p); err != nil {
+			if err = b.activate(p); err != nil {
 				return Plan{}, fmt.Errorf("plan %s: %w", declaration.Path, err)
 			}
 		}
@@ -114,14 +114,14 @@ func (b *builder) prepare(declarations []target.Target) error {
 		} else if err != nil {
 			return err
 		}
-		b.desired[d.Path] = prepared{d, desired}
+		b.desired[d.Path] = prepared{desired: desired, declaration: d}
 	}
 	return nil
 }
 
 func prepare(fsys platform.FS, d target.Target) (Desired, error) {
 	desired := Desired{InstanceDir: d.InstanceDir, Mode: d.Mode, Path: d.Path, Kind: d.Kind, SourcePath: d.SourcePath, Owners: sortedOwners(d.Owners), Content: slices.Clone(d.Content)}
-	if d.Warning != "" {
+	if d.Preserve || d.Warning != "" {
 		return desired, nil
 	}
 	if err := prepareSource(fsys, d, &desired); err != nil {
@@ -236,4 +236,11 @@ func validateRequestPolicy(req Request) error {
 		}
 	}
 	return nil
+}
+
+func (b *builder) activate(p prepared) error {
+	if p.declaration.Preserve {
+		return nil
+	}
+	return b.active(p)
 }

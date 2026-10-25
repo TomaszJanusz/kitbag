@@ -1,0 +1,1 @@
+{"theme": "dark", "hooks": {"Stop": [{"matcher": "", "hooks": [{"type": "command", "command": "echo ready"}]}]}}

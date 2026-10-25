@@ -219,11 +219,13 @@ into the instance's settings file follows today's `agent-config-sync` rules:
 2. Arrays are unioned: local additions survive, and removing an entry from the
    fragment does not remove it from the instance.
 3. `hooks` entries must be `command` hooks. Each written command carries the
-   trailing marker `# kitbag-managed`; every sync removes hooks carrying the
+   trailing marker `# kitbag-managed` (the old `# agent-config-managed` marker
+   is recognized for migration); every sync removes hook groups carrying either
    marker and adds the current ones, so deleting a hook in the fragment removes
    it everywhere and hooks written by other tools stay. Hooks that an
    application installs itself must not be duplicated in the fragment.
-4. `{repo}` in string values expands to the absolute working copy path.
+4. `{repo}` in string values expands to the absolute working copy path. Claude
+   also accepts legacy `@REPO@` in fragments; new fragments use `{repo}`.
 5. The settings file is never linked; the first change leaves a one-time
    backup, as recorded in local state.
 

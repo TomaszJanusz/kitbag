@@ -1,0 +1,16 @@
+{
+  "array": [
+    {
+      "a": null
+    },
+    [
+      "x",
+      1
+    ],
+    null,
+    {
+      "b": null
+    },
+    false
+  ]
+}

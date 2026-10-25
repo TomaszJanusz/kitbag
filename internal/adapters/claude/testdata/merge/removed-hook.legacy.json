@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Start": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "foreign"
+          }
+        ]
+      }
+    ]
+  },
+  "keep": 1
+}

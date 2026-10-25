@@ -86,7 +86,7 @@ func validateSource(d target.Target, repository string) error {
 }
 
 func validateOutput(d target.Target) error {
-	if d.Warning != "" {
+	if d.Preserve || d.Warning != "" {
 		return nil
 	}
 	switch d.Kind {
@@ -121,7 +121,7 @@ func sortedOwners(owners []state.Owner) []state.Owner {
 
 func sameDeclaration(a, b target.Target) bool {
 	// Independently composed mergers cannot safely share a destination yet.
-	return a.Kind != target.Merged && a.Kind == b.Kind && a.Mode == b.Mode && a.InstanceDir == b.InstanceDir && a.SourcePath == b.SourcePath && bytes.Equal(a.Content, b.Content) && a.Backup == b.Backup && a.Warning == b.Warning
+	return a.Preserve == b.Preserve && a.Kind != target.Merged && a.Kind == b.Kind && a.Mode == b.Mode && a.InstanceDir == b.InstanceDir && a.SourcePath == b.SourcePath && bytes.Equal(a.Content, b.Content) && a.Backup == b.Backup && a.Warning == b.Warning
 }
 
 func foldedOverlap(a, b string) bool {

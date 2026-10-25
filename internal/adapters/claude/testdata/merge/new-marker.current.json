@@ -1,0 +1,1 @@
+{"hooks": {"Stop": [{"matcher": "", "hooks": [{"type": "command", "command": "old # kitbag-managed"}]}, {"matcher": "", "hooks": [{"type": "command", "command": "foreign"}]}]}}
