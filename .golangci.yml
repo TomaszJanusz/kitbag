@@ -78,6 +78,8 @@ linters:
           list-mode: strict
           allow:
             - $gostd
+            # KIT-30: OS file notifications, confined to platform/watch below.
+            - github.com/fsnotify/fsnotify$
             - github.com/TomaszJanusz/kitbag/
             - golang.org/x/sys/
             # KIT-22: Go Git operations and SSH agent authentication, confined below.
@@ -98,6 +100,11 @@ linters:
             - github.com/santhosh-tekuri/jsonschema/v6$
             # Test-only: the end-to-end harness (see test-only below).
             - github.com/rogpeppe/go-internal/testscript$
+        daemon-watcher:
+          files: ["$all", "!**/internal/platform/watch/*.go"]
+          deny:
+            - pkg: github.com/fsnotify/fsnotify
+              desc: OS notifications belong in internal/platform/watch.
         embedded-git:
           files: ["$all", "!**/internal/vcs/embedded/*.go"]
           deny:
@@ -177,11 +184,11 @@ linters:
             - pkg: os/exec
               desc: Start processes through internal/platform or the vcs/system runner.
         release-network:
-          # KIT-31: bounded release requests live in one replaceable transport.
+          # KIT-30/31: bounded release metadata and asset requests share one transport.
           files: ["$all", "!$test", "!**/internal/releasehttp/*.go"]
           deny:
             - pkg: net/http
-              desc: Self-update HTTP belongs only in internal/releasehttp.
+              desc: Release HTTP belongs only in internal/releasehttp.
         release-signature:
           # KIT-31: standard-library cosign ECDSA verification has no external dependency.
           files: ["$all", "!$test", "!**/internal/releasesig/*.go"]

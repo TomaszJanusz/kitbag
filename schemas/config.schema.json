@@ -54,10 +54,7 @@
           "description": "Fallback unsigned commit identity for embedded Git when Git configuration supplies none. Both name and email are required when this table is present.",
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "name",
-            "email"
-          ],
+          "required": ["name", "email"],
           "properties": {
             "name": {
               "type": "string",
@@ -76,7 +73,7 @@
       "additionalProperties": false,
       "properties": {
         "poll_interval": {
-          "description": "How often the daemon fetches, as a duration such as 60s, 15m or 1h30m. Default: 60s.",
+          "description": "Remote-head probe interval; default 60s. Runtime bounds: 1s to 24h.",
           "type": "string",
           "pattern": "^([0-9]+(ms|s|m|h))+$"
         },
@@ -120,6 +117,26 @@
             "maxLength": 4096,
             "pattern": "^~/([^./\\\\][^/\\\\]*|\\.[^./\\\\][^/\\\\]*|\\.\\.[^/\\\\]+)(/([^./\\\\][^/\\\\]*|\\.[^./\\\\][^/\\\\]*|\\.\\.[^/\\\\]+))*$"
           }
+        }
+      }
+    },
+    "daemon": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "debounce": {
+          "type": "string",
+          "pattern": "^([0-9]+(ms|s|m|h))+$",
+          "description": "Watcher debounce; 500ms default, 100ms to 1m runtime bounds."
+        },
+        "update_check": {
+          "type": "boolean",
+          "description": "Check latest release metadata daily; default true. Never installs."
+        },
+        "release_url": {
+          "type": "string",
+          "pattern": "^https?://[^\\s]+$",
+          "description": "GitHub latest-release JSON endpoint; default https://api.github.com/repos/TomaszJanusz/kitbag/releases/latest."
         }
       }
     }

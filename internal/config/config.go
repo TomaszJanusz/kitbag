@@ -32,6 +32,11 @@ type Config struct {
 		PollInterval string `toml:"poll_interval"`
 		Mode         string `toml:"mode"`
 	} `toml:"sync"`
+	Daemon struct {
+		Debounce    string `toml:"debounce"`
+		UpdateCheck *bool  `toml:"update_check"`
+		ReleaseURL  string `toml:"release_url"`
+	} `toml:"daemon"`
 	UI struct {
 		Notifications *bool  `toml:"notifications"`
 		Theme         string `toml:"theme"`

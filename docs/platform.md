@@ -45,10 +45,10 @@ so it cannot touch the real filesystem.
 | `TryLock(path)` | Non-blocking exclusive lock | state store |
 
 `Env` (environment): `LookupEnv`, `HomeDir`, `Dirs` (kitbag's config, data,
-state and cache directories), `AgentHome(override, rel)`, `Hostname`,
+state, cache and log directories), `AgentHome(override, rel)`, `Hostname`,
 `Open(target)` and `IsTerminal(fd)`.
 
-Not in this layer yet: services, keyring and log directories (M2), and
+Not in this layer yet: services and keyring (M2), and
 Windows filesystem naming constraints, which manifest validation checks
 independently of the OS (KIT-12). Adding a method means adding it to every
 implementation and to the contract suite.
@@ -130,6 +130,7 @@ macOS and Linux use the same XDG Base Directory layout:
 | `Config` | `~/.config/kitbag` | `$XDG_CONFIG_HOME/kitbag` | `config.toml` |
 | `Data` | `~/.local/share/kitbag` | `$XDG_DATA_HOME/kitbag` | working copies (`repos/<name>`) |
 | `State` | `~/.local/state/kitbag` | `$XDG_STATE_HOME/kitbag` | `state.json`, history, lock |
+| `LogDir` | `~/.local/state/kitbag/log` | `$XDG_STATE_HOME/kitbag/log` | bounded daemon logs |
 | `Cache` | `~/.cache/kitbag` | `$XDG_CACHE_HOME/kitbag` | rebuildable data (catalog index) |
 
 As the XDG specification requires, an empty or relative `XDG_*` value is
@@ -229,3 +230,6 @@ See [the transport contract](api/local-api.md) for exact security, cleanup and
 fallback behavior. The shared contract suite covers socket modes, exchange,
 unsafe endpoints and directory resolution. A Unix white-box test injects a
 foreign credential result then verifies the accept loop still serves the owner.
+
+Daemon signal registration and fsnotify integration live under `internal/platform`;
+see [daemon lifetime and watching](daemon.md).

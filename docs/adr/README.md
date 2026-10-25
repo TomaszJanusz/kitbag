@@ -20,6 +20,7 @@ Follow-up recommendations remain open until accepted:
 Implementation decisions:
 
 10. [Version and authenticate the local API independently](0010-local-api.md) — Accepted (KIT-29)
+11. [Keep daemon scheduling independent of host mechanisms](0011-foreground-daemon.md) — Accepted (KIT-30)
 
 ## Planning sources and revisions
 

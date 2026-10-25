@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 )
@@ -30,7 +31,10 @@ func Registry() []Key {
 		{Path: "git.backend", Type: "string", Default: "auto", Env: "KITBAG_GIT_BACKEND", Flag: "git-backend", Description: "Prefer system Git automatically, or force one backend.", Allowed: []string{"auto", "system", "embedded"}},
 		{Path: "git.identity.name", Type: "string", Env: "KITBAG_GIT_IDENTITY_NAME", Flag: "identity-name", Description: "Fallback embedded commit author; name and email must be configured together.", Pattern: `^[^<>\r\n\x00]+$`, Sensitive: true},
 		{Path: "git.identity.email", Type: "string", Env: "KITBAG_GIT_IDENTITY_EMAIL", Flag: "identity-email", Description: "Fallback embedded commit email; name and email must be configured together.", Pattern: `^[^<>\s\x00]+@[^<>\s\x00]+$`, Sensitive: true},
-		{Path: "sync.poll_interval", Type: "string", Default: "60s", Env: "KITBAG_SYNC_POLL_INTERVAL", Description: "Daemon polling interval (daemon is planned).", Pattern: `^([0-9]+(ms|s|m|h))+$`},
+		{Path: "sync.poll_interval", Type: "string", Default: "60s", Env: "KITBAG_SYNC_POLL_INTERVAL", Description: "Remote head polling interval; 1s minimum, 24h maximum.", Pattern: `^([0-9]+(ms|s|m|h))+$`},
+		{Path: "daemon.debounce", Type: "string", Default: "500ms", Env: "KITBAG_DAEMON_DEBOUNCE", Description: "Watcher coalescing window; 100ms minimum, 1m maximum.", Pattern: `^([0-9]+(ms|s|m|h))+$`},
+		{Path: "daemon.update_check", Type: "boolean", Default: "true", Env: "KITBAG_DAEMON_UPDATE_CHECK", Description: "Check release metadata daily; never download or install.", Allowed: []string{"true", "false"}},
+		{Path: "daemon.release_url", Type: "string", Default: "https://api.github.com/repos/TomaszJanusz/kitbag/releases/latest", Env: "KITBAG_DAEMON_RELEASE_URL", Description: "Latest release JSON endpoint; restart daemon after changing daemon settings.", Pattern: `^https?://[^\s]+$`},
 		{Path: "sync.mode", Type: "string", Default: platform.DefaultMode(), Env: "KITBAG_MODE", Flag: "mode", Description: "Machine materialization default; manifest copy still wins.", Allowed: []string{"link", "copy"}},
 		{Path: "ui.notifications", Type: "boolean", Default: "true", Env: "KITBAG_UI_NOTIFICATIONS", Description: "Show notifications after changes (desktop UI is planned).", Allowed: []string{"true", "false"}},
 		{Path: "ui.theme", Type: "string", Default: "auto", Env: "KITBAG_UI_THEME", Description: "UI theme (desktop UI is planned).", Allowed: []string{"auto", "dark", "light"}},
@@ -90,6 +94,16 @@ func (k Key) Validate(value string) error {
 	if strings.HasPrefix(k.Pattern, "^") {
 		valid = regexp.MustCompile(k.Pattern).MatchString(value)
 	}
+	if k.Path == "sync.poll_interval" || k.Path == "daemon.debounce" {
+		duration, err := time.ParseDuration(value)
+		const maxPoll = 24 * time.Hour
+		const minDebounce = 100 * time.Millisecond
+		minimum, maximum := time.Second, maxPoll
+		if k.Path == "daemon.debounce" {
+			minimum, maximum = minDebounce, time.Minute
+		}
+		valid = valid && err == nil && duration >= minimum && duration <= maximum
+	}
 	if !valid {
 		return fmt.Errorf("invalid configuration %s: allowed %s: %w", k.Path, k.Constraint(), fs.ErrInvalid)
 	}
@@ -98,6 +112,12 @@ func (k Key) Validate(value string) error {
 
 // Constraint describes the allowed values or grammar for error messages and docs.
 func (k Key) Constraint() string {
+	if k.Path == "sync.poll_interval" {
+		return "duration from 1s to 24h (ms, s, m, h)"
+	}
+	if k.Path == "daemon.debounce" {
+		return "duration from 100ms to 1m (ms, s, m, h)"
+	}
 	if len(k.Allowed) > 0 {
 		return strings.Join(k.Allowed, ", ")
 	}

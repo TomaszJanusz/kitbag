@@ -68,6 +68,7 @@ func Dirs(lookup Lookup) (platform.Dirs, error) {
 		Data:   base("XDG_DATA_HOME", ".local", "share"),
 		State:  base("XDG_STATE_HOME", ".local", "state"),
 		Cache:  base("XDG_CACHE_HOME", ".cache"),
+		LogDir: filepath.Join(base("XDG_STATE_HOME", ".local", "state"), "log"),
 	}, nil
 }
 

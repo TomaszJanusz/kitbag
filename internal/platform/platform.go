@@ -135,6 +135,8 @@ type Dirs struct {
 	State string
 	// Cache holds data that can be rebuilt, such as the skill catalog index.
 	Cache string
+	// LogDir holds bounded structured daemon logs below State/log.
+	LogDir string
 }
 
 // UnsupportedOSError reports an operating system on which kitbag refuses to

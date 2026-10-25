@@ -184,6 +184,7 @@ func (s suite) envDirsDefault(t *testing.T) {
 		Data:   home(".local", "share", "kitbag"),
 		State:  home(".local", "state", "kitbag"),
 		Cache:  home(".cache", "kitbag"),
+		LogDir: home(".local", "state", "kitbag", "log"),
 	}
 	wantDirs(t, s.newSubject(t, map[string]string{"HOME": home()}).host, want)
 	// The XDG specification ignores empty and relative values.
@@ -210,6 +211,7 @@ func (s suite) envDirsXDG(t *testing.T) {
 		Data:   filepath.Join(xdg, "data", "kitbag"),
 		State:  filepath.Join(xdg, "state", "kitbag"),
 		Cache:  filepath.Join(xdg, "cache", "kitbag"),
+		LogDir: filepath.Join(xdg, "state", "kitbag", "log"),
 	})
 	if got, err := h.HomeDir(); err != nil || got != home() {
 		t.Errorf("HomeDir() = %q, %v; want %q", got, err, home())

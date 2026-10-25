@@ -69,8 +69,8 @@ Exit codes remain 0 success, 1 warning/operational failure, 2 usage/configuratio
 3 conflict, 4 tool too old and 5 unsupported OS. Read-only inspection exits 0 when
 it succeeds even when it describes drift. A development build reports `dev` and
 checks minimum versions as `0.0.0-dev`; it cannot bypass a newer-tool requirement.
-Windows is refused before any command runs. Service and daemon installation
-remain planned for M2; init prints the manual sync command.
+Windows is refused before any command runs. The [foreground daemon](daemon.md) polls remote changes and serves the local API;
+service installation remains separate work. Init prints the manual sync command.
 
 See [last-sync persistence](state.md#last-sync-attempt-kit-23),
 [explicit migration roots](manifest.md#configtoml-reference), and
@@ -99,7 +99,7 @@ Status and plan use the authenticated [local API v1](api/local-api.md) when a
 daemon listens, and run in-process when none is available. Text/JSON renderers
 are shared. Permission, authentication and protocol failures do not fall back.
 Verbose inspection runs locally to preserve backend diagnostics; sync remains
-in-process. KIT-29 supplies the serving boundary without a daemon command.
+in-process. `kitbag daemon` owns the serving boundary and endpoint lifetime.
 
 ## Self-update and minimum versions
 

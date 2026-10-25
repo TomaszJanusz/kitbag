@@ -103,7 +103,7 @@ error. Sync remains serialized by the existing state lock.
 `events.subscribe` registers the current connection. Repeating it replaces the
 subscription. Subscribers receive `sync.started`/`sync.finished`; the daemon can
 publish `drift.detected` and `update.available` through `Handlers.Events` after
-its detectors run. This ticket implements delivery, not polling/detection.
+its detectors run. KIT-30 supplies [polling/detection](../daemon.md).
 
 Every broker subscriber queue and connection output queue holds at most **32**
 messages. Full notification queues **drop the newest hint** without blocking;
@@ -121,7 +121,8 @@ connection refusal allows in-process fallback. Bad permissions, token failures,
 protocol errors and timeouts remain errors. The same renderers produce text and
 JSON on both paths; a testscript compares both streams byte for byte. `--verbose`
 runs in-process so backend resolution diagnostics retain their existing wording.
-CLI sync and mutation semantics remain unchanged; no daemon command is added.
+CLI sync and mutation semantics remain unchanged. `kitbag daemon` owns polling,
+detection and endpoint lifetime; see [daemon operation](../daemon.md).
 
 `config.get` returns validated machine TOML. `config.set` accepts a complete
 TOML string through `settings.Service.Replace`, validating with `config.Parse`

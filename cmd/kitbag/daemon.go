@@ -1,0 +1,227 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io/fs"
+	"math/rand/v2"
+	"net"
+	"path/filepath"
+	"time"
+
+	"github.com/spf13/cobra"
+
+	"github.com/TomaszJanusz/kitbag/internal/api"
+	"github.com/TomaszJanusz/kitbag/internal/core/apply"
+	"github.com/TomaszJanusz/kitbag/internal/core/daemon"
+	"github.com/TomaszJanusz/kitbag/internal/core/plan"
+	"github.com/TomaszJanusz/kitbag/internal/core/workflow"
+	"github.com/TomaszJanusz/kitbag/internal/daemonhost"
+	"github.com/TomaszJanusz/kitbag/internal/platform"
+	"github.com/TomaszJanusz/kitbag/internal/platform/watch"
+)
+
+const (
+	daemonDirectoryPerm fs.FileMode = 0o700
+	daemonProbeTimeout              = 15 * time.Second
+)
+
+func (c *commandLine) daemonCommand() *cobra.Command {
+	return &cobra.Command{Use: "daemon", Short: "Poll configuration, detect drift and serve the local API", Long: "Run in the foreground with a per-user lock, bounded JSON logs, debounced filesystem watches and daily release metadata checks. Remote changes use the normal safe sync workflow; local edits only trigger inspection. Stop with SIGINT or SIGTERM. Restart after changing daemon settings.", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+		ctx, stop := platform.ShutdownContext(cmd.Context())
+		defer stop()
+		return classified(c.runDaemon(ctx))
+	}}
+}
+
+func (c *commandLine) runDaemon(ctx context.Context) (err error) {
+	dirs, err := c.host.Dirs()
+	if err != nil {
+		return err
+	}
+	if err = c.host.MkdirAll(dirs.State, daemonDirectoryPerm); err != nil {
+		return err
+	}
+	lock, err := c.host.TryLock(filepath.Join(dirs.State, "daemon.lock"))
+	if errors.Is(err, platform.ErrLocked) {
+		return fmt.Errorf("daemon already running for this user: %w", err)
+	}
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, lock.Unlock()) }()
+	token, err := api.EnsureToken(c.host)
+	if err != nil {
+		return err
+	}
+	listener, err := daemonListener(ctx, c.host)
+	if err != nil {
+		return err
+	}
+	return c.serveDaemon(ctx, listener, token, dirs)
+}
+
+// The daemon lock is held before probing/removing a crash-stale endpoint. An
+// unsafe entry or a live listener is never replaced, including a KIT-29 server.
+func daemonListener(ctx context.Context, host platform.Host) (net.Listener, error) {
+	path, err := api.SocketPath(host)
+	if err != nil {
+		return nil, err
+	}
+	info, err := host.Lstat(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return host.ListenLocal(path)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if info.Mode().Type() != fs.ModeSocket {
+		return nil, fs.ErrPermission
+	}
+	if err = removeStaleSocket(ctx, host, path); err != nil {
+		return nil, err
+	}
+
+	return host.ListenLocal(path)
+}
+
+func removeStaleSocket(ctx context.Context, host platform.Host, path string) error {
+	probe, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	conn, err := host.DialLocal(probe, path)
+	if err == nil {
+		return errors.Join(errors.New("local API already running"), conn.Close())
+	}
+	if !errors.Is(err, platform.ErrNoDaemon) {
+		return err
+	}
+	return host.Remove(path)
+}
+
+func (c *commandLine) serveDaemon(ctx context.Context, listener net.Listener, token string, dirs platform.Dirs) (err error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	events := api.NewEvents()
+	handlers := c.apiHandlers(token, events)
+	runtime := &daemonRuntime{host: c.host, events: events, service: func(ctx context.Context) (workflow.Service, error) { return handlers.Service(ctx, c.apiOptions()) }}
+	runtime.watcher, err = watch.New()
+	logger := daemonhost.Log{Host: c.host, Directory: dirs.LogDir, Now: time.Now}
+	if runtime.watcher != nil {
+		defer func() { err = errors.Join(err, runtime.watcher.Close()) }()
+	}
+	var logErr error
+	log := func(action string, failure error) {
+		if writeErr := logger.Write(action, failure); writeErr != nil {
+			logErr = writeErr
+			cancel()
+		}
+	}
+	runtime.log = log
+	log("started", nil)
+	log("watch", err)
+	releases := daemonhost.Releases{Host: c.host, StateDir: dirs.State, URL: c.config.Daemon.ReleaseURL, Version: toolVersion(), Now: time.Now}
+	poll, parseErr := time.ParseDuration(c.config.Sync.PollInterval)
+	if parseErr != nil {
+		return errors.Join(parseErr, listener.Close())
+	}
+	debounce, parseErr := time.ParseDuration(c.config.Daemon.Debounce)
+	if parseErr != nil {
+		return errors.Join(parseErr, listener.Close())
+	}
+	deps := daemon.Dependencies{Clock: daemonhost.Clock{}, Probe: runtime.probe, Sync: runtime.sync, Scan: runtime.scan, Update: releases.Check, Publish: func(kind string) {
+		if kind == "sync.finished" {
+			events.Publish(runtime.result)
+		} else {
+			events.Publish(api.Event{Kind: kind})
+		}
+	}, Log: log, Jitter: pollJitter}
+	if runtime.watcher != nil {
+		deps.Watch = runtime.watcher.Hints()
+	}
+	served := make(chan error, 1)
+	go func() { serveErr := api.Serve(ctx, listener, handlers); cancel(); served <- serveErr }()
+	enabled := c.config.Daemon.UpdateCheck != nil && *c.config.Daemon.UpdateCheck
+	runErr := daemon.Run(ctx, daemon.Options{Poll: poll, Debounce: debounce, UpdateCheck: enabled}, deps)
+	cancel()
+	serveErr := <-served
+	log("stopped", runErr)
+	return errors.Join(runErr, serveErr, logErr)
+}
+
+func pollJitter(delay time.Duration) time.Duration {
+	const tenth = 10
+	return delay - delay/tenth + time.Duration(rand.Int64N(int64(delay/tenth+1))) //nolint:gosec // G404: scheduling jitter does not require cryptographic randomness.
+}
+
+type daemonRuntime struct {
+	host    platform.Host
+	service func(context.Context) (workflow.Service, error)
+	watcher *watch.Watcher
+	events  *api.Events
+	log     func(string, error)
+	result  api.Event
+}
+
+func (r *daemonRuntime) probe(ctx context.Context) (string, error) {
+	s, err := r.service(ctx)
+	if err != nil {
+		return "", err
+	}
+	probe, cancel := context.WithTimeout(ctx, daemonProbeTimeout)
+	defer cancel()
+	return s.Backend.RemoteHead(probe, s.Repository)
+}
+
+func (r *daemonRuntime) sync(ctx context.Context) (hash string, failure error) {
+	r.result = api.Event{Kind: "sync.finished"}
+	defer func() { r.result.ExitCode = max(r.result.ExitCode, int(apply.ErrorCode(failure))) }()
+	s, err := r.service(ctx)
+	if err != nil {
+		return "", err
+	}
+	result, err := s.Sync(ctx, false, false)
+	r.result.ExitCode = int(result.Code())
+	r.result.Changed = len(result.Apply.Changed) + len(result.Includes.Added)
+	if err != nil {
+		return "", err
+	}
+	if result.Code() != apply.OK {
+		return "", fmt.Errorf("sync needs attention (exit %d)", result.Code())
+	}
+	head, err := s.Backend.Head(ctx, s.Repository)
+	if err != nil {
+		return "", err
+	}
+	r.log("scan", r.scan(ctx))
+	return head.Commit, nil
+}
+
+func (r *daemonRuntime) scan(ctx context.Context) error {
+	s, err := r.service(ctx)
+	if err != nil {
+		return err
+	}
+	inspected, err := s.Inspect()
+	if err != nil {
+		return err
+	}
+	roots := make([]string, 0, len(inspected.Plan.Observations)+1)
+	roots = append(roots, s.Repository)
+	drift := false
+	for _, observation := range inspected.Plan.Observations {
+		roots = append(roots, observation.Path)
+		drift = drift || observation.Classification != plan.InSync
+	}
+	status, err := s.Backend.Status(ctx, s.Repository)
+	if err != nil {
+		return err
+	}
+	if drift || !status.Clean() {
+		r.events.Publish(api.Event{Kind: "drift.detected"})
+	}
+	if r.watcher != nil {
+		return r.watcher.Rebuild(r.host, roots)
+	}
+	return nil
+}
