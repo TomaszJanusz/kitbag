@@ -72,6 +72,9 @@ func Parse(data []byte) (Config, error) {
 	if err := toml.NewDecoder(bytes.NewReader(data)).DisallowUnknownFields().Decode(&c); err != nil {
 		return c, fmt.Errorf("%w: %w", fs.ErrInvalid, err)
 	}
+	if err := checkPresent(data); err != nil {
+		return Config{}, err
+	}
 	if err := c.validate(); err != nil {
 		return Config{}, err
 	}
@@ -162,4 +165,30 @@ func (c Config) WorkingCopy(env platform.Env) (string, error) {
 // Expand resolves a validated home-relative configuration path.
 func Expand(home, value string) string {
 	return filepath.Join(home, filepath.FromSlash(strings.TrimPrefix(value, "~/")))
+}
+
+// Optional strings may be absent; every explicitly supplied string has a
+// nonempty pattern or enum in config.schema.json.
+func checkPresent(data []byte) error {
+	var tree map[string]any
+	if err := toml.Unmarshal(data, &tree); err != nil {
+		return err
+	}
+	return nonemptyTable("", tree)
+}
+
+func nonemptyTable(prefix string, tree map[string]any) error {
+	for key, value := range tree {
+		switch typed := value.(type) {
+		case string:
+			if typed == "" {
+				return invalid(prefix + key + " (must not be empty)")
+			}
+		case map[string]any:
+			if err := nonemptyTable(prefix+key+".", typed); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

@@ -5,8 +5,9 @@ environment or console access and never reads the clock itself. `Options.Now`
 is a required injected `func() time.Time`. `Run(fs, store, request, options)` is
 the internal entry for KIT-23: it locks state, recovers an interrupted step,
 loads state, builds a fresh plan and calls `Execute`. Manifest validation,
-`CheckVersion` and `ResolveHost` precede it. The public `sync` command uses the locked-session entry points below so the
-same lock also covers pull, manifest loading, Git includes and result recording.
+`CheckVersion` and `ResolveHost` precede it. The public `sync` command uses the
+locked-session entry points below so the same lock also covers pull, manifest
+loading, Git includes and result recording.
 
 Callers that already hold the state lock can use `Recover(fs, session)`, load,
 `plan.Build`, then `Execute(fs, session, plan, options)` in that order. A plan
@@ -49,8 +50,8 @@ roots (including relative links), and any dangling link, are replaceable, matchi
 the legacy `replaceable` rule. Targets are never modified or followed for ownership;
 Stat is used only to identify dangling links. Links into the active clone can be
 included too. Without migration roots the strict KIT-15 foreign-link rule remains.
-Core never guesses clone locations or reads HOME. KIT-23 must supply the known
-migration roots.
+Core never guesses clone locations or reads HOME. The CLI supplies only explicitly
+configured `migration.legacy_roots` (default: none).
 
 ## Preconditions and backups
 
@@ -144,5 +145,5 @@ that real process under the existing HOME guard, uses a minimal real manifest
 and real Unix FS/state, and tests first run, silent repeat, missing instance,
 real-directory conflict, one-time backup, drift and forced replacement. Its
 `execstatus` helper asserts exact binary exit status as well as stdout/stderr.
-It is absent from installed binaries. Fixture-only scripts retain that driver; real-adapter scripts now exercise
-public `sync --no-pull`. See [commands.md](commands.md) for CLI orchestration.
+It is absent from installed binaries. Fixture-only scripts retain that driver;
+real-adapter scripts now exercise public `sync --no-pull`. See [commands.md](commands.md) for CLI orchestration.

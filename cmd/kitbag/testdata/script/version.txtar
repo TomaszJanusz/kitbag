@@ -3,7 +3,7 @@ exec kitbag version
 stdout '^kitbag dev$'
 ! stderr .
 
-# Anything else prints usage to stderr and fails.
+# Unknown commands print a Cobra diagnostic to stderr and fail.
 ! exec kitbag bogus
 stderr '^kitbag: unknown command'
 ! stdout .
