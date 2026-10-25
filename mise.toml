@@ -109,3 +109,8 @@ run = "KITBAG_UPDATE_API=1 go test ./cmd/kitbag -run '^TestAPIArtifacts$' -count
 [tasks."docs:api:check"]
 description = "Check API reference and generated contract-test freshness"
 run = "go test ./cmd/kitbag -run '^TestAPIArtifacts$' -count=1"
+
+[tasks."docs:links:check"]
+description = "Check relative documentation files and heading anchors offline"
+# The pinned Go toolchain runs this test package in the full check suite.
+run = "go test ./internal/doccheck -count=1"

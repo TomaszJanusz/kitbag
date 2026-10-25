@@ -22,3 +22,11 @@ keep it accurate after revisions. See [repository governance](docs/governance.md
 for required checks, the solo-maintainer review policy and maintainer setup.
 
 Report vulnerabilities using [SECURITY.md](SECURITY.md).
+
+Documentation links are checked offline by `mise run check` (or separately with
+`mise run docs:links:check`). The check covers README.md, CONTRIBUTING.md,
+AGENTS.md, SECURITY.md and every Markdown file under `docs/`. Relative file and
+directory links must exist; fragments must match a GitHub-style heading anchor
+or an explicit HTML `<a id="...">` anchor. Inline and reference-style links are
+checked, including images; code examples and external URLs are excluded. Escape
+or percent-encode parentheses in link destinations for the Markdown parser.

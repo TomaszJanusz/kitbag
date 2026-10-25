@@ -107,6 +107,8 @@ linters:
             - github.com/spf13/cobra/doc$
             - github.com/pelletier/go-toml/v2/unstable$
             - github.com/santhosh-tekuri/jsonschema/v6$
+            # KIT-72: reuse the pinned Markdown parser for offline docs tests.
+            - github.com/russross/blackfriday/v2$
             # Test-only: the end-to-end harness (see test-only below).
             - github.com/rogpeppe/go-internal/testscript$
         daemon-watcher:
@@ -144,6 +146,11 @@ linters:
           deny:
             - pkg: github.com/spf13/cobra/doc
               desc: Command-reference generation is test-only.
+        docs-parser:
+          files: ["$all", "!**/internal/doccheck/*_test.go"]
+          deny:
+            - pkg: github.com/russross/blackfriday/v2
+              desc: Markdown link parsing is test-only in internal/doccheck.
         schema-check:
           # The oracle is test-only, including validation of real CLI JSON in testscript.
           files: ["$all", "!**/internal/schemacheck/*_test.go", "!**/cmd/kitbag/schema_test.go", "!**/cmd/kitbag/api_contract_test.go"]
