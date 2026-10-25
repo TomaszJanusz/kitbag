@@ -112,6 +112,7 @@ func (c *connection) read(ctx context.Context) {
 		frame, err := reader.ReadSlice('\n')
 		if errors.Is(err, bufio.ErrBufferFull) {
 			c.send(ctx, failure(nil, rpcError(RequestTooLarge, "request too large", apply.Usage)))
+			c.drainOversizedFrame(reader)
 			return
 		}
 		if err != nil && len(frame) == 0 {
@@ -135,6 +136,19 @@ func (c *connection) read(ctx context.Context) {
 			result, callErr := c.handlers.call(ctx, request.Method, p, request.ID, c.notify)
 			c.reply(ctx, request, result, callErr)
 		}
+	}
+}
+
+// drainOversizedFrame lets a bounded sender finish its write before closure.
+// Never dispatch the rejected frame or wait indefinitely for its newline.
+func (c *connection) drainOversizedFrame(reader *bufio.Reader) {
+	if c.conn.SetReadDeadline(time.Now().Add(writeTimeout)) != nil {
+		return
+	}
+	// ReadSlice uses the existing MaxRequestBytes buffer, so at most one
+	// additional buffer is consumed, without allocating for an oversized frame.
+	if _, err := reader.ReadSlice('\n'); err != nil {
+		return
 	}
 }
 

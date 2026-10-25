@@ -42,7 +42,11 @@ func newAPIFixture(t *testing.T) apiFixture {
 			t.Error(removeErr)
 		}
 	})
-	home := t.TempDir()
+	// Resolve macOS's /var -> /private/var before the planner checks parents.
+	home, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	env := map[string]string{"HOME": home, "XDG_RUNTIME_DIR": runtime, "GIT_CONFIG_GLOBAL": filepath.Join(home, ".gitconfig"), "GIT_CONFIG_NOSYSTEM": "1"}
 	host := unix.New(unix.WithEnv(func(key string) (string, bool) { value, ok := env[key]; return value, ok }))
 	repo := filepath.Join(home, "repo")

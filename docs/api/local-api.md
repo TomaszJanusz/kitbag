@@ -23,7 +23,10 @@ escape embedded newlines in strings. Batches are unsupported (`-32600`). Request
 on a connection execute serially; separate connections run independently. The
 server permits 32 active connections; excess connections close immediately.
 Frames including their newline must fit within 1 MiB. An oversized frame receives
-`-32004` and its connection closes. Malformed JSON receives `-32700`; a later
+`-32004` and its connection closes. Before closing, the server discards through
+that frame's newline, bounded to one additional MiB and two seconds, so a client
+finishing a bounded write can read the error. Clients sending beyond those bounds
+may observe a reset or broken pipe instead. Malformed JSON receives `-32700`; a later
 valid frame on the same connection can succeed. IDs may be strings, numbers or
 null; omitting an ID makes a notification, which receives no response. Invalid
 JSON/envelopes receive an error with null ID.
