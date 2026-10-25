@@ -8,6 +8,7 @@ import (
 
 	"github.com/TomaszJanusz/kitbag/internal/config"
 	"github.com/TomaszJanusz/kitbag/internal/core/apply"
+	"github.com/TomaszJanusz/kitbag/internal/core/compatibility"
 	"github.com/TomaszJanusz/kitbag/internal/core/state"
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 	"github.com/TomaszJanusz/kitbag/internal/vcs"
@@ -33,13 +34,15 @@ type Check struct {
 
 // Report is a versioned, deterministic list in registry order.
 type Report struct {
-	Checks       []Check `json:"checks"`
-	DoctorSchema int     `json:"doctor_schema"`
+	ToolTooOld   *compatibility.Event `json:"-"`
+	Checks       []Check              `json:"checks"`
+	DoctorSchema int                  `json:"doctor_schema"`
 }
 
 // Service supplies all host, state and process dependencies. Open and VersionProbe
 // accept contexts and must respect cancellation. Offline disables remote probes.
 type Service struct {
+	Emit                                    func(compatibility.Event)
 	Host                                    platform.Host
 	Store                                   *state.Store
 	Open                                    func(context.Context) (vcs.Backend, vcs.Resolution, error)
@@ -52,9 +55,15 @@ type Service struct {
 // Timeout bounds each network/process operation independently.
 const Timeout = 2 * time.Second
 
-// Run executes the registry serially and continues after failed prerequisites.
+// Run rejects an unmet minimum version before probes; otherwise it executes
+// the registry serially and continues after failed prerequisites.
 func (s Service) Run(ctx context.Context) Report {
 	r := Report{DoctorSchema: 1, Checks: []Check{}}
+	if err := compatibility.Check(s.Host, s.Repository, s.Version, s.Emit); err != nil {
+		r.ToolTooOld = compatibility.FromError(err, s.Repository)
+		r.Checks = []Check{result("tool-version", "kitbag "+s.Version+"; min_tool_version "+r.ToolTooOld.Required, "upgrade kitbag to the manifest's min_tool_version", err, Fail)}
+		return r
+	}
 	for _, check := range []func(context.Context) []Check{s.manifestChecks, s.gitChecks, s.sshChecks, s.agentChecks, s.stateChecks, s.legacyChecks} {
 		r.Checks = append(r.Checks, check(ctx)...)
 	}

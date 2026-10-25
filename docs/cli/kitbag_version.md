@@ -9,6 +9,7 @@ kitbag version [flags]
 ### Options
 
 ```
+      --bare   Print the version without loading configuration or checking Git
   -h, --help   help for version
 ```
 

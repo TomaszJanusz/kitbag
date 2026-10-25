@@ -176,6 +176,18 @@ linters:
           deny:
             - pkg: os/exec
               desc: Start processes through internal/platform or the vcs/system runner.
+        release-network:
+          # KIT-31: bounded release requests live in one replaceable transport.
+          files: ["$all", "!$test", "!**/internal/releasehttp/*.go"]
+          deny:
+            - pkg: net/http
+              desc: Self-update HTTP belongs only in internal/releasehttp.
+        release-signature:
+          # KIT-31: standard-library cosign ECDSA verification has no external dependency.
+          files: ["$all", "!$test", "!**/internal/releasesig/*.go"]
+          deny:
+            - pkg: crypto/ecdsa
+              desc: Release signature verification belongs only in internal/releasesig.
         core:
           # The policy layer must not depend on command or UI renderers/models,
           # nor reach the host except through the platform interfaces. Denying

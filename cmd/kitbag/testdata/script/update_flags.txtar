@@ -1,0 +1,13 @@
+# Updating and bare version work independently of broken local configuration.
+env KITBAG_CONFIG=$WORK/invalid
+exec kitbag version --bare
+stdout '^kitbag dev'
+execstatus 2 kitbag self-update --channel beta
+stderr 'channel must be stable or nightly'
+exec kitbag self-update --check --channel stable
+stdout 'install source unknown'
+exec kitbag self-update --dry-run --channel nightly
+stdout 'install source unknown'
+
+-- invalid --
+invalid configuration

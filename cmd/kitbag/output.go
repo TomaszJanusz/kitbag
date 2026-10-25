@@ -141,6 +141,14 @@ func (c *commandLine) printStatus(status workflow.Status, asJSON bool) error {
 		enc.SetIndent("", "  ")
 		return enc.Encode(status)
 	}
+	if status.ToolTooOld != nil {
+		line := "tool too old: requires kitbag " + status.ToolTooOld.Required + "; running " + status.ToolTooOld.Current
+		if c.colour() {
+			line = "\x1b[31m" + line + "\x1b[0m"
+		}
+		_, err := fmt.Fprintln(c.stdout, line)
+		return err
+	}
 	last := "never"
 	if status.LastSync != nil {
 		last = fmt.Sprintf("%s (exit %d, %d changes)", status.LastSync.At.Format(time.RFC3339Nano), status.LastSync.Result, status.LastSync.Changed)

@@ -8,12 +8,17 @@ import (
 
 	"github.com/TomaszJanusz/kitbag/internal/api"
 	"github.com/TomaszJanusz/kitbag/internal/api/client"
+	"github.com/TomaszJanusz/kitbag/internal/core/compatibility"
+	"github.com/TomaszJanusz/kitbag/internal/core/plan"
 	"github.com/TomaszJanusz/kitbag/internal/core/workflow"
 )
 
 // Verbose includes backend diagnostics, so it deliberately resolves and runs
 // locally. Ordinary inspections use the daemon when available.
 func (c *commandLine) inspect(ctx context.Context) (workflow.Inspection, error) {
+	if _, err := c.minimumVersion(); err != nil {
+		return workflow.Inspection{}, err
+	}
 	local := func() (workflow.Inspection, error) {
 		service, err := c.service(ctx)
 		if err != nil {
@@ -29,6 +34,9 @@ func (c *commandLine) inspect(ctx context.Context) (workflow.Inspection, error) 
 }
 
 func (c *commandLine) status(ctx context.Context) (workflow.Status, error) {
+	if repo, err := c.minimumVersion(); err != nil {
+		return workflow.Status{StatusSchema: 1, Repository: repo, ToolTooOld: compatibility.FromError(err, repo), Warnings: []string{}, Drift: map[plan.Classification]int{plan.InSync: 0, plan.UpdateNeeded: 0, plan.LocalDrift: 0, plan.Conflict: 0, plan.UnmanagedObstacle: 0}}, err
+	}
 	local := func() (workflow.Status, error) {
 		service, err := c.service(ctx)
 		if err != nil {
@@ -70,4 +78,13 @@ func (c *commandLine) apiHandlers(token string, events *api.Events) api.Handlers
 		}
 		return request.service(ctx)
 	}}
+}
+
+// minimumVersion guards API discovery too, even when an older daemon is running.
+func (c *commandLine) minimumVersion() (string, error) {
+	repo, err := c.config.WorkingCopy(c.host)
+	if err != nil {
+		return "", err
+	}
+	return repo, compatibility.Check(c.host, repo, toolVersion(), nil)
 }

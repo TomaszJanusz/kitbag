@@ -11,6 +11,7 @@ import (
 
 	"github.com/TomaszJanusz/kitbag/internal/config"
 	"github.com/TomaszJanusz/kitbag/internal/core/apply"
+	"github.com/TomaszJanusz/kitbag/internal/core/compatibility"
 	"github.com/TomaszJanusz/kitbag/internal/core/plan"
 	"github.com/TomaszJanusz/kitbag/internal/core/state"
 	"github.com/TomaszJanusz/kitbag/internal/platform"
@@ -25,6 +26,8 @@ type AdapterFactory func(*manifest.Manifest, *[]string) ([]target.Adapter, error
 
 // Service supplies command dependencies. Now is required for Sync only.
 type Service struct {
+	// Emit receives transient compatibility failures; it must not mutate the host.
+	Emit       func(compatibility.Event)
 	Host       platform.Host
 	Backend    vcs.Backend
 	Store      *state.Store
@@ -63,6 +66,9 @@ func (r SyncResult) Code() apply.Code {
 // Holding the same lock for all steps also serializes timer and manual runs.
 func (s Service) Sync(ctx context.Context, noPull, force bool) (SyncResult, error) {
 	var result SyncResult
+	if err := s.compatible(); err != nil {
+		return result, err
+	}
 	if s.Now == nil || s.Now().IsZero() {
 		return result, fmt.Errorf("sync clock: %w", invalidInput())
 	}
@@ -143,6 +149,9 @@ func (s Service) intent() (*manifest.Manifest, string, error) {
 		return nil, "", err
 	}
 	if err = m.CheckVersion(s.Version); err != nil {
+		if event := compatibility.FromError(err, s.Repository); event != nil && s.Emit != nil {
+			s.Emit(*event)
+		}
 		return nil, "", err
 	}
 	host, _, err := config.Resolve(s.Host, config.Values{"host": s.Config.Host}, "host", s.HostFlag)
@@ -231,4 +240,8 @@ func (s Service) progress(phase string) {
 	if s.Progress != nil {
 		s.Progress(phase)
 	}
+}
+
+func (s Service) compatible() error {
+	return compatibility.Check(s.Host, s.Repository, s.Version, s.Emit)
 }

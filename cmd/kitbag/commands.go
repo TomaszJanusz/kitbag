@@ -48,7 +48,7 @@ func (c *commandLine) root() *cobra.Command {
 	flags.BoolVar(&c.flags.verbose, "verbose", false, "Show backend selection and working copy diagnostics")
 	flags.BoolVar(&c.flags.quiet, "quiet", false, "Suppress successful sync change output")
 	root.MarkFlagsMutuallyExclusive("verbose", "quiet")
-	root.AddCommand(c.configCommand(), c.initCommand(), c.syncCommand(), c.planCommand(), c.statusCommand(), c.doctorCommand(), c.adoptCommand(), c.unmanageCommand(), c.revertCommand(), c.versionCommand())
+	root.AddCommand(c.configCommand(), c.initCommand(), c.syncCommand(), c.planCommand(), c.statusCommand(), c.doctorCommand(), c.adoptCommand(), c.unmanageCommand(), c.revertCommand(), c.versionCommand(), c.selfUpdateCommand())
 	return root
 }
 
@@ -56,8 +56,8 @@ func (c *commandLine) prepare(cmd *cobra.Command, _ []string) error {
 	if err := cmd.ValidateFlagGroups(); err != nil {
 		return err
 	}
-	if cmd.Name() == "init" || (cmd.Parent() != nil && cmd.Parent().Name() == "config") {
-		return nil // Init must work before an explicit configuration file exists.
+	if independentCommand(cmd) {
+		return nil
 	}
 	cfg, err := c.loadConfig()
 	if err != nil {
@@ -110,10 +110,12 @@ func toolVersion() string {
 }
 
 func (c *commandLine) versionCommand() *cobra.Command {
-	return &cobra.Command{Use: "version", Short: "Print the tool version", Args: cobra.NoArgs, RunE: func(*cobra.Command, []string) error {
+	cmd := &cobra.Command{Use: "version", Short: "Print the tool version", Args: cobra.NoArgs, RunE: func(*cobra.Command, []string) error {
 		_, err := fmt.Fprintln(c.stdout, "kitbag", version)
 		return classified(err)
 	}}
+	cmd.Flags().Bool("bare", false, "Print the version without loading configuration or checking Git")
+	return cmd
 }
 
 func (c *commandLine) syncCommand() *cobra.Command {
@@ -152,6 +154,12 @@ func (c *commandLine) statusCommand() *cobra.Command {
 	var asJSON bool
 	cmd := &cobra.Command{Use: "status", Short: "Show upstream relation, last sync and local drift", Long: "Report ahead/behind against the cached upstream, the last sync attempt for this clone, drift and warnings. This command never fetches; use sync to refresh remote knowledge.", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		result, err := c.status(cmd.Context())
+		if result.ToolTooOld != nil {
+			if printErr := c.printStatus(result, asJSON); printErr != nil {
+				return classified(printErr)
+			}
+			return classified(err)
+		}
 		if err != nil {
 			return classified(err)
 		}
@@ -175,4 +183,15 @@ func (c *commandLine) loadConfig() (config.Config, error) {
 	}
 	c.configPath = filename
 	return config.Load(c.host, filename)
+}
+
+func independentCommand(cmd *cobra.Command) bool {
+	switch cmd.Name() {
+	case "version":
+		return cmd.Flags().Lookup("bare").Value.String() == "true"
+	case "self-update", "init":
+		return true
+	default:
+		return cmd.Parent() != nil && cmd.Parent().Name() == "config"
+	}
 }

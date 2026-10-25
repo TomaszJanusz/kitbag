@@ -101,11 +101,11 @@ linktarget $HOME/.codex/skills $HOME/legacy/source
 cmp marker $HOME/.codex/AGENTS.md
 exists $HOME/.config/systemd/user/agent-config-sync.timer
 
-# Tool version failure uses documented code 4, while other checks still run.
+# Tool version failure exits 4 before any state lock or further probes.
 cp future $HOME/checkout/kitbag.toml
 execstatus 4 kitbag doctor
 stdout 'tool-version: .*fix: upgrade kitbag'
-stdout 'state-lock:'
+! stdout 'state-lock:'
 cp invalid $HOME/checkout/kitbag.toml
 execstatus 1 kitbag doctor
 stdout 'manifest: .*fix: configure repo.path and repair kitbag.toml'
