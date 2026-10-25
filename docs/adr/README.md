@@ -22,6 +22,10 @@ Implementation decisions:
 10. [Version and authenticate the local API independently](0010-local-api.md) — Accepted (KIT-29)
 11. [Keep daemon scheduling independent of host mechanisms](0011-foreground-daemon.md) — Accepted (KIT-30)
 
+Proposals awaiting a maintainer decision:
+
+12. [Discover agent instances and add them through the manifest](0012-agent-instance-discovery.md) — Proposed (KIT-80)
+
 ## Planning sources and revisions
 
 The source is [KIT-3](https://linear.app/privacybrand/issue/KIT-3/adrs-for-the-decisions-already-taken-plus-licence)

@@ -79,3 +79,89 @@ kind and the shared exit code.
 - **Tool-too-old through the daemon** is a sanitized error (exit 4) without the
   required version; the in-process fallback includes it.
 - Catalog and publication models wait for their APIs (KIT-46, KIT-53).
+- **No agent or instance view.** Detected and declared agent instances are not
+  shown, and adding one requires editing `kitbag.toml`; the proposal follows.
+
+## Proposed: agents and instances (ADR 12)
+
+Not implemented. [ADR 12](adr/0012-agent-instance-discovery.md) (Proposed)
+recommends the following models; names may change during review.
+
+`Client` gains three methods, backed by local API v1.1 `agents.list`,
+`agents.preview` and `agents.apply`, with the usual in-process fallback:
+
+```go
+Agents(ctx context.Context, probe bool) (AgentsSnapshot, error)
+PreviewAgentChange(ctx context.Context, change AgentChange) (AgentPreview, error)
+ApplyAgentChange(ctx context.Context, change AgentChange, revision string, commit bool) (AgentApplied, error)
+```
+
+The adapter sends only the relocation variables of known adapters from this
+process's environment, as settings resolution does.
+
+| Type | Fields |
+| --- | --- |
+| `AgentKind` | `Kind`, `Variable` (relocation variable or empty), `DefaultDir` (`~/` form), `Settings` (adapter merges a settings fragment), `Wizard` (offered by the wizard; false for `generic`) |
+| `Presence` | `present`, `missing`, `not_directory`, `symlink`, `outside_home`, `unreadable` |
+| `CandidateSource` | `default`, `environment`, `declared`, `probe` |
+| `Instance` | `Kind`, `Target`, `Name`, `Dir`, `Hosts` (empty means all), `Implicit` (adapter default, not listed), `Enabled`, `Settings`, `ActiveHere`, `Presence` |
+| `Candidate` | `Kind`, `Dir`, `Source`, `Variable`, `Presence`; undeclared only |
+| `AgentsSnapshot` | `Host`, `Kinds`, `Instances`, `Candidates`, `DivergentOverrides` (host and target pairs whose set differs from the target's), `Revision`, `Dirty`, `Warnings`, `Daemon` |
+| `AgentChange` | `Op` (`add`, `remove`, `disable`), `Kind`, `Target`, `Name`, `Dir`, `Scope` (`host`, `all`), `AlsoOverrides` (hosts whose existing override also receives it), `Settings` |
+| `AgentPreview` | `Change`, `Diff` (added and removed manifest lines), `Items` (the `DriftItem` shape for affected destinations), `Copied` (instances copied into a new host override), `MaterializedDefault`, `Warnings`, `Revision` |
+| `AgentApplied` | `Revision`, `Commit` (empty when none), `PushHint`, `Warnings` |
+
+| Model | States and rules |
+| --- | --- |
+| `Agents` | Loading, ready, failed. Declared instances grouped by kind, then undeclared candidates. Selection follows (kind, dir) across reloads. `ProbeAgents` reloads with the name probe; `sync.finished` reloads. |
+| `AgentWizard` | Closed, then steps kind, directory, name and target, scope, settings, preview, confirm, result. Every draft change is validated; **Next** is disabled while the draft is invalid. Entering preview issues `PreviewAgentChange` with a sequence number; a draft change discards the preview. Confirm sends the preview's revision; a conflict returns to preview with the stale message. Esc goes back; Esc on the first step with a draft asks before closing. |
+
+Validation in the model, repeated by the server: instance name with
+`manifest.CheckName`, directory with `manifest.CheckHomePath` (`~/` only),
+duplicate (kind, dir), name already used in the target, `outside_home`, and
+settings only where the target declares a fragment and the adapter merges it.
+
+New text keys, English templates:
+
+| Key | Template |
+| --- | --- |
+| `agents.title` | `Agents` |
+| `agents.empty` | `No agents are declared or found on this machine.` |
+| `agents.source.default` | `documented default` |
+| `agents.source.environment` | `from %s` |
+| `agents.source.declared` | `declared in kitbag.toml` |
+| `agents.source.probe` | `found by name` |
+| `agents.presence.present` | `present` |
+| `agents.presence.missing` | `missing` |
+| `agents.presence.not_directory` | `not a directory` |
+| `agents.presence.symlink` | `symbolic link, not followed` |
+| `agents.presence.outside_home` | `outside the home directory; cannot be declared` |
+| `agents.presence.unreadable` | `cannot be inspected` |
+| `agents.scope.all` | `all hosts` |
+| `agents.scope.hosts` | `only on %s` |
+| `agents.divergent` | `%s replaces the %s instances; instances added for all hosts do not reach it.` |
+| `wizard.step.kind` | `Agent` |
+| `wizard.step.dir` | `Configuration directory` |
+| `wizard.step.name` | `Instance name` |
+| `wizard.step.scope` | `Where to use it` |
+| `wizard.step.settings` | `Merge shared settings` |
+| `wizard.step.preview` | `What will change` |
+| `wizard.step.confirm` | `Confirm` |
+| `wizard.generic_cli` | `Generic agents need explicit roots; use kitbag agent add generic.` |
+| `agent.invalid.name` | `Use up to 64 lowercase letters, digits, dots, underscores or hyphens, starting with a letter or digit.` |
+| `agent.invalid.dir` | `Use a path that starts with ~/; other paths cannot be shared between machines.` |
+| `agent.invalid.duplicate` | `%s is already declared as %s.` |
+| `agent.invalid.name_taken` | `Target %s already has an instance named %s.` |
+| `agent.invalid.no_settings` | `Target %s has no settings fragment to merge.` |
+| `agent.warn.missing_dir` | `%s does not exist. Sync warns and skips it until the agent creates it.` |
+| `agent.warn.default_declared` | `The default directory %s is declared as instance %s so it stays managed.` |
+| `agent.warn.copied_set` | `This host gets its own %s instance list; instances added later for all hosts will not reach it.` |
+| `agent.warn.dirty` | `The working copy has other changes; the manifest is written but not committed.` |
+| `agent.warn.unpushed` | `Push this commit soon: sync stops when the remote branch moves past an unpushed commit.` |
+| `agent.error.stale` | `kitbag.toml changed since the preview. Review the new preview.` |
+| `agent.error.layout` | `kitbag.toml defines %s in a form KitBag cannot edit safely. Edit it by hand.` |
+
+`agent.error.stale` is a `conflict` (exit 3); validation and
+`agent.error.layout` are `invalid` (exit 2). Renderer behavior for the Agents
+tab and wizard is in ADR 12, section 5; [tui.md](tui.md) changes when it is
+implemented.
