@@ -26,7 +26,7 @@ func TestUnmanagedBackupIsOnceAndNeverOverwritten(t *testing.T) {
 	assertKinds(t, update, plan.Materialize)
 	applyTestPlan(t, h, &req, update, state.Copy)
 	assertKinds(t, build(t, h, req))
-	backup, err := h.ReadFile(d.Path + ".kitbag-backup")
+	backup, err := h.ReadFile(d.Path + ".before-kitbag.20260101T000000.000000000Z-0")
 	if err != nil || string(backup) != "original" {
 		t.Fatalf("backup = %s, %v", backup, err)
 	}

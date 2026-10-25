@@ -171,3 +171,14 @@ func (s *Session) preserveMigration(data []byte) error {
 	}
 	return nil
 }
+
+// Directory returns the protected state directory inside a live session. Apply
+// uses it to refuse destinations that could replace its own state or lock.
+func (s *Session) Directory() (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.active {
+		return "", fs.ErrClosed
+	}
+	return filepath.Dir(s.store.path), nil
+}

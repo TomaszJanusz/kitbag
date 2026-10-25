@@ -37,16 +37,20 @@ type Merger interface {
 // entries require SourcePath inside the repository; generated entries use Content.
 // Merged entries use either a source fragment or Content and require Merger.
 // Warning declares an unsupported entry, protecting any previous ownership.
-// No materialization mode belongs here: KIT-16 selects link or copy at execution.
+// Mode carries resolved manifest policy; apply combines it with machine policy.
 type Target struct {
-	Merger     Merger
-	Path       string
-	SourcePath string
-	Kind       Kind
-	Backup     BackupPolicy
-	Warning    string
-	Content    []byte
-	Owners     []state.Owner
+	// Mode is the most specific manifest mode; empty inherits the manifest default.
+	Mode string
+	// InstanceDir, when set, must already exist; absence protects prior state.
+	InstanceDir string
+	Merger      Merger
+	Path        string
+	SourcePath  string
+	Kind        Kind
+	Backup      BackupPolicy
+	Warning     string
+	Content     []byte
+	Owners      []state.Owner
 }
 
 // Adapter declares all its enabled targets from an already validated and

@@ -1,0 +1,56 @@
+# Test-only apply entry runs the real engine; public CLI wiring belongs to KIT-23.
+# First run and a silent repeat, isolated HOME and local-only Git.
+gitremote $WORK/config.git config
+exec git clone --quiet $WORK/config.git $WORK/checkout
+agentdirs .claude .codex
+exec kitbag __e2e_apply $WORK/checkout $HOME/.claude $HOME/.codex
+stdout -count=2 '^materialize '
+! stderr .
+linktarget $HOME/.claude/AGENTS.md $WORK/checkout/global/AGENTS.md
+linktarget $HOME/.codex/AGENTS.md $WORK/checkout/global/AGENTS.md
+content $HOME/.codex/AGENTS.md 'Shared rules.'
+exec kitbag __e2e_apply $WORK/checkout $HOME/.claude $HOME/.codex
+nooutput
+
+# Missing instance warns, exits 1, still applies other targets, never recreates it.
+rm $HOME/.codex
+cp $WORK/skills.md $WORK/checkout/global/SKILLS.md
+execstatus 1 kitbag __e2e_apply $WORK/checkout $HOME/.claude $HOME/.codex
+stderr 'instance directory is missing; skipped'
+stdout '^materialize .*/\.claude/SKILLS.md$'
+! exists $HOME/.codex
+agentdirs .codex
+exec kitbag __e2e_apply $WORK/checkout $HOME/.claude $HOME/.codex
+stdout -count=2 '^materialize .*/\.codex/'
+! stdout '\.claude/'
+! stderr .
+
+# Real directory is retained, exits conflict 3, and other destinations still run.
+agentdirs .blocked
+mkdir $HOME/.blocked/AGENTS.md
+cp $WORK/local.md $HOME/.blocked/AGENTS.md/keep
+execstatus 3 kitbag __e2e_apply $WORK/checkout $HOME/.claude $HOME/.codex $HOME/.blocked
+stderr 'directory obstacle'
+content $HOME/.blocked/AGENTS.md/keep 'Local rules.'
+content $HOME/.blocked/SKILLS.md 'Shared skills.'
+
+# Unmanaged regular file is backed up once; second run produces no backup/output.
+agentdirs .backup
+cp $WORK/local.md $HOME/.backup/AGENTS.md
+exec kitbag __e2e_apply $WORK/checkout $HOME/.claude $HOME/.codex $HOME/.backup
+stdout '^backup .*/\.backup/AGENTS.md$'
+exec kitbag __e2e_apply $WORK/checkout $HOME/.claude $HOME/.codex $HOME/.backup
+nooutput
+# The shell expands globs; multiple backups make this two-argument cp fail.
+exec sh -c 'cp "$HOME"/.backup/AGENTS.md.before-kitbag.* "$WORK"/original'
+content $WORK/original 'Local rules.'
+linktarget $HOME/.backup/AGENTS.md $WORK/checkout/global/AGENTS.md
+
+-- config/kitbag.toml --
+schema = 1
+-- config/global/AGENTS.md --
+Shared rules.
+-- skills.md --
+Shared skills.
+-- local.md --
+Local rules.

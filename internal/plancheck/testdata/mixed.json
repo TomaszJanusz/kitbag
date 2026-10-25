@@ -9,7 +9,7 @@
       "kind": "backup",
       "path": "/home/generated",
       "classification": "unmanaged obstacle",
-      "backup_path": "/home/generated.kitbag-backup"
+      "backup_path": "/home/generated.before-kitbag."
     },
     {
       "desired": {

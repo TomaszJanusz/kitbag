@@ -103,7 +103,7 @@ func validate(db Database) error {
 			return err
 		}
 	}
-	return nil
+	return validateStep(db.Pending)
 }
 
 func validateChanges(changes []Change) error {

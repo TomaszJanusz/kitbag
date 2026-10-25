@@ -1,5 +1,5 @@
 remove "/home/stale" [update needed]
-backup "/home/generated" [unmanaged obstacle] -> "/home/generated.kitbag-backup"
+backup "/home/generated" [unmanaged obstacle] -> "/home/generated.before-kitbag."
 write "/home/generated" [unmanaged obstacle]
 merge "/home/settings" [update needed]
 materialize "/home/skill" [update needed]

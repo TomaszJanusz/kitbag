@@ -2,9 +2,9 @@ package plan
 
 import (
 	"bytes"
-	"errors"
-	"io/fs"
+	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/TomaszJanusz/kitbag/internal/core/state"
 	"github.com/TomaszJanusz/kitbag/internal/target"
@@ -14,6 +14,10 @@ func (b *builder) active(p prepared) error {
 	d := p.declaration
 	if d.Warning != "" {
 		b.skip(d.Path, Conflict, d.Warning)
+		return nil
+	}
+	if b.storageReserved(d.Path) {
+		b.skip(d.Path, Conflict, "recovery storage overlaps a managed target")
 		return nil
 	}
 	if b.blockedByStale(d.Path) {
@@ -43,8 +47,7 @@ func (b *builder) active(p prepared) error {
 	if !owned {
 		return b.unmanaged(p, c)
 	}
-	b.managed(p, previous, c)
-	return nil
+	return b.managed(p, previous, c)
 }
 
 func (b *builder) activeWarning(p prepared, c current, owned bool) bool {
@@ -55,22 +58,28 @@ func (b *builder) activeWarning(p prepared, c current, owned bool) bool {
 	return false
 }
 
-func (b *builder) managed(p prepared, previous state.Target, c current) {
+func (b *builder) managed(p prepared, previous state.Target, c current) error {
 	d := p.declaration
 	classification := classify(p.desired, previous, c)
+	if c.repair {
+		classification = UpdateNeeded
+	}
+	if b.modeChanged(p, previous, c) && classification == InSync {
+		classification = UpdateNeeded
+	}
 	b.observe(d.Path, classification)
 	if classification == LocalDrift || classification == Conflict {
-		b.plan.Operations = append(b.plan.Operations, Operation{Kind: Skip, Path: d.Path, Classification: classification, Warning: "managed destination has local changes"})
-		return
+		return b.drift(p, c, classification)
 	}
 	kind := outputKind(d.Kind)
 	if classification == InSync {
 		if metadataEqual(p.desired, previous) {
-			return
+			return nil
 		}
 		kind = Record
 	}
 	b.plan.Operations = append(b.plan.Operations, Operation{Kind: kind, Path: d.Path, Classification: classification, Desired: &p.desired})
+	return nil
 }
 
 func obstacleClass(owned bool) Classification {
@@ -160,9 +169,9 @@ func (b *builder) merge(p *prepared, c current) (bool, error) {
 
 func (b *builder) unmanaged(p prepared, c current) error {
 	classification := UpdateNeeded
-	if c.exists {
+	if c.exists && !c.repair {
 		classification = UnmanagedObstacle
-		allowed, err := b.backup(p, c)
+		allowed, err := b.backup(p, c, false)
 		if err != nil || !allowed {
 			return err
 		}
@@ -172,24 +181,26 @@ func (b *builder) unmanaged(p prepared, c current) error {
 	return nil
 }
 
-func (b *builder) backup(p prepared, c current) (bool, error) {
+func (b *builder) backup(p prepared, c current, managed bool) (bool, error) {
 	path := p.desired.Path
-	if p.declaration.Backup != target.Once || c.directory {
+	if p.declaration.Backup != target.Once || (c.directory && !managed) {
 		b.skip(path, UnmanagedObstacle, "unmanaged destination requires backup or adoption")
 		return false, nil
 	}
-	backupPath := path + ".kitbag-backup"
-	if b.reserved(backupPath) {
+	backupPath := path + ".before-kitbag."
+	if b.reserved(backupPath) || b.reserved(path+".kitbag-backup") {
 		b.skip(path, UnmanagedObstacle, "backup path overlaps a managed target")
 		return false, nil
 	}
-	_, err := b.fsys.Lstat(backupPath)
-	if err == nil {
-		b.skip(path, UnmanagedObstacle, "one-time backup already exists")
-		return false, nil
-	}
-	if !errors.Is(err, fs.ErrNotExist) {
+	entries, err := b.fsys.ReadDir(filepath.Dir(path))
+	if err != nil {
 		return false, err
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(strings.ToLower(entry.Name()), strings.ToLower(filepath.Base(backupPath))) || strings.EqualFold(entry.Name(), filepath.Base(path)+".kitbag-backup") {
+			b.skip(path, UnmanagedObstacle, "one-time backup already exists")
+			return false, nil
+		}
 	}
 	b.plan.Operations = append(b.plan.Operations, Operation{Kind: Backup, Path: path, Classification: UnmanagedObstacle, BackupPath: backupPath})
 	return true, nil
@@ -197,4 +208,31 @@ func (b *builder) backup(p prepared, c current) (bool, error) {
 
 func outputChanged(d Desired, previous state.Target) bool {
 	return !sameKind(d.Kind, previous.Kind) || d.SourcePath != previous.SourcePath
+}
+
+func (b *builder) drift(p prepared, c current, classification Classification) error {
+	if b.force && p.desired.Kind == target.Materialized {
+		allowed, err := b.backup(p, c, true)
+		if err != nil || !allowed {
+			return err
+		}
+		b.plan.Operations = append(b.plan.Operations, Operation{Kind: Materialize, Path: p.desired.Path, Classification: classification, Desired: &p.desired})
+		return nil
+	}
+	b.plan.Operations = append(b.plan.Operations, Operation{Kind: Skip, Path: p.desired.Path, Classification: classification, Warning: "managed destination has local changes"})
+	return nil
+}
+
+func (b *builder) modeChanged(p prepared, previous state.Target, c current) bool {
+	if p.desired.Kind != target.Materialized {
+		return false
+	}
+	mode := b.machineMode
+	if mode == "" {
+		mode = string(previous.Kind)
+	}
+	if p.desired.Mode == "copy" {
+		mode = "copy"
+	}
+	return string(previous.Kind) != mode || ((mode == "link") != c.link)
 }

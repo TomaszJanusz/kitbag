@@ -1,6 +1,8 @@
 package plan
 
 import (
+	"strings"
+
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 	"github.com/TomaszJanusz/kitbag/internal/target"
 )
@@ -19,12 +21,15 @@ func (b *builder) blockedByStale(path string) bool {
 
 func (b *builder) reserved(path string) bool {
 	for old := range b.old {
-		if foldedOverlap(old, path) {
+		if b.removed[old] {
+			continue
+		}
+		if foldedOverlap(old, path) || strings.HasPrefix(strings.ToLower(old), strings.ToLower(path)) {
 			return true
 		}
 	}
 	for desired := range b.desired {
-		if foldedOverlap(desired, path) {
+		if foldedOverlap(desired, path) || strings.HasPrefix(strings.ToLower(desired), strings.ToLower(path)) {
 			return true
 		}
 	}
@@ -37,4 +42,8 @@ func compatibleDirectory(fsys platform.FS, p prepared) bool {
 	}
 	info, err := fsys.Lstat(p.desired.SourcePath)
 	return err == nil && info.IsDir()
+}
+
+func (b *builder) storageReserved(path string) bool {
+	return b.reserved(path+".kitbag-stage.") || b.reserved(path+".before-kitbag.")
 }

@@ -11,16 +11,17 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/TomaszJanusz/kitbag/internal/core/apply"
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 )
 
 const (
 	version     = "dev"
 	usage       = "usage: kitbag [--git-backend=auto|system|embedded] version"
-	exitFailure = 1
-	exitUsage   = 2
+	exitFailure = int(apply.Warnings)
+	exitUsage   = int(apply.Usage)
 	// exitUnsupportedOS follows the planned 0-4 codes of the apply engine.
-	exitUnsupportedOS = 5
+	exitUnsupportedOS = int(apply.UnsupportedOS)
 )
 
 func main() {
