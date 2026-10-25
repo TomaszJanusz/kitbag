@@ -179,13 +179,47 @@ const (
 	LogSettingSaved  Key = "log.setting_saved"
 	LogSettingFailed Key = "log.setting_failed"
 	LogEventUnknown  Key = "log.event_unknown"
+	LogEmpty         Key = "log.empty"
+	LogDropped       Key = "log.dropped"
+	LogFollowing     Key = "log.following"
+	LogPaused        Key = "log.paused"
+	LogLevelInfo     Key = "log.level_info"
+	LogLevelWarning  Key = "log.level_warning"
+	LogLevelFailure  Key = "log.level_failure"
+
+	// Terminal renderer chrome: tabs, help and layout notices.
+	TerminalTooSmall Key = "terminal.too_small"
+	TerminalFooter   Key = "terminal.footer"
+	TerminalWarnings Key = "terminal.warnings"
+	ControlHint      Key = "terminal.control_hint"
+	ControlDisabled  Key = "terminal.control_disabled"
+	DriftActions     Key = "terminal.drift_actions"
+	DriftDetailHint  Key = "terminal.drift_detail_hint"
+	DriftListHint    Key = "terminal.drift_list_hint"
+	SettingValue     Key = "terminal.setting_value"
+	SettingSource    Key = "terminal.setting_source"
+	SettingChoices   Key = "terminal.setting_choices"
+	SettingEditing   Key = "terminal.setting_editing"
+	SettingListHint  Key = "terminal.setting_list_hint"
+	HelpTitle        Key = "help.title"
+	HelpTabs         Key = "help.tabs"
+	HelpRefresh      Key = "help.refresh"
+	HelpSync         Key = "help.sync"
+	HelpMove         Key = "help.move"
+	HelpDetail       Key = "help.detail"
+	HelpEdit         Key = "help.edit"
+	HelpSave         Key = "help.save"
+	HelpChoices      Key = "help.choices"
+	HelpFollow       Key = "help.follow"
+	HelpToggle       Key = "help.toggle"
+	HelpQuit         Key = "help.quit"
 )
 
 // English returns the default catalog, including every registry setting
 // description, so the settings registry stays the single source of that text.
 func English() Catalog {
 	catalog := make(Catalog)
-	for _, section := range [][]entry{statusText(), outcomeText(), driftText(), formText()} {
+	for _, section := range [][]entry{statusText(), outcomeText(), driftText(), formText(), terminalText()} {
 		for _, e := range section {
 			catalog[e.key] = e.template
 		}
@@ -329,5 +363,43 @@ func formText() []entry {
 		{LogSettingSaved, "Saved %s"},
 		{LogSettingFailed, "Could not save %s: %s"},
 		{LogEventUnknown, "Unrecognized event %s"},
+		{LogEmpty, "No activity yet"},
+		{LogDropped, "%s older entries dropped"},
+		{LogFollowing, "Following new entries"},
+		{LogPaused, "Scrolling; press f to follow new entries"},
+		{LogLevelInfo, "info"},
+		{LogLevelWarning, "warn"},
+		{LogLevelFailure, "fail"},
+	}
+}
+
+// terminalText is the chrome of the terminal renderer (kitbag tui).
+func terminalText() []entry {
+	return []entry{
+		{TerminalTooSmall, "Enlarge the terminal to at least %s×%s (now %s×%s)"},
+		{TerminalFooter, "? help · q quit"},
+		{TerminalWarnings, "Warnings"},
+		{ControlHint, "[%s] %s"},
+		{ControlDisabled, "%s (unavailable)"},
+		{DriftActions, "Planned actions"},
+		{DriftDetailHint, "Esc: back to the list"},
+		{DriftListHint, "↑/↓: select · Enter: details"},
+		{SettingValue, "Value: %s"},
+		{SettingSource, "Source: %s"},
+		{SettingChoices, "Values: %s"},
+		{SettingEditing, "Editing: Enter saves, Esc cancels"},
+		{SettingListHint, "↑/↓: select · Enter: edit"},
+		{HelpTitle, "Keyboard"},
+		{HelpTabs, "Tab, Shift-Tab, 1–4: switch tabs"},
+		{HelpRefresh, "r: reload status, drift and settings"},
+		{HelpSync, "s: sync now"},
+		{HelpMove, "↑/↓ or k/j: move the selection"},
+		{HelpDetail, "Enter: open drift details; Esc: close them"},
+		{HelpEdit, "Enter: edit a setting, Enter again saves; Esc cancels"},
+		{HelpSave, "w: save a kept draft; u: remove the value from config.toml"},
+		{HelpChoices, "←/→ while editing: cycle allowed values"},
+		{HelpFollow, "f: follow new activity; ↑/↓, PgUp/PgDn: scroll"},
+		{HelpToggle, "?: show or hide this help"},
+		{HelpQuit, "q or Ctrl-C: quit"},
 	}
 }

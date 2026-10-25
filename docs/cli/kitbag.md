@@ -31,6 +31,7 @@ kitbag [flags]
 * [kitbag service](kitbag_service.md)	 - Manage background synchronization for this user
 * [kitbag status](kitbag_status.md)	 - Show upstream relation, last sync and local drift
 * [kitbag sync](kitbag_sync.md)	 - Pull and apply configuration in one pass
+* [kitbag tui](kitbag_tui.md)	 - Open the interactive terminal interface
 * [kitbag unmanage](kitbag_unmanage.md)	 - Remove everything KitBag created and restore what it replaced
 * [kitbag version](kitbag_version.md)	 - Print the tool version
 

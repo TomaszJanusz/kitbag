@@ -1,0 +1,8 @@
+# kitbag tui needs an interactive terminal; scripts and pipes are refused
+# with a usage error before anything is read or written.
+execstatus 2 kitbag tui
+stderr '^kitbag: kitbag tui needs an interactive terminal on stdin and stdout'
+! stdout .
+
+execstatus 2 kitbag tui extra
+stderr 'unknown command|accepts 0 arg'

@@ -52,6 +52,8 @@ require a repository URL. An explicit missing config is an error.
   `warnings`; absent sync is null and empty warnings are an array. It never
   fetches; remote counts reflect the last fetch. It uses the same read-only plan
   and refuses pending recovery or an unreadable/incompatible manifest/state.
+- `tui`: full-screen status, drift, settings and activity for an interactive
+  terminal, through the daemon or in-process; see [the terminal interface](tui.md).
 
 Global flags work before or after the command: `--config`, `--host`,
 `--git-backend`, `--mode`, `--verbose`, `--quiet`. `--config` beats `KITBAG_CONFIG`,

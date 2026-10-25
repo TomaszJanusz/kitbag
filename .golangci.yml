@@ -102,6 +102,15 @@ linters:
             # KIT-26: terminal forms and model tests, confined to cmd/kitbag.
             - github.com/charmbracelet/huh$
             - github.com/charmbracelet/bubbletea$
+            # KIT-76: the terminal renderer (kitbag tui): Lip Gloss layout,
+            # the Bubbles line editor, termenv colour profiles and ANSI-aware
+            # wrapping; teatest drives its tests. Confined below.
+            - github.com/charmbracelet/lipgloss$
+            - github.com/charmbracelet/bubbles/textinput$
+            - github.com/charmbracelet/bubbles/cursor$
+            - github.com/charmbracelet/x/ansi$
+            - github.com/charmbracelet/x/exp/teatest$
+            - github.com/muesli/termenv$
             # KIT-23: Cobra command tree and test-only Markdown reference generation.
             - github.com/spf13/cobra$
             - github.com/spf13/cobra/doc$
@@ -139,8 +148,32 @@ linters:
           deny:
             - pkg: github.com/charmbracelet/huh
               desc: Terminal forms belong in cmd/kitbag.
+        bubble-tea:
+          # CLI form model tests and the terminal renderer use Bubble Tea.
+          files: ["$all", "!**/cmd/kitbag/*.go", "!**/internal/ui/tui/*.go"]
+          deny:
             - pkg: github.com/charmbracelet/bubbletea
-              desc: Bubble Tea messages belong to CLI form model tests.
+              desc: Bubble Tea belongs to CLI forms and internal/ui/tui.
+        terminal-renderer:
+          # KIT-76/ADR 5: the TUI renders internal/ui/model; its toolkit stays
+          # in internal/ui/tui so models and core remain renderer-independent.
+          files: ["$all", "!**/internal/ui/tui/*.go"]
+          deny:
+            - pkg: github.com/charmbracelet/lipgloss
+              desc: Terminal layout belongs in internal/ui/tui.
+            - pkg: github.com/charmbracelet/bubbles
+              desc: Terminal widgets belong in internal/ui/tui.
+            - pkg: github.com/charmbracelet/x/ansi
+              desc: Terminal text measurement belongs in internal/ui/tui.
+            - pkg: github.com/muesli/termenv
+              desc: Terminal colour profiles belong in internal/ui/tui.
+            - pkg: github.com/charmbracelet/x/exp/teatest
+              desc: teatest drives internal/ui/tui tests only.
+        terminal-tests:
+          files: ["$all", "!$test"]
+          deny:
+            - pkg: github.com/charmbracelet/x/exp/teatest
+              desc: teatest is test-only.
         cli-docs:
           files: ["$all", "!**/cmd/kitbag/docs_test.go"]
           deny:

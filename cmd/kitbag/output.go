@@ -64,8 +64,14 @@ func (c *commandLine) printSync(result workflow.SyncResult) error {
 	return printWarnings(c.stderr, result.Warnings)
 }
 
+// colourDisabled honours NO_COLOR (any value) and ui.color=never.
+func (c *commandLine) colourDisabled() bool {
+	_, set := c.host.LookupEnv("NO_COLOR")
+	return set || c.config.UI.Color == "never"
+}
+
 func (c *commandLine) colour() bool {
-	if _, set := c.host.LookupEnv("NO_COLOR"); set || c.config.UI.Color == "never" {
+	if c.colourDisabled() {
 		return false
 	}
 	if c.config.UI.Color == "always" {

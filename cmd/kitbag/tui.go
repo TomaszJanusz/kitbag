@@ -1,0 +1,57 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"io/fs"
+	"time"
+
+	"github.com/spf13/cobra"
+
+	"github.com/TomaszJanusz/kitbag/internal/api/client"
+	"github.com/TomaszJanusz/kitbag/internal/ui/apiclient"
+	"github.com/TomaszJanusz/kitbag/internal/ui/model"
+	"github.com/TomaszJanusz/kitbag/internal/ui/model/text"
+	"github.com/TomaszJanusz/kitbag/internal/ui/tui"
+)
+
+func (c *commandLine) tuiCommand() *cobra.Command {
+	return &cobra.Command{
+		Use: "tui", Short: "Open the interactive terminal interface",
+		Long: "Show status, drift, settings and activity in a full-screen terminal interface. It uses the running daemon and falls back to reading this machine directly when none listens. Requires an interactive terminal; NO_COLOR or ui.color=never disables colour. Press ? for keys.",
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return classified(c.runTUI(cmd.Context(), cmd.InOrStdin()))
+		},
+	}
+}
+
+func (c *commandLine) runTUI(ctx context.Context, input io.Reader) error {
+	if !c.terminal(input) || !c.terminal(c.stdout) {
+		return fmt.Errorf("kitbag tui needs an interactive terminal on stdin and stdout: %w", fs.ErrInvalid)
+	}
+	return tui.Run(ctx, c.tuiOptions(tui.TerminalProfile(c.stdout)), input, c.stdout)
+}
+
+func (c *commandLine) terminal(stream any) bool {
+	file, ok := stream.(interface{ Fd() uintptr })
+	return ok && c.host.IsTerminal(file.Fd())
+}
+
+// tuiOptions wires the shared models to the local API with the same
+// in-process fallback as status, plan and config. Backend diagnostics
+// (--verbose) are not written: stderr output would corrupt the screen.
+func (c *commandLine) tuiOptions(profile tui.Profile) tui.Options {
+	local := *c
+	local.flags.verbose, local.stderr = false, io.Discard
+	adapter := apiclient.Client{
+		Transport: client.Client{Host: c.host}, Env: c.host, Options: c.apiOptions(),
+		Flags: map[string]string{"host": c.flags.host, "mode": c.flags.mode, "git-backend": c.flags.gitBackend},
+		Local: apiclient.Local{Workflow: local.service, Settings: local.settingsService},
+	}
+	return tui.Options{
+		Runner: model.Runner{Client: adapter, Now: time.Now}, Catalog: text.English(),
+		Profile: profile, NoColour: c.colourDisabled(), LogCapacity: model.DefaultLogCapacity,
+	}
+}
