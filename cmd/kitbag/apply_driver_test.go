@@ -10,8 +10,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/TomaszJanusz/kitbag/internal/adapters/claude"
-	"github.com/TomaszJanusz/kitbag/internal/adapters/codex"
 	"github.com/TomaszJanusz/kitbag/internal/core/apply"
 	"github.com/TomaszJanusz/kitbag/internal/core/plan"
 	"github.com/TomaszJanusz/kitbag/internal/core/state"
@@ -22,7 +20,7 @@ import (
 )
 
 // testKitbagMain adds an entry only to the test binary. Installed kitbag has no
-// apply/plan/sync/status command; KIT-23 owns the reviewed public CLI wiring.
+// fixture apply entry; public sync/plan/status use production adapters.
 func testKitbagMain() {
 	if len(os.Args) > 1 && os.Args[1] == "__e2e_apply" {
 		os.Exit(applyDriver(os.Args[2:], os.Stdout, os.Stderr))
@@ -48,16 +46,7 @@ func applyDriver(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return driverError(stderr, err)
 	}
-	home, err := host.HomeDir()
-	if err != nil {
-		return driverError(stderr, err)
-	}
-	selected, err := driverSelection(host, home, options)
-	if err != nil {
-		return driverError(stderr, err)
-	}
-	req := plan.Request{Repository: options.args[0], Manifest: m, Adapters: selected.adapters}
-	req.LegacyRoots = []string{req.Repository, filepath.Join(home, ".agents", "skills")}
+	req := plan.Request{Repository: options.args[0], Manifest: m, Adapters: []target.Adapter{fixtureAdapter(options.args[1:])}}
 	result, err := apply.Run(host, store, req, apply.Options{Mode: machineMode, Force: options.force, Now: time.Now})
 	if printErr := printApply(stdout, stderr, result); printErr != nil {
 		return driverError(stderr, printErr)
@@ -65,32 +54,27 @@ func applyDriver(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return max(int(result.Code()), driverError(stderr, err))
 	}
-	return max(int(result.Code()), selected.includes(host, req.Repository, home, m, stdout, stderr))
+	return int(result.Code())
 }
 
 type driverOptions struct {
-	mode     string
-	adapter  string
-	adapters string
-	args     []string
-	force    bool
+	mode  string
+	args  []string
+	force bool
 }
 
-// parseDriver accepts mode/force and a real adapter or adapter list;
-// instances are required only for the fixture adapter.
+// parseDriver accepts mode/force and listed fixture instance directories.
 func parseDriver(args []string, stderr io.Writer) (driverOptions, bool) {
 	var options driverOptions
 	flags := flag.NewFlagSet("__e2e_apply", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	flags.StringVar(&options.mode, "mode", "", "machine mode")
 	flags.BoolVar(&options.force, "force", false, "discard copy drift after backup")
-	flags.StringVar(&options.adapter, "adapter", "", "real adapter instead of the fixture")
-	flags.StringVar(&options.adapters, "adapters", "", "real adapters: generic,files,git")
 	if err := flags.Parse(args); err != nil {
 		return options, false
 	}
 	options.args = flags.Args()
-	return options, validDriverArgs(options)
+	return options, len(options.args) >= 2
 }
 
 func fixtureManifest(host platform.Host, repo string) (*manifest.Manifest, error) {
@@ -102,21 +86,6 @@ func fixtureManifest(host platform.Host, repo string) (*manifest.Manifest, error
 		return nil, err
 	}
 	return m.ResolveHost(host, "test")
-}
-
-// driverAdapter selects a real adapter by agent kind, or the fixture adapter
-// for the listed instance directories.
-func driverAdapter(host platform.Host, name string, instances []string) (target.Adapter, error) {
-	switch name {
-	case "":
-		return fixtureAdapter(instances), nil
-	case "claude":
-		return claudeDriver(host)
-	case codex.Agent:
-		adapter, err := codex.New(host)
-		return adapter, err
-	}
-	return nil, fmt.Errorf("unknown adapter %q", name)
 }
 
 type fixtureAdapter []string
@@ -135,35 +104,9 @@ func (instances fixtureAdapter) Declare(fsys manifest.FileSystem, repo string, _
 	return ds, nil
 }
 
-func printApply(stdout, stderr io.Writer, result apply.Result) error {
-	for _, op := range result.Changed {
-		if _, err := fmt.Fprintln(stdout, op.Kind, op.Path); err != nil {
-			return err
-		}
-	}
-	for _, d := range append(result.Warnings, result.Conflicts...) {
-		if _, err := fmt.Fprintln(stderr, d.Path+":", d.Message); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func driverError(stderr io.Writer, err error) int {
 	if _, writeErr := fmt.Fprintln(stderr, err); writeErr != nil {
 		return int(apply.Warnings)
 	}
 	return int(apply.ErrorCode(err))
-}
-
-func claudeDriver(host platform.Host) (target.Adapter, error) {
-	home, err := host.HomeDir()
-	if err != nil {
-		return nil, err
-	}
-	directory, err := host.AgentHome("CLAUDE_CONFIG_DIR", ".claude")
-	if err != nil {
-		return nil, err
-	}
-	return claude.New(home, directory)
 }

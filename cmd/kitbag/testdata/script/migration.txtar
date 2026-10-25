@@ -1,0 +1,41 @@
+# Default roots are empty: even a live link into an old clone is protected.
+env KITBAG_CONFIG=$WORK/strict.toml
+gitremote $WORK/config.git seed
+exec git clone --quiet $WORK/config.git $HOME/checkout
+agentdirs legacy
+cp old $HOME/legacy/source
+exec ln -s $HOME/legacy/source $HOME/output
+execstatus 3 kitbag sync --no-pull
+stderr 'foreign'
+linktarget $HOME/output $HOME/legacy/source
+content $HOME/legacy/source old
+
+# Only explicitly configured roots enable the legacy replacement rule.
+exec kitbag --config=$WORK/migration.toml sync --no-pull
+linktarget $HOME/output $HOME/checkout/source
+content $HOME/output new
+content $HOME/legacy/source old
+exec kitbag --config=$WORK/migration.toml sync --no-pull --quiet
+nooutput
+
+-- strict.toml --
+schema=1
+[repo]
+url="local"
+path="~/checkout"
+-- migration.toml --
+schema=1
+[repo]
+url="local"
+path="~/checkout"
+[migration]
+legacy_roots=["~/legacy"]
+-- seed/kitbag.toml --
+schema=1
+[[files]]
+src="source"
+dest="~/output"
+-- seed/source --
+new
+-- old --
+old

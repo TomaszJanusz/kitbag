@@ -1,11 +1,8 @@
 // Command kitbag manages coding-agent configuration across machines.
-//
-// Exit codes: 0 success, 1 failure, 2 usage error, 5 unsupported operating
-// system (Windows before 1.x; see docs/platform.md).
 package main
 
 import (
-	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -16,53 +13,32 @@ import (
 )
 
 const (
-	version     = "dev"
-	usage       = "usage: kitbag [--git-backend=auto|system|embedded] version"
-	exitFailure = int(apply.Warnings)
-	exitUsage   = int(apply.Usage)
-	// exitUnsupportedOS follows the planned 0-4 codes of the apply engine.
+	version           = "dev"
+	usage             = "usage: kitbag [flags] <sync|plan|status|version>"
+	exitFailure       = int(apply.Warnings)
+	exitUsage         = int(apply.Usage)
 	exitUnsupportedOS = int(apply.UnsupportedOS)
 )
 
-func main() {
-	os.Exit(run(runtime.GOOS, newHost(), os.Args[1:], os.Stdout, os.Stderr))
-}
+func main() { os.Exit(run(runtime.GOOS, newHost(), os.Args[1:], os.Stdout, os.Stderr)) }
 
-// run executes the CLI for the operating system goos, a runtime.GOOS value,
-// in the environment env.
-func run(goos string, env platform.Env, args []string, stdout, stderr io.Writer) int {
+func run(goos string, host platform.Host, args []string, stdout, stderr io.Writer) int {
 	if err := platform.CheckOS(goos); err != nil {
 		return report(stderr, exitUnsupportedOS, err)
 	}
-
-	flags, args, err := parseGlobalFlags(args)
-	if err != nil {
-		if code := report(stderr, exitUsage, err); code != exitUsage {
-			return code
+	cli := &commandLine{host: host, stdout: stdout, stderr: stderr}
+	root := cli.root()
+	root.SetArgs(args)
+	if err := root.Execute(); err != nil {
+		var failure *commandError
+		if errors.As(err, &failure) {
+			return report(stderr, int(max(cli.code, failure.code)), failure.err)
 		}
-		return reportLine(stderr, exitUsage, usage)
-	}
-	if len(args) != 1 || args[0] != "version" {
-		return reportLine(stderr, exitUsage, usage)
-	}
-	sel, err := selectGitBackend(flags, env)
-	if err != nil {
 		return report(stderr, exitUsage, err)
 	}
-	if err := checkGitBackend(context.Background(), sel, env); err != nil {
-		return report(stderr, exitFailure, err)
-	}
-
-	if _, err := fmt.Fprintln(stdout, "kitbag", version); err != nil {
-		// A failed diagnostic cannot be reported recursively; signal it by exit code.
-		return report(stderr, exitFailure, err)
-	}
-
-	return 0
+	return int(cli.code)
 }
 
-// report writes "kitbag: " and args to stderr and returns code, or
-// exitFailure when even the diagnostic cannot be written.
 func report(stderr io.Writer, code int, args ...any) int {
 	if _, err := fmt.Fprintln(stderr, append([]any{"kitbag:"}, args...)...); err != nil {
 		return exitFailure
@@ -70,11 +46,16 @@ func report(stderr io.Writer, code int, args ...any) int {
 	return code
 }
 
-// reportLine writes line to stderr and returns code, or exitFailure when the
-// line cannot be written.
-func reportLine(stderr io.Writer, code int, line string) int {
-	if _, err := fmt.Fprintln(stderr, line); err != nil {
-		return exitFailure
+type commandError struct {
+	err  error
+	code apply.Code
+}
+
+func (e *commandError) Error() string { return e.err.Error() }
+func (e *commandError) Unwrap() error { return e.err }
+func classified(err error) error {
+	if err == nil {
+		return nil
 	}
-	return code
+	return &commandError{err: err, code: apply.ErrorCode(err)}
 }

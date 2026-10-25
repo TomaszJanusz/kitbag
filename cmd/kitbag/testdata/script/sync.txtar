@@ -1,0 +1,132 @@
+# The real main, local bare remote and isolated HOME/config only.
+env KITBAG_CONFIG=$WORK/machine.toml
+env KITBAG_HOST=test
+env CODEX_HOME=
+gitremote $WORK/config.git seed
+exec git clone --quiet $WORK/config.git $HOME/checkout
+exec kitbag status --json
+stdout '"status_schema": 1'
+stdout '"last_sync": null'
+stdout '"update needed": 2'
+exec kitbag plan --json
+planschema stdout
+stdout '"plan_schema": 1'
+! stdout 'Content|Expected|secret'
+! exists $HOME/old-output
+exec kitbag plan
+stdout '^\+ materialize '
+! stdout '\x1b'
+exec kitbag sync
+stdout '^materialize .*/old-output$'
+stdout '^write .*/\.codex/AGENTS.md$'
+content $HOME/old-output first
+exec kitbag sync
+nooutput
+exec kitbag sync --quiet
+nooutput
+
+# Change both manifest/layout and bytes upstream. One sync must use the new tree.
+exec git clone --quiet $WORK/config.git $WORK/upstream
+cp new.toml $WORK/upstream/kitbag.toml
+cp second $WORK/upstream/new-source
+exec git -C $WORK/upstream add --all
+exec git -C $WORK/upstream commit --quiet -m 'Move output'
+exec git -C $WORK/upstream push --quiet
+exec kitbag sync
+stdout '^remove .*/old-output$'
+stdout '^materialize .*/new-output$'
+! exists $HOME/old-output
+content $HOME/new-output second
+exec kitbag sync
+nooutput
+exec kitbag plan --json
+planschema stdout
+stdout '"operations": \[\]'
+exec kitbag status --json
+stdout '"ahead": 0'
+stdout '"behind": 0'
+stdout '"dirty": false'
+stdout '"result": 0'
+stdout '"in sync": 2'
+exec kitbag status
+stdout '^Last sync: .*exit 0'
+stdout '^Drift: in sync: 2'
+
+# --no-pull never contacts even a broken remote; dirty pull skips before fetch.
+exec git -C $HOME/checkout remote set-url origin $WORK/missing.git
+exec kitbag sync --no-pull
+nooutput
+cp dirty $HOME/checkout/untracked
+exec kitbag sync
+stderr '^pull skipped: the working copy has local changes$'
+! stdout .
+content $HOME/new-output second
+exec kitbag status --json
+stdout '"dirty": true'
+
+# Copy drift is reported without applying by status/plan and warns on sync.
+exec kitbag --mode copy sync --no-pull
+cp dirty $HOME/new-output
+exec kitbag --mode copy plan --json
+planschema stdout
+stdout '"classification": "local drift"'
+exec kitbag --mode copy status --json
+stdout '"local drift": 1'
+stdout '"warnings": \['
+execstatus 1 kitbag --mode copy sync --no-pull
+stderr 'managed destination has local changes'
+content $HOME/new-output dirty
+exec kitbag status --json --mode copy
+stdout '"result": 1'
+
+# Read a minimum version from the fetched tree and stop before any apply.
+exec git -C $HOME/checkout remote set-url origin $WORK/config.git
+rm $HOME/checkout/untracked
+cp too-new.toml $WORK/upstream/kitbag.toml
+exec git -C $WORK/upstream add --all
+exec git -C $WORK/upstream commit --quiet -m 'Require newer tool'
+exec git -C $WORK/upstream push --quiet
+execstatus 4 kitbag sync
+stderr 'manifest requires kitbag 99.0.0'
+! stdout .
+content $HOME/new-output dirty
+grep '"result": 4' $HOME/.local/state/kitbag/last-sync.json
+
+-- machine.toml --
+schema=1
+[repo]
+url="local-config"
+path="~/checkout"
+branch="main"
+-- seed/kitbag.toml --
+schema=1
+[instructions]
+source="rules.md"
+[targets.codex]
+agent="codex"
+[[files]]
+src="source"
+dest="~/old-output"
+-- seed/source --
+first
+-- seed/rules.md --
+Shared instructions.
+-- new.toml --
+schema=1
+[instructions]
+source="rules.md"
+[targets.codex]
+agent="codex"
+[[files]]
+src="new-source"
+dest="~/new-output"
+-- second --
+second
+-- dirty --
+dirty
+-- too-new.toml --
+schema=1
+min_tool_version="99.0.0"
+[[files]]
+src="source"
+dest="~/should-not-exist"

@@ -169,9 +169,8 @@ covers selection end to end, including Git removed from `PATH` (`hidecmd git`).
 
 - Embedded go-git backend and credential discovery (separate tickets); its
   factory plugs into `vcs.Factories` and its test file into the contract suite.
-- Reading `git.backend` from `config.toml` (configuration loader, KIT-12/KIT-23).
-- The cobra command tree and its persistent `--git-backend` flag (KIT-23);
-  `doctor` output from `vcs.Resolution` (KIT-24).
+- `doctor` output from `vcs.Resolution` (KIT-24); everyday commands already
+  use Cobra persistent flags and read `git.backend` from machine configuration.
 - Windows: the environment pass-through list needs Windows variables
   (`USERPROFILE`, `APPDATA`, ...) with M6.
 

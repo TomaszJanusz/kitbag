@@ -43,6 +43,7 @@ Without it, Git's existing
 `~/.gitconfig` takes write precedence over the XDG global config, then a new
 `~/.gitconfig` is used. Includes are read without following included files.
 
-The test-only `__e2e_apply -adapters generic,files,git <repository>` driver exercises
-these flows with a throwaway HOME and global config. Public sync/CLI orchestration
-belongs to KIT-23. No real home or global Git configuration is used by tests.
+Public `sync --no-pull` exercises these flows with a throwaway HOME and global
+config. Nonblocking instruction warnings are retained through `Adapter.Plan`,
+just as with Claude and Codex. No real home or global Git configuration is used
+by tests.

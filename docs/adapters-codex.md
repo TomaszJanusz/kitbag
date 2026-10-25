@@ -65,6 +65,5 @@ backup policy; an unmanaged `AGENTS.md` is backed up once.
 
 Unit and golden tests use the in-memory fake (`testdata/golden`; update with
 `mise exec -- go test ./internal/adapters/codex -run '^TestGolden$' -args -update`).
-The test-only driver runs the real adapter with `kitbag __e2e_apply
--adapter=codex <repo>`: `apply_codex.txtar` (default `~/.codex`),
+Public `kitbag sync --no-pull` runs the real adapter in isolated testscript: `apply_codex.txtar` (default `~/.codex`),
 `apply_codex_home.txtar` (`CODEX_HOME`) and `apply_codex_foreign_skill.txtar`.

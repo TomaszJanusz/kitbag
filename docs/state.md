@@ -103,3 +103,28 @@ the persisted snapshot. It covers normal exit and forced process death; the
 unchanged lock file can then be reacquired and state stays readable. Only this
 integration test constructs a real host for the state store; core tests never
 import `os` or a concrete host implementation.
+
+## Last sync attempt (KIT-23)
+
+`Session.LoadSync` / `SaveSync` access a separate `last-sync.json` beside
+`state.json`, under the same state lock. It has independent `schema_version: 1`,
+UTC `at` (attempt completion), absolute `repository`, integer `result` (the
+[apply exit code](apply.md#reports-and-exit-codes)), and nonnegative `changed`
+(completed apply operations plus Git includes added). It contains no file bytes,
+credentials or diagnostic text. Missing means no recorded attempt. Status shows
+`last_sync: null` when absent or when the record belongs to another clone.
+
+Every sync that acquires the lock and reads valid record metadata records its
+result, including an unchanged success, skipped dirty pull, divergence, fetch
+failure, version refusal or partial apply failure. Configuration/backend failures
+before entering the workflow and lock contention cannot be recorded. A dirty
+pull skip alone is informational (exit 0); divergence exits 3 without applying.
+This is one machine-wide latest attempt, not a per-repository history.
+
+The record uses 0600 and `WriteAtomic`; unknown fields, malformed metadata and
+unsupported versions fail closed and block overwrite. It does not change the
+ownership schema, rotate history, or rewrite `state.json` on an unchanged sync.
+A record write failure fails the command; completed file operations remain in
+their own journal. As with state saves, a post-rename durability error can mean
+the new record is already visible. Dry-run/status commands never save the record
+or recover a pending step; they may create the private state directory/lock.

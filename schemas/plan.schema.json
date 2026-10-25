@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kitbag.sh/schemas/plan.schema.json",
+  "title": "KitBag logical plan (plan_schema 1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "plan_schema",
+    "operations",
+    "observations"
+  ],
+  "properties": {
+    "plan_schema": {
+      "type": "integer",
+      "const": 1
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "path",
+          "classification"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "remove",
+              "backup",
+              "materialize",
+              "write",
+              "merge",
+              "record",
+              "skip"
+            ]
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "classification": {
+            "enum": [
+              "in sync",
+              "update needed",
+              "local drift",
+              "conflict",
+              "unmanaged obstacle"
+            ]
+          },
+          "backup_path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "warning": {
+            "type": "string"
+          },
+          "desired": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "kind",
+              "written_hash",
+              "owners"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "materialized",
+                  "generated",
+                  "merged"
+                ]
+              },
+              "source_path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source_hash": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "written_hash": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "owners": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "primitive",
+                    "agent_instance"
+                  ],
+                  "properties": {
+                    "primitive": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "agent_instance": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "classification"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "classification": {
+            "enum": [
+              "in sync",
+              "update needed",
+              "local drift",
+              "conflict",
+              "unmanaged obstacle"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

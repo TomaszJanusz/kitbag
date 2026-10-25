@@ -19,5 +19,6 @@ func TestScripts(t *testing.T) {
 
 	params := e2e.Params("testdata/script")
 	params.Cmds["execstatus"] = execStatus
+	params.Cmds["planschema"] = validatePlanCommand(planSchema(t))
 	testscript.Run(t, params)
 }

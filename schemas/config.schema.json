@@ -86,6 +86,23 @@
           "type": "boolean"
         }
       }
+    },
+    "migration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "legacy_roots": {
+          "description": "Explicit old configuration clone and shared-skill roots, relative to HOME. Empty or absent means strict foreign-link protection. No locations are guessed.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "description": "A known legacy source root, relative to HOME.",
+            "type": "string",
+            "maxLength": 4096,
+            "pattern": "^~/([^./\\\\][^/\\\\]*|\\.[^./\\\\][^/\\\\]*|\\.\\.[^/\\\\]+)(/([^./\\\\][^/\\\\]*|\\.[^./\\\\][^/\\\\]*|\\.\\.[^/\\\\]+))*$"
+          }
+        }
+      }
     }
   }
 }

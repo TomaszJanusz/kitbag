@@ -1,21 +1,23 @@
+env KITBAG_CONFIG=$WORK/machine.toml
+env KITBAG_HOST=test
 # Production Claude declarations, real apply engine, isolated HOME only.
 gitremote $WORK/config.git config
-exec git clone --quiet $WORK/config.git $WORK/checkout
+exec git clone --quiet $WORK/config.git $HOME/checkout
 agentdirs .claude .claude_2
 cp local.json $HOME/.claude/settings.json
 cp independent.json $HOME/.claude_2/settings.json
 mkdir $HOME/.claude/skills
 exec ln -s $WORK/removed $HOME/.claude/skills/synced
 
-exec kitbag __e2e_apply --adapter claude $WORK/checkout
+exec kitbag sync --no-pull
 ! stderr .
 stdout '^merge .*/\.claude/settings.json$'
 ! stdout '\.claude_2/settings.json'
-linktarget $HOME/.claude/skills/tool $WORK/checkout/skills/tool
-linktarget $HOME/.claude_2/skills/tool $WORK/checkout/skills/tool
-linktarget $HOME/.claude/commands/build.md $WORK/checkout/commands/build.md
-linktarget $HOME/.claude_2/agents/reviewer.md $WORK/checkout/agents/reviewer.md
-linktarget $HOME/.claude/hooks/check.sh $WORK/checkout/hooks/check.sh
+linktarget $HOME/.claude/skills/tool $HOME/checkout/skills/tool
+linktarget $HOME/.claude_2/skills/tool $HOME/checkout/skills/tool
+linktarget $HOME/.claude/commands/build.md $HOME/checkout/commands/build.md
+linktarget $HOME/.claude_2/agents/reviewer.md $HOME/checkout/agents/reviewer.md
+linktarget $HOME/.claude/hooks/check.sh $HOME/checkout/hooks/check.sh
 linktarget $HOME/.claude/skills/synced $WORK/removed
 grep '^@.*/checkout/global/AGENTS.md$' $HOME/.claude/CLAUDE.md
 grep '^@.*/checkout/global/AGENTS.md$' $HOME/.claude_2/CLAUDE.md
@@ -27,29 +29,29 @@ exec sh -c 'cp "$HOME"/.claude/settings.json.before-kitbag.* "$WORK"/original'
 cmp $WORK/original local.json
 
 # Repeat is silent, foreign hooks survive; removed managed hooks disappear.
-exec kitbag __e2e_apply --adapter claude $WORK/checkout
+exec kitbag sync --no-pull
 nooutput
-cp no-hooks.json $WORK/checkout/claude/settings.json
-exec kitbag __e2e_apply --adapter claude $WORK/checkout
+cp no-hooks.json $HOME/checkout/claude/settings.json
+exec kitbag sync --no-pull
 ! stderr .
 stdout '^merge .*/\.claude/settings.json$'
 ! grep '# kitbag-managed|old managed' $HOME/.claude/settings.json
 grep 'foreign notifier' $HOME/.claude/settings.json
-exec kitbag __e2e_apply --adapter claude $WORK/checkout
+exec kitbag sync --no-pull
 nooutput
 
 # Opting out after a successful merge must preserve the owned file too.
 cp $HOME/.claude/settings.json kept.json
-cp settings-off.toml $WORK/checkout/kitbag.toml
-exec kitbag __e2e_apply --adapter claude $WORK/checkout
+cp settings-off.toml $HOME/checkout/kitbag.toml
+exec kitbag sync --no-pull
 nooutput
 cmp $HOME/.claude/settings.json kept.json
 cmp $HOME/.claude_2/settings.json independent.json
 
 # A missing listed instance warns, other targets still sync, no dir is created.
-cp enabled.toml $WORK/checkout/kitbag.toml
+cp enabled.toml $HOME/checkout/kitbag.toml
 rm $HOME/.claude_2
-execstatus 1 kitbag __e2e_apply --adapter claude $WORK/checkout
+execstatus 1 kitbag sync --no-pull
 stderr 'instance directory is missing; skipped'
 ! exists $HOME/.claude_2
 
@@ -133,3 +135,8 @@ exit 0
 {"local":true,"hooks":{"Stop":[{"hooks":[{"type":"command","command":"foreign notifier"}]},{"hooks":[{"type":"command","command":"old managed # agent-config-managed"}]}]}}
 -- independent.json --
 {"theme":"independent","hooks":{"Stop":[{"hooks":[{"type":"command","command":"do not touch # agent-config-managed"}]}]}}
+-- machine.toml --
+schema=1
+[repo]
+url="local-config"
+path="~/checkout"

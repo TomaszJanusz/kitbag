@@ -1,0 +1,6 @@
+# expect: value must be one of
+schema=1
+[repo]
+url="local"
+[sync]
+mode=""

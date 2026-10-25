@@ -1,0 +1,68 @@
+# Flag > environment > machine config, through the real CLI.
+env KITBAG_CONFIG=$WORK/machine.toml
+env KITBAG_HOST=envhost
+env KITBAG_MODE=copy
+gitremote $WORK/config.git seed
+exec git clone --quiet $WORK/config.git $HOME/checkout
+exec kitbag sync --no-pull
+content $HOME/env-output value
+! linktarget $HOME/env-output
+! exists $HOME/config-output
+
+exec kitbag --host flaghost --mode link sync --no-pull
+! exists $HOME/env-output
+linktarget $HOME/flag-output $HOME/checkout/source
+exec kitbag --host flaghost --mode link sync --no-pull --quiet
+nooutput
+exec kitbag --host flaghost --mode link plan --json
+planschema stdout
+cp stdout first-plan.json
+exec kitbag --host flaghost --mode link plan --json
+cmp stdout first-plan.json
+
+# Missing host additions warn and still render; JSON stdout remains valid.
+agentdirs .generic
+cp warnings.toml $HOME/checkout/kitbag.toml
+execstatus 1 kitbag sync --no-pull
+stderr 'host addition hosts/envhost.md not found'
+exists $HOME/.generic/AGENTS.md
+exec kitbag plan --json
+planschema stdout
+stderr 'host addition hosts/envhost.md not found'
+exec kitbag status --json
+stdout 'host addition hosts/envhost.md not found'
+
+-- machine.toml --
+schema=1
+host="confighost"
+[repo]
+url="local"
+path="~/checkout"
+[sync]
+mode="copy"
+-- seed/kitbag.toml --
+schema=1
+[[files]]
+src="source"
+dest="~/env-output"
+hosts=["envhost"]
+[[files]]
+src="source"
+dest="~/config-output"
+hosts=["confighost"]
+[[files]]
+src="source"
+dest="~/flag-output"
+hosts=["flaghost"]
+-- seed/source --
+value
+-- warnings.toml --
+schema=1
+[instructions]
+source="source"
+hosts="hosts/{host}.md"
+[targets.generic]
+agent="generic"
+[targets.generic.instances.main]
+dir="~/.generic"
+roots={instructions="~/.generic/AGENTS.md"}

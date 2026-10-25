@@ -85,3 +85,11 @@ run = "apidiff -w docs/api/manifest.export github.com/TomaszJanusz/kitbag/pkg/ma
 [tasks."manifest:golden"]
 description = "Update reviewed manifest diagnostic golden files"
 run = "go test ./internal/schemacheck -run '^TestManifest(SchemaParity|RuntimeGoldens|SourceGoldens)$' -args -update"
+
+[tasks."docs:cli"]
+description = "Regenerate the Cobra command reference in docs/cli"
+run = "KITBAG_UPDATE_CLI=1 go test ./cmd/kitbag -run '^TestCLIReference$' -count=1"
+
+[tasks."docs:cli:check"]
+description = "Check the committed command reference without writing"
+run = "go test ./cmd/kitbag -run '^TestCLIReference$' -count=1"

@@ -40,11 +40,27 @@ type instance struct {
 	dir        string
 }
 
-// Declare returns the targets of every enabled generic instance, in target,
-// instance and primitive order. Instructions use the shared renderer with
-// primitives.instructions.render (concat by default; generic agents have no
-// documented import syntax, so import is an error).
+// Result contains targets plus nonblocking instruction warnings.
+type Result struct {
+	Targets  []target.Target
+	Warnings []string
+}
+
+// Declare implements target.Adapter; Plan also exposes nonblocking warnings.
 func (a Adapter) Declare(fsys manifest.FileSystem, repository string, intent *manifest.Manifest) ([]target.Target, error) {
+	result, err := a.Plan(fsys, repository, intent)
+	return result.Targets, err
+}
+
+// Plan declares enabled targets and retains instruction-renderer warnings.
+func (a Adapter) Plan(fsys manifest.FileSystem, repository string, intent *manifest.Manifest) (Result, error) {
+	var result Result
+	targets, err := a.declare(fsys, repository, intent, &result.Warnings)
+	result.Targets = targets
+	return result, err
+}
+
+func (a Adapter) declare(fsys manifest.FileSystem, repository string, intent *manifest.Manifest, warnings *[]string) ([]target.Target, error) {
 	if !filepath.IsAbs(a.home) || filepath.Clean(a.home) != a.home {
 		return nil, fmt.Errorf("generic: home %q is not absolute and clean", a.home)
 	}
@@ -60,7 +76,7 @@ func (a Adapter) Declare(fsys manifest.FileSystem, repository string, intent *ma
 				continue
 			}
 			in := instance{intent: intent, repository: repository, target: name, name: instanceName, dir: a.expand(declaration.Dir)}
-			targets, err := a.declareInstance(fsys, in, declaration)
+			targets, err := a.declareInstance(fsys, in, declaration, warnings)
 			if err != nil {
 				return nil, fmt.Errorf("generic: target %s instance %s: %w", name, instanceName, err)
 			}
@@ -70,14 +86,14 @@ func (a Adapter) Declare(fsys manifest.FileSystem, repository string, intent *ma
 	return declared, nil
 }
 
-func (a Adapter) declareInstance(fsys manifest.FileSystem, in instance, declaration manifest.Instance) ([]target.Target, error) {
+func (a Adapter) declareInstance(fsys manifest.FileSystem, in instance, declaration manifest.Instance, warnings *[]string) ([]target.Target, error) {
 	var declared []target.Target
 	for _, primitive := range slices.Sorted(maps.Keys(declaration.Roots)) {
 		if !in.enabled(primitive) {
 			continue
 		}
 		root := a.expand(declaration.Roots[primitive])
-		targets, err := in.declarePrimitive(fsys, primitive, root)
+		targets, err := in.declarePrimitive(fsys, primitive, root, warnings)
 		if err != nil {
 			return nil, err
 		}
@@ -86,10 +102,10 @@ func (a Adapter) declareInstance(fsys manifest.FileSystem, in instance, declarat
 	return declared, nil
 }
 
-func (in instance) declarePrimitive(fsys manifest.FileSystem, primitive, root string) ([]target.Target, error) {
+func (in instance) declarePrimitive(fsys manifest.FileSystem, primitive, root string, warnings *[]string) ([]target.Target, error) {
 	switch primitive {
 	case "instructions":
-		return in.instructions(fsys, root)
+		return in.instructions(fsys, root, warnings)
 	case "skills":
 		return in.skills(fsys, root)
 	case "commands", "agents", "hooks", "rules":
@@ -106,7 +122,7 @@ func (in instance) declarePrimitive(fsys manifest.FileSystem, primitive, root st
 	return nil, fmt.Errorf("unknown primitive %q", primitive)
 }
 
-func (in instance) instructions(fsys manifest.FileSystem, path string) ([]target.Target, error) {
+func (in instance) instructions(fsys manifest.FileSystem, path string, warnings *[]string) ([]target.Target, error) {
 	if in.intent.Instructions == nil {
 		return nil, nil
 	}
@@ -125,6 +141,7 @@ func (in instance) instructions(fsys manifest.FileSystem, path string) ([]target
 	if err != nil {
 		return nil, err
 	}
+	*warnings = append(*warnings, result.Warnings...)
 	result.Target.InstanceDir = in.dir
 	return []target.Target{result.Target}, nil
 }
