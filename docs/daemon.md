@@ -154,17 +154,19 @@ unprivileged account with a real HOME, outside `mise`, so `GOMAXPROCS` is unset:
 4. Confirm the change was applied, record user+system CPU from
    `/proc/<pid>/stat`, then stop the daemon with SIGTERM and check exit 0.
 
-Results on runner02 (Linux, 8 vCPU) on 2026-10-25, 60 samples per run:
+Results on runner02 (Linux, 8 vCPU) on 2026-10-25, back to back on an otherwise
+quiet host, 60 samples per run:
 
 | Build | Start RSS | Max RSS | End RSS | CPU in 600s |
 | --- | --- | --- | --- | --- |
-| Before (`634b2fc`) | 21,456 KiB | 22,780 KiB | 22,300 KiB | 0.89s |
-| After | 18,652 KiB | 19,136 KiB | 18,964 KiB | 1.40s |
+| Before (`634b2fc`) | 21,568 KiB | 22,580 KiB | 22,516 KiB | 0.93s |
+| After (`230c597`) | 18,572 KiB | 19,604 KiB | 19,228 KiB | 1.01s |
 
-After the change, about 13.6 MiB of RSS was file-backed and 5.0–5.4 MiB
-anonymous (before: 7.9–9.1 MiB anonymous). The upstream change was applied,
-and SIGTERM exited 0. macOS RSS, production-sized repositories, authenticated
-network remotes and long uptimes beyond ten minutes are **not verified**.
+Anonymous RSS fell from 8.0–8.9 MiB to 5.0–5.9 MiB; about 13.7 MiB stayed
+file-backed. The upstream change was applied, and SIGTERM exited 0. Peak margin
+under the budget is about 0.4 MB; peaks occur during a cycle. macOS RSS,
+production-sized repositories, authenticated network remotes and uptimes beyond
+ten minutes are **not verified**.
 
 `TestDaemonIdleHeap` is the automated regression guard. It re-executes the test
 binary, runs production daemon wiring in that isolated process against a local
