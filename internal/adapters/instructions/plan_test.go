@@ -58,7 +58,7 @@ func TestPlannerAcceptsDeclarations(t *testing.T) {
 			if got := kinds(p); got != "backup,materialize" && got != "backup,write" {
 				t.Fatalf("unmanaged destination: %s", got)
 			}
-			if !strings.HasSuffix(p.Operations[0].BackupPath, ".kitbag-backup") {
+			if p.Operations[0].BackupPath != d.Path+".before-kitbag." {
 				t.Fatalf("backup path %q", p.Operations[0].BackupPath)
 			}
 		})
