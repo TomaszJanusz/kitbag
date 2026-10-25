@@ -47,3 +47,7 @@ jobs:
     with:
       tag: ${{ needs.propose.outputs.tag }}
       sha: ${{ needs.propose.outputs.sha }}
+    # Explicit, optional channel credentials (never secrets: inherit).
+    secrets:
+      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}

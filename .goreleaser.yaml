@@ -48,6 +48,9 @@ archives:
 checksum:
   name_template: checksums.txt
   algorithm: sha256
+  # Sign the installer with the release; scripts/release-build.sh copies it into dist.
+  extra_files:
+    - glob: ./install.sh
 
 sboms:
   - artifacts: archive
@@ -55,6 +58,76 @@ sboms:
       - '{{ .ArtifactName }}.sbom.json'
     cmd: syft
     args: ['${artifact}', '--output', 'spdx-json=${document}']
+
+# Package-owned executables live in /usr/lib/kitbag with their install-source
+# stamp beside them (docs/self-update.md); /usr/bin/kitbag links there, and the
+# reader resolves that link before looking for the stamp.
+nfpms:
+  - id: packages
+    package_name: kitbag
+    formats: [deb, rpm]
+    file_name_template: '{{ .ConventionalFileName }}'
+    bindir: /usr/lib/kitbag
+    mtime: '{{ .CommitDate }}'
+    vendor: KitBag
+    homepage: https://github.com/TomaszJanusz/kitbag
+    maintainer: Tomasz Janusz <424941+TomaszJanusz@users.noreply.github.com>
+    description: Synchronize AI coding agents' global configuration from a Git repository
+    license: MIT
+    section: utils
+    priority: optional
+    recommends: [git]
+    # Per-format contents replace (not extend) shared contents, so each format
+    # lists the command link, its license location and its own stamp.
+    overrides:
+      deb:
+        contents:
+          - &command
+            src: /usr/lib/kitbag/kitbag
+            dst: /usr/bin/kitbag
+            type: symlink
+          - src: LICENSE
+            dst: /usr/share/doc/kitbag/copyright
+            file_info: &file
+              mode: 0644
+              mtime: '{{ .CommitDate }}'
+          - src: packaging/deb/kitbag.install-source
+            dst: /usr/lib/kitbag/kitbag.install-source
+            file_info: *file
+      rpm:
+        contents:
+          - *command
+          - src: LICENSE
+            dst: /usr/share/licenses/kitbag/LICENSE
+            type: license
+            file_info: *file
+          - src: packaging/rpm/kitbag.install-source
+            dst: /usr/lib/kitbag/kitbag.install-source
+            file_info: *file
+
+# GoReleaser renders PKGBUILD and .SRCINFO into dist/aur; it never pushes them
+# (skip_upload). The release workflow publishes them only after the GitHub
+# release exists and only when the maintainer has configured AUR_SSH_PRIVATE_KEY.
+aurs:
+  - name: kitbag-bin
+    ids: [default]
+    homepage: https://github.com/TomaszJanusz/kitbag
+    description: Synchronize AI coding agents' global configuration from a Git repository
+    maintainers: ['Tomasz Janusz <424941+TomaszJanusz@users.noreply.github.com>']
+    license: MIT
+    provides: [kitbag]
+    conflicts: [kitbag]
+    optdepends: ['git: fetch and publish the configuration repository']
+    git_url: ssh://aur@aur.archlinux.org/kitbag-bin.git
+    skip_upload: true
+    url_template: 'https://github.com/TomaszJanusz/kitbag/releases/download/{{ .Tag }}/{{ .ArtifactName }}'
+    package: |-
+      install -Dm755 kitbag "${pkgdir}/usr/lib/kitbag/kitbag"
+      printf 'aur\n' >kitbag.install-source
+      install -Dm644 kitbag.install-source "${pkgdir}/usr/lib/kitbag/kitbag.install-source"
+      install -d "${pkgdir}/usr/bin"
+      ln -s /usr/lib/kitbag/kitbag "${pkgdir}/usr/bin/kitbag"
+      install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/kitbag/LICENSE"
 
 snapshot:
   version_template: '{{ if index .Env "KITBAG_SNAPSHOT_VERSION" }}{{ .Env.KITBAG_SNAPSHOT_VERSION }}{{ else }}{{ incpatch .Version }}-nightly.0.g{{ .ShortCommit }}{{ end }}'
@@ -65,3 +138,4 @@ changelog:
   disable: true
 release:
   disable: true
+

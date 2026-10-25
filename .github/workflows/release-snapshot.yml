@@ -8,7 +8,10 @@ on:
       - release-please-*
       - .release-please-*
       - mise.toml
+      - install.sh
       - scripts/release-*.sh
+      - scripts/package-check.sh
+      - scripts/homebrew-formula.sh
       - packaging/**
       - cmd/kitbag/**
       - go.mod
@@ -20,6 +23,10 @@ permissions: {}
 concurrency:
   group: release-snapshot-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   snapshot:
@@ -38,3 +45,109 @@ jobs:
           cache: false
       - name: Package, validate and rebuild all four executables
         run: mise run release:snapshot
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: snapshot-payload
+          if-no-files-found: error
+          retention-days: 3
+          path: |
+            dist/*.tar.gz
+            dist/*.deb
+            dist/*.rpm
+            dist/checksums.txt
+            dist/kitbag-update.json
+            dist/install.sh
+            dist/aur/
+
+  # Install the snapshot through each channel on fresh hosts. Images are pinned
+  # by multi-architecture index digest; update the digests deliberately.
+  ubuntu:
+    name: ubuntu (${{ matrix.runner }})
+    needs: snapshot
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    container:
+      image: ubuntu:24.04@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f579aaff33ac
+    steps:
+      - name: Install the installer's prerequisites
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates curl
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: snapshot-payload
+          path: dist
+      - name: Install the .deb package
+        run: bash scripts/package-check.sh deb dist
+      - name: Install with install.sh
+        run: bash scripts/package-check.sh install-script dist
+
+  fedora:
+    needs: snapshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    container:
+      image: fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
+    steps:
+      - name: Install checkout prerequisites
+        run: dnf install -y tar gzip
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: snapshot-payload
+          path: dist
+      - name: Install the .rpm package
+        run: bash scripts/package-check.sh rpm dist
+
+  arch:
+    needs: snapshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    container:
+      image: archlinux:base@sha256:52dfbd5afb23a220d5ee92dafcb4c788d96c026ed04179890c23adef4c897fa0
+    steps:
+      - name: Install makepkg prerequisites
+        run: pacman -Syu --noconfirm --needed base-devel
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: snapshot-payload
+          path: dist
+      - name: Build and install the AUR PKGBUILD
+        run: bash scripts/package-check.sh aur dist
+
+  macos:
+    needs: snapshot
+    runs-on: macos-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: snapshot-payload
+          path: dist
+      - name: Install with install.sh
+        run: bash scripts/package-check.sh install-script dist
+      - name: Install the Homebrew formula from a local tap
+        run: bash scripts/package-check.sh homebrew dist

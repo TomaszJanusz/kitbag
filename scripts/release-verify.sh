@@ -14,3 +14,34 @@ for os in darwin linux; do
     jq -e '.spdxVersion and (.packages | length > 0)' "$archive.sbom.json" >/dev/null
   done
 done
+
+# Linux packages: Debian and RPM spell prereleases with "~".
+package_version=${version/-/\~}
+packages=(
+  "kitbag_${package_version}_amd64.deb" "kitbag_${package_version}_arm64.deb"
+  "kitbag-${package_version}-1.x86_64.rpm" "kitbag-${package_version}-1.aarch64.rpm"
+)
+for file in "${packages[@]}"; do
+  test -f "$file"
+done
+test "$(find . -maxdepth 1 \( -name '*.deb' -o -name '*.rpm' \) | wc -l | tr -d ' ')" = "${#packages[@]}"
+cmp install.sh "$(git rev-parse --show-toplevel)/install.sh"
+# Every published file must be covered by the signed manifest.
+for file in ./*.tar.gz ./*.sbom.json ./*.deb ./*.rpm install.sh kitbag-update.json; do
+  awk -v name="${file#./}" '$2 == name { found = 1 } END { exit !found }' checksums.txt
+done
+
+# Inspect package metadata and the package-owned stamp where dpkg-deb exists
+# (Ubuntu CI). RPM contents are installed and checked in a Fedora container.
+if command -v dpkg-deb >/dev/null 2>&1; then
+  for arch in amd64 arm64; do
+    deb="kitbag_${package_version}_${arch}.deb"
+    test "$(dpkg-deb --field "$deb" Package Version Architecture Recommends)" = "$(printf 'Package: kitbag\nVersion: %s\nArchitecture: %s\nRecommends: git' "$package_version" "$arch")"
+    contents=$(dpkg-deb --contents "$deb")
+    grep -E '^l.* \./usr/bin/kitbag -> /usr/lib/kitbag/kitbag$' <<<"$contents" >/dev/null
+    grep -E '^-rwxr-xr-x .* \./usr/lib/kitbag/kitbag$' <<<"$contents" >/dev/null
+    test "$(dpkg-deb --fsys-tarfile "$deb" | tar -xOf - ./usr/lib/kitbag/kitbag.install-source)" = deb
+  done
+else
+  echo 'release-verify: dpkg-deb not found; skipped Debian package inspection' >&2
+fi

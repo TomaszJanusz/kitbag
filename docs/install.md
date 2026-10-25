@@ -1,0 +1,153 @@
+# Installing KitBag
+
+KitBag ships prebuilt binaries for macOS and Linux on amd64 and arm64. Every
+channel installs the same release archive contents and writes an
+[install-source stamp](self-update.md#install-source-stamp) beside the real
+executable, so `kitbag self-update` knows who owns the binary. Package-owned
+installs are upgraded through their package manager, never replaced in place.
+
+**Availability:** these channels are produced by the [release pipeline](release.md).
+Until the maintainer approves the first release, and creates the Homebrew tap and
+AUR package for those two channels, the commands below have nothing to install.
+
+KitBag uses Git to fetch and publish your configuration repository; install Git
+first if it is missing. After installing, run `kitbag init` to create or connect
+your configuration repository, and optionally `kitbag service install` to keep
+the machine in sync in the background.
+
+## Channels
+
+| Channel | Command | Stamp | Upgrade |
+| --- | --- | --- | --- |
+| Homebrew (macOS, Linux) | `brew install TomaszJanusz/tap/kitbag` | `homebrew` | `brew upgrade kitbag` |
+| Install script | see [below](#install-script) | `install-script` | rerun the script or `kitbag self-update` |
+| Debian, Ubuntu | `sudo apt-get install ./kitbag_<version>_<arch>.deb` | `deb` | install the newer `.deb` |
+| Fedora, RHEL | `sudo dnf install ./kitbag-<version>-1.<arch>.rpm` | `rpm` | install the newer `.rpm` |
+| Arch Linux (AUR) | `yay -S kitbag-bin` (or another AUR helper) | `aur` | your AUR helper |
+| Release archive | extract `kitbag_<version>_<os>_<arch>.tar.gz` | `release-archive` | `kitbag self-update` |
+| Go toolchain | `go install github.com/TomaszJanusz/kitbag/cmd/kitbag@latest` | none | `go install` again |
+
+The `.deb` and `.rpm` files are attached to each GitHub release; there is no apt
+or dnf repository yet, so `kitbag self-update` prints the generic apt/dnf
+command, which applies once a repository exists. Packages install the executable
+as `/usr/lib/kitbag/kitbag` with its stamp beside it and link `/usr/bin/kitbag`
+to it; they recommend (not require) `git`. The AUR `kitbag-bin` package uses
+the same layout. Homebrew installs into `libexec` and links the command into
+`bin`. KitBag resolves those links before reading the stamp.
+
+`go install` writes no stamp, so `self-update` reports an unknown source and
+asks you to reinstall through the original installer. Windows installation
+(winget) is planned for a later milestone; Scoop is not planned and an npm
+wrapper is parked.
+
+## Install script
+
+```sh
+curl -fsSL https://github.com/TomaszJanusz/kitbag/releases/latest/download/install.sh | sh
+```
+
+To review the script first, download it, read it, and run it with `sh install.sh`.
+The script is POSIX `sh`, needs `curl`, `tar` and `sha256sum` or `shasum`, and
+never uses sudo. It:
+
+1. Detects the OS (`Darwin`, `Linux`) and architecture (`x86_64`/`amd64`,
+   `arm64`/`aarch64`); Apple silicon under Rosetta gets the native build.
+   Anything else is refused.
+2. Resolves the latest stable version from `kitbag-update.json`, the same
+   discovery file as `kitbag self-update`, then downloads the archive and
+   `checksums.txt` from that exact release.
+3. If `cosign` is on `PATH`, verifies the keyless signature of `checksums.txt`
+   against this repository's `release.yml` workflow identity (from `main`, or
+   the exact version tag) and the GitHub Actions OIDC issuer. Failure aborts.
+   Without cosign it says so and relies on the checksum alone.
+4. Refuses to continue unless the archive's SHA-256 matches its single entry in
+   `checksums.txt`, and the extracted regular-file `kitbag` reports the expected
+   version.
+5. Installs `kitbag` and the `install-script` stamp into `~/.local/bin` with
+   atomic renames, then prints `PATH` advice and next steps.
+
+Options and environment:
+
+| Option | Meaning |
+| --- | --- |
+| `--prefix DIR` | Install into `DIR` instead of `~/.local/bin`. |
+| `--version X.Y.Z` or `KITBAG_VERSION` | Install that stable release. |
+| `--channel nightly` | Install the current nightly prerelease. |
+| `--force` | Replace an existing `kitbag` that has no stamp or an unknown one. |
+| `KITBAG_RELEASE_BASE_URL` | Mirror or local test server, as for `self-update`; HTTPS only, except loopback HTTP and `file://`. |
+| `KITBAG_COSIGN` | cosign command to use (default `cosign`). |
+
+Rerunning the script upgrades an `install-script` or `release-archive`
+installation in the same directory. It refuses to overwrite a symbolic link or a
+binary stamped by Homebrew, a Linux package, the AUR or `go install`; upgrade
+those with their own tool.
+
+## Verify a download
+
+The installer and `install.sh` itself are covered by the signed
+`checksums.txt`; follow [Verify a download](release.md#verify-a-download) for
+cosign, checksum and SLSA provenance commands. Packages are checked the same
+way, for example:
+
+```sh
+sha256sum --check --ignore-missing checksums.txt   # macOS: shasum -a 256 --check --ignore-missing
+dpkg-deb --info kitbag_0.1.0_amd64.deb
+rpm -qpi kitbag-0.1.0-1.x86_64.rpm
+```
+
+## How channels are tested
+
+`mise run check` runs shellcheck and shfmt on `install.sh` and the release
+helpers, and `scripts/install-test.sh`: install.sh against fake releases over
+`file://` (fresh install, upgrade, explicit and nightly versions, OS/arch
+mapping, tampered archive, missing or duplicate checksum, wrong channel or
+version, link entries, package-owned and unknown existing installs, cosign
+identity pinning and failure).
+
+The Release snapshot workflow builds the full payload and installs it on fresh
+hosts with `scripts/package-check.sh`: the `.deb` and install.sh in Ubuntu
+24.04 containers (amd64 and arm64), the `.rpm` in Fedora 44, GoReleaser's
+PKGBUILD built by `makepkg` and installed with pacman in Arch Linux, and on a
+macOS runner install.sh plus the rendered formula from a local tap (`brew
+install` and `brew test`). Each check runs `kitbag version`, removes packages
+afterwards and asserts the owner-specific `kitbag self-update` guidance, which
+proves the stamp is found through the installed symlinks.
+
+## Verifying a published release
+
+After each release, `release.yml` repeats these checks against the published
+assets: `.deb` and install.sh in Ubuntu, `.rpm` in Fedora, and install.sh with
+the pinned cosign on macOS (signature verification required). When the tap was
+updated it also installs and tests `TomaszJanusz/tap/kitbag`. These jobs cannot
+run before the first real release. The maintainer should additionally check:
+
+- `brew install TomaszJanusz/tap/kitbag && kitbag self-update` prints
+  `brew upgrade kitbag` (macOS and Linux).
+- `yay -S kitbag-bin && kitbag self-update` on Arch Linux prints the AUR helper
+  guidance.
+- The release page lists four archives, two `.deb`, two `.rpm`, `install.sh`,
+  SBOMs, `kitbag-update.json`, `checksums.txt`, its bundle and provenance.
+
+## Maintainer setup
+
+Nothing here is created by the pipeline. Until each step is done, the
+corresponding channel is skipped and the `channels` job summary says why; the
+release itself still succeeds.
+
+1. **Homebrew tap:** create the public repository `TomaszJanusz/homebrew-tap`
+   with a default branch. Create a fine-grained token limited to that
+   repository with Contents read and write, and store it as the repository
+   secret `HOMEBREW_TAP_TOKEN` in `TomaszJanusz/kitbag`. The `channels` job
+   renders `Formula/kitbag.rb` with `scripts/homebrew-formula.sh` from the
+   verified `checksums.txt` and pushes it to the default branch.
+2. **AUR:** create an AUR account, register an SSH public key for it, and store
+   the private key as the repository secret `AUR_SSH_PRIVATE_KEY`. The first
+   push creates `kitbag-bin`. The job pins the
+   [published](https://aur.archlinux.org) Ed25519 host key of
+   `aur.archlinux.org`; update `scripts/release-channels.sh` if AUR rotates it.
+
+Only stable releases publish to these channels; nightly builds never do. GoReleaser
+renders the PKGBUILD and `.SRCINFO` (`aurs` with `skip_upload`). The formula is
+rendered by a script because GoReleaser's `brews` generator is deprecated
+(`goreleaser check` rejects it) and its cask replacement has no test block and
+would keep the archive's `release-archive` stamp.

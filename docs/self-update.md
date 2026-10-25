@@ -39,8 +39,11 @@ homebrew
 Values: `homebrew`, `deb`, `rpm`, `aur`, `install-script`, `release-archive`,
 `go-install`. A missing or unrecognized stamp means `unknown`; an unreadable
 stamp is an error. Stamp reading uses `platform.FS`. Executable discovery
-resolves installer symlinks before selecting the sibling stamp. KIT-39/40 own
-stamp writers and packaging; this change defines the reader and format.
+resolves installer symlinks before selecting the sibling stamp. Writers: release
+archives ship `release-archive`, `install.sh` writes `install-script`, deb/rpm
+and AUR packages install theirs beside `/usr/lib/kitbag/kitbag`, and the
+Homebrew formula writes `homebrew` beside `libexec/kitbag`
+([install.md](install.md)).
 Never add a direct-install stamp to a package-owned executable to bypass its
 package manager.
 
