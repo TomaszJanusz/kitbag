@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
 
 	"github.com/TomaszJanusz/kitbag/internal/platform"
+	"github.com/TomaszJanusz/kitbag/internal/settingskey"
 	"github.com/TomaszJanusz/kitbag/internal/vcs"
 )
 
@@ -82,57 +82,39 @@ func Parse(data []byte) (Config, error) {
 	return c, nil
 }
 
-func invalid(key string) error            { return fmt.Errorf("invalid configuration %s: %w", key, fs.ErrInvalid) }
-func match(pattern, value string) bool    { return regexp.MustCompile(pattern).MatchString(value) }
-func optional(pattern, value string) bool { return value == "" || match(pattern, value) }
+func invalid(key string) error { return fmt.Errorf("invalid configuration %s: %w", key, fs.ErrInvalid) }
 
 func (c Config) validate() error {
+	data, err := toml.Marshal(c)
+	if err != nil {
+		return err
+	}
+	var tree map[string]any
+	if err = toml.Unmarshal(data, &tree); err != nil {
+		return err
+	}
+	prune(tree)
+	values := Values{}
+	flatten("", tree, values)
+	for path, value := range values {
+		key, findErr := settingskey.Find(path)
+		if findErr != nil {
+			return findErr
+		}
+		if err = validateValue(key, value); err != nil {
+			return err
+		}
+	}
 	if c.Schema != 1 {
 		return invalid("schema (supported: 1)")
 	}
-	if !match(`^[^\s]+$`, c.Repo.URL) {
+	if c.Repo.URL == "" {
 		return invalid("repo.url (required)")
 	}
-	for _, check := range []struct {
-		key string
-		ok  bool
-	}{
-		{"host", optional(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$`, c.Host)},
-		{"repo.branch", optional(`^[A-Za-z0-9][A-Za-z0-9/_.-]{0,254}$`, c.Repo.Branch)},
-		{"repo.path", c.Repo.Path == "" || homePath(c.Repo.Path)},
-		{"git.identity.name", optional(`^[^<>\r\n\x00]+$`, c.Git.Identity.Name)},
-		{"git.identity.email", optional(`^[^<>\s\x00]+@[^<>\s\x00]+$`, c.Git.Identity.Email)},
-		{"git.identity", (c.Git.Identity.Name == "") == (c.Git.Identity.Email == "")},
-		{"git.backend", oneOf(c.Git.Backend, "auto", "system", "embedded")},
-		{"sync.mode", oneOf(c.Sync.Mode, "link", "copy")},
-		{"sync.poll_interval", optional(`^([0-9]+(ms|s|m|h))+$`, c.Sync.PollInterval)},
-		{"ui.theme", oneOf(c.UI.Theme, "auto", "dark", "light")},
-		{"ui.color", oneOf(c.UI.Color, "auto", "always", "never")},
-	} {
-		if !check.ok {
-			return invalid(check.key)
-		}
-	}
-	seen := map[string]bool{}
-	for _, root := range c.Migration.LegacyRoots {
-		if !homePath(root) || seen[root] {
-			return invalid("migration.legacy_roots")
-		}
-		seen[root] = true
+	if (c.Git.Identity.Name == "") != (c.Git.Identity.Email == "") {
+		return invalid("git.identity (name and email required)")
 	}
 	return nil
-}
-
-func oneOf(value string, choices ...string) bool {
-	if value == "" {
-		return true
-	}
-	for _, choice := range choices {
-		if value == choice {
-			return true
-		}
-	}
-	return false
 }
 
 func homePath(value string) bool {

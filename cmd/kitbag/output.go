@@ -68,6 +68,9 @@ func (c *commandLine) colour() bool {
 	if _, set := c.host.LookupEnv("NO_COLOR"); set || c.config.UI.Color == "never" {
 		return false
 	}
+	if c.config.UI.Color == "always" {
+		return true
+	}
 	fd, ok := c.stdout.(interface{ Fd() uintptr })
 	return ok && c.host.IsTerminal(fd.Fd())
 }

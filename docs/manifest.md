@@ -429,6 +429,11 @@ agent = "claude"
 
 ## `config.toml` reference
 
+Use [`kitbag config`](cli/kitbag_config.md) to inspect or change settings. The
+[generated settings reference](config.md) lists every environment override,
+validation rule and source. [SchemaStore handoff](schemastore.md) records the
+prepared catalog entries and remaining publication/compatibility questions.
+
 Location: `~/.config/kitbag/config.toml` on macOS and Linux (the Windows
 location follows the platform work in M6). The everyday CLI supports
 `--config`/`KITBAG_CONFIG`, `--host`/`KITBAG_HOST`,

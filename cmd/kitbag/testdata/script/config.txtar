@@ -1,0 +1,79 @@
+env KITBAG_CONFIG=$WORK/machine.toml
+exec kitbag config get sync.mode
+stdout '^link$'
+exec kitbag config set repo.url local
+configschema machine.toml
+exec kitbag config set sync.mode copy
+exec kitbag config get sync.mode
+stdout '^copy$'
+exec kitbag config explain sync.mode
+stdout 'Default: link'
+stdout 'Current: copy'
+stdout 'Source: sync.mode in config.toml'
+exec kitbag config list
+stdout 'sync.mode = copy \(sync.mode in config.toml\)'
+exec kitbag config set ui.notifications false
+exec kitbag config get ui.notifications
+stdout '^false$'
+exec kitbag config set migration.legacy_roots '["~/old", "~/skills"]'
+exec kitbag config get migration.legacy_roots
+stdout 'old.*skills'
+execstatus 2 kitbag config set sync.mode bogus
+stderr 'allowed link, copy'
+execstatus 2 kitbag config set ui.notifications 1
+stderr 'allowed: true, false'
+execstatus 2 kitbag config set schema 2
+stderr 'allowed 1'
+execstatus 2 kitbag config set migration.legacy_roots '["/absolute"]'
+stderr 'allowed: unique home paths'
+exec kitbag config get sync.mode
+stdout '^copy$'
+exec kitbag config unset sync.mode
+exec kitbag config get sync.mode
+stdout '^link$'
+exec kitbag config explain sync.mode
+stdout 'Source: default'
+! grep 'mode' machine.toml
+execstatus 2 kitbag config unset repo.url
+stderr 'repo.url'
+execstatus 2 kitbag config get typo
+stderr 'unknown setting'
+
+# Real command precedence: mode determines actual materialization.
+gitremote $WORK/config.git config
+exec git clone --quiet $WORK/config.git $HOME/checkout
+exec kitbag config set repo.path '~/checkout'
+exec kitbag config set sync.mode link
+env KITBAG_MODE=copy
+exec kitbag config get sync.mode
+stdout '^copy$'
+exec kitbag config explain sync.mode
+stdout 'Source: KITBAG_MODE'
+exec kitbag sync --no-pull
+stdout 'materialize'
+! exec test -L $HOME/output
+exec kitbag --mode link config get sync.mode
+stdout '^link$'
+exec kitbag --mode link sync --no-pull
+linktarget $HOME/output $HOME/checkout/source
+
+# Comments are never silently discarded by set/unset.
+cp commented.toml machine.toml
+cp machine.toml before.toml
+execstatus 2 kitbag config set sync.mode copy
+stderr 'use config edit'
+cmp machine.toml before.toml
+execstatus 2 kitbag config unset sync.mode
+cmp machine.toml before.toml
+-- config/kitbag.toml --
+schema=1
+[[files]]
+src='source'
+dest='~/output'
+-- config/source --
+hello
+-- commented.toml --
+# Keep this comment.
+schema=1
+[repo]
+url='local'

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
+	"github.com/TomaszJanusz/kitbag/internal/settingskey"
 )
 
 // Kind names a backend choice.
@@ -75,24 +77,16 @@ func (s Selection) Explicit() bool {
 // unset. Only the winning value is parsed; an invalid one is an error naming
 // its source, never a reason to consult a lower level.
 func Select(flag, env, config string) (Selection, error) {
-	for _, level := range []struct {
-		value  string
-		source Source
-	}{
-		{flag, SourceFlag},
-		{env, SourceEnv},
-		{config, SourceConfig},
-	} {
-		if level.value == "" {
-			continue
-		}
-		kind, err := ParseKind(level.value)
-		if err != nil {
-			return Selection{}, fmt.Errorf("%s: %w", level.source, err)
-		}
-		return Selection{Kind: kind, Source: level.source}, nil
+	key, err := settingskey.Find("git.backend")
+	if err != nil {
+		return Selection{}, err
 	}
-	return Selection{Kind: Auto, Source: SourceDefault}, nil
+	value, source := key.Choose(flag, env, config)
+	kind, err := ParseKind(value)
+	if err != nil {
+		return Selection{}, fmt.Errorf("%s: %w", source, err)
+	}
+	return Selection{Kind: kind, Source: Source(source)}, nil
 }
 
 // Factories construct backends for [Open]. A factory returns an error
