@@ -72,10 +72,11 @@ installing Git or OpenSSH somewhere else.
 ### Homebrew on macOS
 
 Homebrew runs the binary from a versioned keg such as
-`/opt/homebrew/Cellar/kitbag/0.1.0/bin/kitbag`, which `brew upgrade` plus cleanup
+`/opt/homebrew/Cellar/kitbag/0.1.0/libexec/kitbag`, which `brew upgrade` plus cleanup
 deletes. When the resolved executable lies in a keg, the plist uses the stable
-`<prefix>/opt/<formula>/bin/kitbag` link instead (or `<prefix>/bin/kitbag` when
-only that exists), but only if the link currently resolves to the running
+`<prefix>/opt/<formula>/libexec/kitbag` link instead (or `<prefix>/bin/kitbag` when
+only that exists; the formula’s `bin/kitbag` links to `libexec/kitbag`), but
+only if the link currently resolves to the running
 binary; otherwise the keg path is kept. Other installations keep the resolved
 path. Linux installations, including Homebrew on Linux, are unchanged.
 

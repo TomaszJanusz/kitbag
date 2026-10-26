@@ -352,3 +352,22 @@ func checkMissingBinary(t *testing.T, s Service, host *fake.Host, binary string)
 		t.Fatal(string(data))
 	}
 }
+
+// Launchd supplies no exit code until a daemon exits; repeated installs must
+// preserve a healthy running daemon even with that absent observation.
+func TestLaunchdDaemonWithoutExitIsIdempotent(t *testing.T) {
+	t.Parallel()
+	_, host, _ := subject(t)
+	s := Service{Host: launchHost{host}}
+	options, err := s.Current("daemon", DefaultInterval)
+	must(t, err)
+	_, err = s.Install(t.Context(), options, false)
+	must(t, err)
+	report, err := s.Status(t.Context())
+	must(t, err)
+	if !report.Loaded || !report.Active || report.ExitCode != nil || report.Stale {
+		t.Fatal(report)
+	}
+	checkIdempotent(t, s, host, options)
+	checkIdempotent(t, s, host, options)
+}

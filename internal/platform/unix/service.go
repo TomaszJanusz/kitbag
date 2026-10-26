@@ -29,7 +29,8 @@ func WithExecutable(executable func() (string, error)) Option {
 
 // stableExecutable maps a versioned Homebrew keg path,
 // <prefix>/Cellar/<formula>/<version>/<rest>, to the version-independent
-// <prefix>/opt/<formula>/<rest> link, or for bin/<name> to <prefix>/bin/<name>,
+// <prefix>/opt/<formula>/<rest> link, or for bin/<name> and libexec/<name>
+// to <prefix>/bin/<name>,
 // but only when that link resolves to resolved now. A brew upgrade repoints
 // these links while cleanup deletes the old keg. Other paths are unchanged.
 func stableExecutable(resolved string) string {
@@ -42,8 +43,8 @@ func stableExecutable(resolved string) string {
 		prefix := filepath.Join(append([]string{string(filepath.Separator)}, parts[1:i]...)...)
 		rest := filepath.Join(parts[i+kegDepth:]...)
 		candidates := []string{filepath.Join(prefix, "opt", parts[i+1], rest)}
-		if filepath.Dir(rest) == "bin" {
-			candidates = append(candidates, filepath.Join(prefix, rest))
+		if dir := filepath.Dir(rest); dir == "bin" || dir == "libexec" {
+			candidates = append(candidates, filepath.Join(prefix, "bin", filepath.Base(rest)))
 		}
 		for _, candidate := range candidates {
 			if target, err := filepath.EvalSymlinks(candidate); err == nil && target == resolved {
