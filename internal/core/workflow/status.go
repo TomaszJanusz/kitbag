@@ -57,13 +57,15 @@ type GitStatus struct {
 
 // Status is versioned independently of plan and state JSON.
 type Status struct {
-	ToolTooOld   *compatibility.Event        `json:"tool_too_old,omitempty"`
-	LastSync     *state.SyncRecord           `json:"last_sync"`
-	Drift        map[plan.Classification]int `json:"drift"`
-	Repository   string                      `json:"repository"`
-	Warnings     []string                    `json:"warnings"`
-	Git          GitStatus                   `json:"git"`
-	StatusSchema int                         `json:"status_schema"`
+	ToolTooOld    *compatibility.Event        `json:"tool_too_old,omitempty"`
+	LastCheck     *state.CheckRecord          `json:"last_check"`
+	LastSync      *state.SyncRecord           `json:"last_sync"`
+	Drift         map[plan.Classification]int `json:"drift"`
+	Repository    string                      `json:"repository"`
+	Warnings      []string                    `json:"warnings"`
+	Git           GitStatus                   `json:"git"`
+	DaemonRunning bool                        `json:"daemon_running"`
+	StatusSchema  int                         `json:"status_schema"`
 }
 
 // Status reports cached upstream counts, last sync, planned drift and warnings.
@@ -73,12 +75,13 @@ func (s Service) Status(ctx context.Context) (Status, error) {
 	if err != nil {
 		return Status{StatusSchema: 1, Repository: s.Repository, ToolTooOld: compatibility.FromError(err, s.Repository), Warnings: []string{}, Drift: map[plan.Classification]int{plan.InSync: 0, plan.UpdateNeeded: 0, plan.LocalDrift: 0, plan.Conflict: 0, plan.UnmanagedObstacle: 0}}, err
 	}
+	check := s.lastCheck(&inspection.Warnings)
 	git, err := s.Backend.Status(ctx, s.Repository)
 	if err != nil {
 		return Status{}, err
 	}
 	result := Status{
-		StatusSchema: 1, Repository: s.Repository, Git: gitStatus(git), LastSync: inspection.LastSync, Warnings: inspection.Warnings,
+		LastCheck: check, StatusSchema: 1, Repository: s.Repository, Git: gitStatus(git), LastSync: inspection.LastSync, Warnings: inspection.Warnings,
 		Drift: map[plan.Classification]int{plan.InSync: 0, plan.UpdateNeeded: 0, plan.LocalDrift: 0, plan.Conflict: 0, plan.UnmanagedObstacle: 0},
 	}
 	for _, observation := range inspection.Plan.Observations {
@@ -97,4 +100,15 @@ func (s Service) Status(ctx context.Context) (Status, error) {
 
 func gitStatus(s vcs.Status) GitStatus {
 	return GitStatus{Branch: s.Branch, Commit: s.Commit, Upstream: s.Upstream, Ahead: s.Ahead, Behind: s.Behind, Dirty: !s.Clean(), UpstreamGone: s.UpstreamGone}
+}
+
+func (s Service) lastCheck(warnings *[]string) *state.CheckRecord {
+	check, _, err := s.Store.LoadCheck()
+	if err != nil {
+		*warnings = append(*warnings, "last check record is unavailable")
+	}
+	if check != nil && check.Repository != s.Repository {
+		return nil
+	}
+	return check
 }

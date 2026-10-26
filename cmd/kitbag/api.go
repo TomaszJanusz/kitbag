@@ -45,7 +45,7 @@ func (c *commandLine) status(ctx context.Context) (workflow.Status, error) {
 		return service.Status(ctx)
 	}
 	if c.flags.verbose {
-		return local()
+		return c.verboseStatus(ctx, local)
 	}
 	options := c.apiOptions()
 	return (client.Client{Host: c.host}).Status(ctx, options, local)
@@ -87,4 +87,16 @@ func (c *commandLine) minimumVersion() (string, error) {
 		return "", err
 	}
 	return repo, compatibility.Check(c.host, repo, toolVersion(), nil)
+}
+
+// verboseStatus preserves local backend diagnostics while obtaining live check
+// metadata from the daemon; the core inspection still runs in this process.
+func (c *commandLine) verboseStatus(ctx context.Context, local func() (workflow.Status, error)) (workflow.Status, error) {
+	snapshot, err := local()
+	if err != nil {
+		return snapshot, err
+	}
+	live, err := (client.Client{Host: c.host}).Status(ctx, c.apiOptions(), func() (workflow.Status, error) { return snapshot, nil })
+	snapshot.LastCheck, snapshot.DaemonRunning = live.LastCheck, live.DaemonRunning
+	return snapshot, err
 }

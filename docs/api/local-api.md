@@ -122,7 +122,9 @@ host, mode and Git backend selections are forwarded. Only a missing endpoint or
 connection refusal allows in-process fallback. Bad permissions, token failures,
 protocol errors and timeouts remain errors. The same renderers produce text and
 JSON on both paths; a testscript compares both streams byte for byte. `--verbose`
-runs in-process so backend resolution diagnostics retain their existing wording.
+runs core inspection in-process so backend resolution diagnostics retain their
+existing wording; status still reads live check metadata from the API when
+available.
 CLI sync and mutation semantics remain unchanged. `kitbag daemon` owns polling,
 detection and endpoint lifetime; see [daemon operation](../daemon.md).
 
@@ -137,3 +139,25 @@ Error `data.exit_code` uses the shared CLI table: 1 operational/warnings, 2
 usage/configuration, 3 conflict, 4 tool too old, 5 unsupported OS. Transport and
 protocol errors use 2; lock contention uses 1. Synchronization warnings/conflicts
 can instead be successful JSON-RPC results with nonzero `exit_code`.
+
+## Remote check status (additive v1 fields)
+
+`status.get` and `kitbag status --json` add optional `last_check` and
+`daemon_running` fields without changing `status_schema: 1` or API 1.0.
+`last_check` is null until a check completes, otherwise the versioned record
+documented in [state](../state.md#last-remote-check). Its `at` and `next_at`
+are UTC RFC 3339; `head` is a short hex identifier, not a remote URL.
+`outcome: failed` always carries a safe catalog `category`, never a raw cause.
+The in-memory daemon snapshot is authoritative while it runs. The local
+fallback reads the atomic persisted snapshot, sets `daemon_running: false`,
+and treats the record as historical/stale. `next_at` is then historical, not
+a promised next check. Older v1 servers omit these fields; clients accept that
+as unknown check status. A repository override never receives another
+repository's check.
+
+`poll.finished` is a content-free lifecycle hint after every completed check,
+including startup, failure and no change; subscribers refresh `status.get`.
+The existing bounded, lossy delivery contract still applies. No-change checks
+do not emit a sync event or alter the last sync. A failed check or a running
+daemon's check older than three `interval_seconds` is a presentation warning.
+The machine status stays successful when only these warnings occur.

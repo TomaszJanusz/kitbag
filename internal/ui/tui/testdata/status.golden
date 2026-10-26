@@ -7,6 +7,7 @@ Repository    /home/user/.local/share/kitbag/repo
 Branch        main → origin/main (0 ahead, 1 behind)
 Working copy  Clean
 Last sync     2026-10-24 11:30:00 CEST (1 d ago): succeeded, 2 changed
+Last check    No check recorded
 Targets       5 in sync, 1 to update, 2 changed locally, 0 conflicts, 0
               obstacles
 Connection    Daemon, live updates
@@ -15,7 +16,6 @@ Warnings
 - kitbag.toml: unknown agent "zed" ignored
 
 [s] Sync now  [r] Refresh
-
 
 
 

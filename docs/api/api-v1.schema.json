@@ -266,6 +266,20 @@
             "unmanaged obstacle"
           ],
           "additionalProperties": false
+        },
+        "last_check": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/checkRecord"
+            }
+          ]
+        },
+        "daemon_running": {
+          "type": "boolean",
+          "description": "True when the scheduling daemon answers. False makes last_check historical; never treat next_at as scheduled then. Older v1 servers may omit both new fields."
         }
       },
       "required": [
@@ -415,7 +429,8 @@
             "sync.finished",
             "sync.progress",
             "drift.detected",
-            "update.available"
+            "update.available",
+            "poll.finished"
           ]
         },
         "request_id": {
@@ -524,7 +539,8 @@
             "sync.finished",
             "sync.progress",
             "drift.detected",
-            "update.available"
+            "update.available",
+            "poll.finished"
           ]
         },
         "params": {
@@ -649,6 +665,61 @@
           }
         }
       ]
+    },
+    "checkRecord": {
+      "type": "object",
+      "description": "Latest completed daemon check; timestamps are UTC RFC 3339. next_at is the actual jittered/backoff schedule and is historical when daemon_running is false.",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "next_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "ok",
+            "failed"
+          ]
+        },
+        "category": {
+          "enum": [
+            "operation",
+            "busy",
+            "invalid",
+            "conflict",
+            "tool_too_old",
+            "unsupported_os",
+            "canceled"
+          ]
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{0,12}$"
+        },
+        "interval_seconds": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 86400
+        }
+      },
+      "required": [
+        "schema_version",
+        "at",
+        "next_at",
+        "repository",
+        "outcome",
+        "interval_seconds"
+      ],
+      "additionalProperties": false
     }
   },
   "x-api-version": "1.0",
@@ -818,6 +889,10 @@
     {
       "name": "update.available",
       "summary": "Subscribers: daemon detected a tool update."
+    },
+    {
+      "name": "poll.finished",
+      "summary": "Subscribers: remote check completed, including failure or no change; refresh status.get. Initial sync also produces a check. No raw errors or repository data in the hint."
     }
   ]
 }

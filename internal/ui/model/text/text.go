@@ -94,6 +94,15 @@ const (
 	StatusWorkingCopy   Key = "status.working_copy"
 	StatusClean         Key = "status.clean"
 	StatusDirty         Key = "status.dirty"
+	StatusLastCheck     Key = "status.last_check"
+	StatusNextCheck     Key = "status.next_check"
+	StatusCheckUnknown  Key = "status.check_unknown"
+	StatusCheckOK       Key = "status.check_ok"
+	StatusCheckFailed   Key = "status.check_failed"
+	StatusCheckValue    Key = "status.check_value"
+	StatusCheckStopped  Key = "status.check_stopped"
+	StatusCheckStuck    Key = "status.check_stuck"
+	HelpCheckSync       Key = "help.check_sync"
 	StatusLastSync      Key = "status.last_sync"
 	StatusLastSyncValue Key = "status.last_sync_value"
 	StatusNeverSynced   Key = "status.never_synced"
@@ -270,6 +279,15 @@ func statusText() []entry {
 		{StatusWorkingCopy, "Working copy"},
 		{StatusClean, "Clean"},
 		{StatusDirty, "Uncommitted changes"},
+		{StatusLastCheck, "Last check"},
+		{StatusNextCheck, "Next check"},
+		{StatusCheckUnknown, "No check recorded"},
+		{StatusCheckOK, "ok"},
+		{StatusCheckFailed, "failed: %s"},
+		{StatusCheckValue, "%s, %s"},
+		{StatusCheckStopped, "%s (stale; daemon not running)"},
+		{StatusCheckStuck, "daemon is not checking"},
+		{HelpCheckSync, "check = looked at the remote; sync = applied changes"},
 		{StatusLastSync, "Last sync"},
 		{StatusLastSyncValue, "%s: %s, %s changed"},
 		{StatusNeverSynced, "Never synced on this machine"},

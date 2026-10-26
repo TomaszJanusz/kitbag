@@ -5,6 +5,7 @@ Keyboard
   Tab, Shift-Tab, 1–4: switch tabs
   r: reload status, drift and settings
   s: sync now
+  check = looked at the remote; sync = applied changes
   ↑/↓ or k/j: move the selection
   Enter: open drift details; Esc: close them
   Enter: edit a setting, Enter again saves; Esc cancels
@@ -15,7 +16,6 @@ Keyboard
   Mouse: click a tab or row, click a target again for details; wheel: scroll
   ?: show or hide this help
   q or Ctrl-C: quit
-
 
 
 

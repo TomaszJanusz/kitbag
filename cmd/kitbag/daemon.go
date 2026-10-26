@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
+	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -22,6 +23,7 @@ import (
 	"github.com/TomaszJanusz/kitbag/internal/core/daemon"
 	"github.com/TomaszJanusz/kitbag/internal/core/plan"
 	"github.com/TomaszJanusz/kitbag/internal/core/service"
+	"github.com/TomaszJanusz/kitbag/internal/core/state"
 	"github.com/TomaszJanusz/kitbag/internal/core/workflow"
 	"github.com/TomaszJanusz/kitbag/internal/daemonhost"
 	"github.com/TomaszJanusz/kitbag/internal/platform"
@@ -131,6 +133,7 @@ func (c *commandLine) serveDaemon(ctx context.Context, listener net.Listener, to
 	events := api.NewEvents()
 	handlers := c.apiHandlers(token, events)
 	runtime := &daemonRuntime{host: c.host, events: events, service: func(ctx context.Context) (workflow.Service, error) { return handlers.Service(ctx, c.apiOptions()) }}
+	handlers.Check = runtime.lastCheck
 	runtime.watcher, err = watch.New()
 	logger := daemonhost.Log{Host: c.host, Directory: dirs.LogDir, Now: time.Now}
 	if runtime.watcher != nil {
@@ -151,7 +154,11 @@ func (c *commandLine) serveDaemon(ctx context.Context, listener net.Listener, to
 	if parseErr != nil {
 		return errors.Join(parseErr, listener.Close())
 	}
-	deps := daemon.Dependencies{Clock: daemonhost.Clock{}, Probe: runtime.probe, Sync: runtime.sync, Scan: runtime.scan, Update: releases.Check, Publish: func(kind string) {
+	checked, err := c.checkRecorder(runtime, log)
+	if err != nil {
+		return errors.Join(err, listener.Close())
+	}
+	deps := daemon.Dependencies{Now: time.Now, Checked: checked, Clock: daemonhost.Clock{}, Probe: runtime.probe, Sync: runtime.sync, Scan: runtime.scan, Update: releases.Check, Publish: func(kind string) {
 		if kind == "sync.finished" {
 			events.Publish(runtime.result)
 		} else {
@@ -161,6 +168,12 @@ func (c *commandLine) serveDaemon(ctx context.Context, listener net.Listener, to
 	if runtime.watcher != nil {
 		deps.Watch = runtime.watcher.Hints()
 	}
+	runErr, serveErr := c.runDaemonLoop(ctx, cancel, listener, handlers, options, deps, log)
+	log("stopped", runErr)
+	return errors.Join(runErr, serveErr, logErr)
+}
+
+func (c *commandLine) runDaemonLoop(ctx context.Context, cancel context.CancelFunc, listener net.Listener, handlers api.Handlers, options daemon.Options, deps daemon.Dependencies, log func(string, error)) (error, error) {
 	served := make(chan error, 1)
 	go func() { serveErr := api.Serve(ctx, listener, handlers); cancel(); served <- serveErr }()
 	executable := c.watchExecutable(log)
@@ -170,8 +183,7 @@ func (c *commandLine) serveDaemon(ctx context.Context, listener net.Listener, to
 	runErr := daemon.Run(ctx, options, deps)
 	cancel()
 	serveErr := <-served
-	log("stopped", runErr)
-	return errors.Join(c.restartError(runErr, executable), serveErr, logErr)
+	return c.restartError(runErr, executable), serveErr
 }
 
 func (c *commandLine) daemonOptions() (daemon.Options, error) {
@@ -237,12 +249,14 @@ func pollJitter(delay time.Duration) time.Duration {
 }
 
 type daemonRuntime struct {
+	check   *state.CheckRecord
 	host    platform.Host
 	service func(context.Context) (workflow.Service, error)
 	watcher *watch.Watcher
 	events  *api.Events
 	log     func(string, error)
 	result  api.Event
+	checkMu sync.Mutex
 }
 
 func (r *daemonRuntime) probe(ctx context.Context) (string, error) {
@@ -306,4 +320,33 @@ func (r *daemonRuntime) scan(ctx context.Context) error {
 		return r.watcher.Rebuild(r.host, roots)
 	}
 	return nil
+}
+
+func (r *daemonRuntime) lastCheck(repository string) *state.CheckRecord {
+	r.checkMu.Lock()
+	defer r.checkMu.Unlock()
+	if r.check == nil || r.check.Repository != repository {
+		return nil
+	}
+	record := *r.check
+	return &record
+}
+
+func (c *commandLine) checkRecorder(r *daemonRuntime, log func(string, error)) (func(state.CheckRecord), error) {
+	store, err := state.New(c.host, c.host, state.Options{})
+	if err != nil {
+		return nil, err
+	}
+	repo, err := c.config.WorkingCopy(c.host)
+	if err != nil {
+		return nil, err
+	}
+	return func(record state.CheckRecord) {
+		record.Repository = repo
+		r.checkMu.Lock()
+		r.check = &record
+		r.checkMu.Unlock()
+		log("poll.record", store.SaveCheck(record))
+		r.events.Publish(api.Event{Kind: "poll.finished"})
+	}, nil
 }

@@ -23,8 +23,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/TomaszJanusz/kitbag/internal/api"
+	"github.com/TomaszJanusz/kitbag/internal/api/client"
 	"github.com/TomaszJanusz/kitbag/internal/core/service"
+	"github.com/TomaszJanusz/kitbag/internal/core/state"
+	"github.com/TomaszJanusz/kitbag/internal/core/workflow"
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 	"github.com/TomaszJanusz/kitbag/internal/platform/unix"
 )
@@ -378,6 +383,17 @@ func TestDaemonBrokenRemoteBackoff(t *testing.T) {
 		t.Fatalf("broken remote did not back off: %v", gap)
 	}
 	stopDaemonProcess(t, f, command, output)
+	store, err := state.New(f.host, f.host, state.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, _, err := store.LoadCheck()
+	if err != nil || record == nil {
+		t.Fatal(record, err)
+	}
+	if record.Outcome != "failed" || record.Category != "operation" || record.Head != "" {
+		t.Fatalf("failed check=%+v", record)
+	}
 }
 
 // waitDaemonLog returns the times of at least count daemon log records with
@@ -637,4 +653,56 @@ func (d restartableDaemon) wait(t *testing.T, timeout time.Duration) int {
 		t.Fatal("daemon did not exit")
 		return -1
 	}
+}
+
+func TestDaemonCheckWithoutSyncAndStoppedFallback(t *testing.T) {
+	t.Parallel()
+	f := newDaemonFixture(t)
+	command, output := startDaemonProcess(t, f)
+	waitDaemonFile(t, f, "first")
+	subscriber := subscribeDaemon(t, f)
+	waitDaemonEvent(t, subscriber, "poll.finished")
+	transport := client.Client{Host: f.host}
+	var before workflow.Status
+	if err := transport.Call(t.Context(), "status.get", api.Params{}, &before, nil); err != nil {
+		t.Fatal(err)
+	}
+	waitDaemonEvent(t, subscriber, "poll.finished")
+	var after workflow.Status
+	if err := transport.Call(t.Context(), "status.get", api.Params{}, &after, nil); err != nil {
+		t.Fatal(err)
+	}
+	assertDaemonCheckProgress(t, before, after)
+	c := assertVerboseDaemonCheck(t, f)
+	stopDaemonProcess(t, f, command, output)
+	stopped, err := c.status(t.Context())
+	if err != nil || stopped.DaemonRunning || stopped.LastCheck == nil || stopped.LastCheck.At.Before(after.LastCheck.At) {
+		t.Fatalf("stopped=%+v err=%v", stopped, err)
+	}
+}
+
+func assertDaemonCheckProgress(t *testing.T, before, after workflow.Status) {
+	t.Helper()
+	if before.LastCheck == nil || after.LastCheck == nil || after.LastSync == nil || before.LastSync == nil {
+		t.Fatal("missing check/sync")
+	}
+	if !after.DaemonRunning || after.LastCheck.Outcome != "ok" || !after.LastCheck.At.After(before.LastCheck.At) || !after.LastSync.At.Equal(before.LastSync.At) || len(after.LastCheck.Head) != 12 {
+		t.Fatalf("before=%+v after=%+v", before, after)
+	}
+}
+
+func assertVerboseDaemonCheck(t *testing.T, f daemonFixture) *commandLine {
+	t.Helper()
+	var diagnostic bytes.Buffer
+	c := &commandLine{host: f.host, stdout: io.Discard, stderr: &diagnostic, flags: globalFlags{verbose: true}}
+	cmd := &cobra.Command{Use: "status"}
+	cmd.SetContext(t.Context())
+	if err := c.prepare(cmd, nil); err != nil {
+		t.Fatal(err)
+	}
+	live, err := c.status(t.Context())
+	if err != nil || !live.DaemonRunning || live.LastCheck == nil || !strings.Contains(diagnostic.String(), "working copy") {
+		t.Fatalf("verbose=%+v err=%v diagnostics=%s", live, err, diagnostic.String())
+	}
+	return c
 }

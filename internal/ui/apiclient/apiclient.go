@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"time"
 
 	"github.com/TomaszJanusz/kitbag/internal/api"
 	"github.com/TomaszJanusz/kitbag/internal/core/apply"
@@ -219,6 +220,10 @@ func statusSnapshot(s workflow.Status, daemon bool) model.StatusSnapshot {
 			InSync: s.Drift[plan.InSync], UpdateNeeded: s.Drift[plan.UpdateNeeded], LocalDrift: s.Drift[plan.LocalDrift],
 			Conflict: s.Drift[plan.Conflict], UnmanagedObstacle: s.Drift[plan.UnmanagedObstacle],
 		},
+	}
+	if s.LastCheck != nil {
+		r := s.LastCheck
+		snapshot.LastCheck = &model.LastCheck{At: r.At, NextAt: r.NextAt, Outcome: r.Outcome, Category: r.Category, Head: r.Head, Interval: time.Duration(r.IntervalSeconds * float64(time.Second))}
 	}
 	if s.ToolTooOld != nil {
 		snapshot.ToolTooOld = &model.ToolTooOld{

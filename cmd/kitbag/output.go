@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/TomaszJanusz/kitbag/internal/core/apply"
 	"github.com/TomaszJanusz/kitbag/internal/core/plan"
 	"github.com/TomaszJanusz/kitbag/internal/core/workflow"
+	"github.com/TomaszJanusz/kitbag/internal/ui/model"
+	uitext "github.com/TomaszJanusz/kitbag/internal/ui/model/text"
 	"github.com/TomaszJanusz/kitbag/internal/vcs"
 )
 
@@ -162,6 +165,8 @@ func (c *commandLine) printStatus(status workflow.Status, asJSON bool) error {
 		last = fmt.Sprintf("%s; exit %d, %d changes", c.clock.Describe(status.LastSync.At), status.LastSync.Result, status.LastSync.Changed)
 	}
 	text := fmt.Sprintf("Working copy: %s\nBranch: %s -> %s (ahead %d, behind %d, dirty %t)\nLast sync: %s\n", status.Repository, status.Git.Branch, status.Git.Upstream, status.Git.Ahead, status.Git.Behind, status.Git.Dirty, last)
+	checkText, warnings := c.checkStatus(status)
+	text += checkText
 	var counts []string
 	for _, kind := range []plan.Classification{plan.InSync, plan.UpdateNeeded, plan.LocalDrift, plan.Conflict, plan.UnmanagedObstacle} {
 		counts = append(counts, fmt.Sprintf("%s: %d", kind, status.Drift[kind]))
@@ -169,5 +174,25 @@ func (c *commandLine) printStatus(status workflow.Status, asJSON bool) error {
 	if _, err := fmt.Fprintln(c.stdout, text+"Drift: "+strings.Join(counts, ", ")); err != nil {
 		return err
 	}
-	return printWarnings(c.stderr, status.Warnings)
+	return printWarnings(c.stderr, warnings)
+}
+
+func (c *commandLine) checkStatus(status workflow.Status) (string, []string) {
+	var check *model.LastCheck
+	if r := status.LastCheck; r != nil {
+		check = &model.LastCheck{At: r.At, NextAt: r.NextAt, Outcome: r.Outcome, Category: r.Category, Interval: time.Duration(r.IntervalSeconds * float64(time.Second))}
+	}
+	catalog := uitext.English()
+	checkText := "Last check: " + catalog.Render(model.CheckValue(c.clock, check, status.DaemonRunning)) + "\n"
+	if status.DaemonRunning && check != nil {
+		checkText += "Next check: " + c.clock.Stamp(check.NextAt) + "\n"
+	}
+	warnings := append([]string{}, status.Warnings...)
+	if check != nil && check.Outcome == "failed" {
+		warnings = append(warnings, "Last check: "+catalog.Render(model.CheckValue(c.clock, check, status.DaemonRunning)))
+	}
+	if status.DaemonRunning && c.clock.Now != nil && model.CheckStale(check, c.clock.Now()) {
+		warnings = append(warnings, catalog.Render(uitext.New(uitext.StatusCheckStuck)))
+	}
+	return checkText, warnings
 }
