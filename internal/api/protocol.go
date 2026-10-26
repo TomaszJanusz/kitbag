@@ -7,6 +7,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/TomaszJanusz/kitbag/internal/core/agents"
 	"github.com/TomaszJanusz/kitbag/internal/core/apply"
 )
 
@@ -44,8 +45,21 @@ type Params struct {
 	APIVersion string  `json:"api_version"`
 	Options    Options `json:"options,omitempty"`
 	Config     string  `json:"config,omitempty"`
-	NoPull     bool    `json:"no_pull,omitempty"`
-	Force      bool    `json:"force,omitempty"`
+	// Agent is the instance change of agents.add, agents.edit and
+	// agents.remove; the method sets its op.
+	Agent *agents.Change `json:"agent,omitempty"`
+	// Env carries the caller's agent relocation variables for agents.list;
+	// variables of unknown agents are ignored, and nothing is stored.
+	Env map[string]string `json:"env,omitempty"`
+	// Revision, for agents.add/edit/remove, must equal the manifest
+	// revision of the preview the user confirmed.
+	Revision string `json:"revision,omitempty"`
+	NoPull   bool   `json:"no_pull,omitempty"`
+	Force    bool   `json:"force,omitempty"`
+	// DryRun previews an agent change without writing.
+	DryRun bool `json:"dry_run,omitempty"`
+	// Probe adds agents.list's explicit HOME name probe.
+	Probe bool `json:"probe,omitempty"`
 }
 
 // Request is a JSON-RPC 2.0 request. Omit ID for a notification.
@@ -58,9 +72,12 @@ type Request struct {
 
 // ErrorData maps errors to CLI exits without exposing diagnostics or secrets.
 type ErrorData struct {
-	MinVersion string     `json:"min_version"`
-	MaxVersion string     `json:"max_version"`
-	ExitCode   apply.Code `json:"exit_code"`
+	MinVersion string `json:"min_version"`
+	MaxVersion string `json:"max_version"`
+	// Detail explains a refused agent change (validation, layout or a stale
+	// preview) with names and ~/ paths only; other errors leave it empty.
+	Detail   string     `json:"detail,omitempty"`
+	ExitCode apply.Code `json:"exit_code"`
 }
 
 // Error is a stable, sanitized JSON-RPC error.
@@ -70,8 +87,14 @@ type Error struct {
 	Code    int       `json:"code"`
 }
 
-// Error returns only the public description, never the request or cause.
-func (e *Error) Error() string { return e.Message }
+// Error returns only the public description and detail, never the request
+// or cause.
+func (e *Error) Error() string {
+	if e.Data.Detail != "" {
+		return e.Message + ": " + e.Data.Detail
+	}
+	return e.Message
+}
 
 // ExitCode returns the CLI classification.
 func (e *Error) ExitCode() apply.Code { return e.Data.ExitCode }

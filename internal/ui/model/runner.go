@@ -35,6 +35,23 @@ func (r Runner) Run(ctx context.Context, cmd Cmd, emit func(Msg)) {
 		emit(SyncFinished{At: r.now(), Outcome: outcome, Err: err})
 	case Subscribe:
 		emit(SubscriptionEnded{Err: r.subscribe(ctx, c, emit), At: r.now()})
+	case LoadAgents, PreviewAgent, ApplyAgent:
+		r.runAgents(ctx, cmd, emit)
+	}
+}
+
+// runAgents executes the agent commands.
+func (r Runner) runAgents(ctx context.Context, cmd Cmd, emit func(Msg)) {
+	switch c := cmd.(type) {
+	case LoadAgents:
+		snapshot, err := r.Client.Agents(ctx, c.Probe)
+		emit(AgentsLoaded{Seq: c.Seq, Snapshot: snapshot, Err: err})
+	case PreviewAgent:
+		preview, err := r.Client.PreviewAgentChange(ctx, c.Change)
+		emit(AgentPreviewed{Seq: c.Seq, Preview: preview, Err: err})
+	case ApplyAgent:
+		applied, err := r.Client.ApplyAgentChange(ctx, c.Change, c.Revision)
+		emit(AgentChangeApplied{At: r.now(), Applied: applied, Err: err})
 	}
 }
 

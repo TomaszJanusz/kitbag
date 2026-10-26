@@ -28,6 +28,18 @@ func agentHomes() discover.Table {
 	}
 }
 
+// agentVariables lists the agent relocation variables the terminal interface
+// forwards to agents.list.
+func agentVariables() []string {
+	var keys []string
+	for _, r := range agentHomes() {
+		if r.Variable != "" {
+			keys = append(keys, r.Variable)
+		}
+	}
+	return keys
+}
+
 type adapterFunc func(manifest.FileSystem, string, *manifest.Manifest) ([]target.Target, error)
 
 func (f adapterFunc) Declare(fs manifest.FileSystem, repo string, m *manifest.Manifest) ([]target.Target, error) {

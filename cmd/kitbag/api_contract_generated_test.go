@@ -31,6 +31,22 @@ func TestGeneratedAPIContracts(t *testing.T) {
 		t.Parallel()
 		testAPIContract(t, "config.set", "{\"config\":\"schema = 1\\n[repo]\\nurl = \\\"https://example.invalid/config.git\\\"\\npath = \\\"~/repo\\\"\\n\"}", "{\"config\":5}", -32602, "config_setRequest", "config")
 	})
+	t.Run("agents.list", func(t *testing.T) {
+		t.Parallel()
+		testAPIContract(t, "agents.list", "{\"probe\":false,\"env\":{\"CLAUDE_CONFIG_DIR\":\"\"}}", "{\"probe\":\"yes\"}", -32602, "agents_listRequest", "agents")
+	})
+	t.Run("agents.add", func(t *testing.T) {
+		t.Parallel()
+		testAPIContract(t, "agents.add", "{\"agent\":{\"kind\":\"claude\",\"name\":\"third\",\"dir\":\"~/.claude_3\"},\"dry_run\":true}", "{\"agent\":5}", -32602, "agents_addRequest", "agentChangeResult")
+	})
+	t.Run("agents.edit", func(t *testing.T) {
+		t.Parallel()
+		testAPIContract(t, "agents.edit", "{\"agent\":{\"target\":\"claude\",\"name\":\"second\",\"dir\":\"~/.claude-work\"},\"dry_run\":true}", "{\"agent\":{\"name\":5}}", -32602, "agents_editRequest", "agentChangeResult")
+	})
+	t.Run("agents.remove", func(t *testing.T) {
+		t.Parallel()
+		testAPIContract(t, "agents.remove", "{\"agent\":{\"target\":\"claude\",\"name\":\"second\"},\"dry_run\":true}", "{\"dry_run\":\"yes\"}", -32602, "agents_removeRequest", "agentChangeResult")
+	})
 	t.Run("events.subscribe", func(t *testing.T) {
 		t.Parallel()
 		testAPIContract(t, "events.subscribe", "{}", "{\"options\":5}", -32602, "events_subscribeRequest", "subscription")

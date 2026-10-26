@@ -52,6 +52,9 @@ type Client struct {
 	Flags   map[string]string
 	Local   Local
 	Options api.Options
+	// AgentVariables are the relocation variables of the known agent kinds;
+	// only these are forwarded from Env to agents.list.
+	AgentVariables []string
 }
 
 var _ model.Client = Client{}

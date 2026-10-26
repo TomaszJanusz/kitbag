@@ -16,11 +16,17 @@ func classify(err error) error {
 		return nil
 	}
 	code := apply.ErrorCode(err)
+	detail := err.Error()
 	var remote *api.Error
 	if errors.As(err, &remote) {
 		code = remote.ExitCode()
+		if remote.Data.Detail != "" {
+			// The server's explanation of a refused change, without the
+			// generic "operation failed" the kind already conveys.
+			detail = remote.Data.Detail
+		}
 	}
-	return &model.Error{Err: err, Detail: err.Error(), ExitCode: int(code), Kind: kind(err, remote, code)}
+	return &model.Error{Err: err, Detail: detail, ExitCode: int(code), Kind: kind(err, remote, code)}
 }
 
 func kind(err error, remote *api.Error, code apply.Code) model.ErrorKind {

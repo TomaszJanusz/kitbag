@@ -566,7 +566,7 @@ status and plan do.
 | `publish.flush`, `publish.drop` | entry IDs or all | updated `Publication` |
 
 `internal/ui/model` gains these types and `Client` methods;
-[ui.md](../ui.md#proposed-agents-and-instances-adr-12) lists them in full. Two
+[ui.md](../ui.md#agents-and-instances) lists them in full. Two
 models follow the existing state-machine pattern: `Agents` (loading, ready,
 failed; selection follows (kind, dir) across reloads) and `AgentWizard` (steps
 below; sequence-numbered previews so a slow answer never replaces a newer
@@ -711,11 +711,11 @@ in this record stays the plan.
 | Message | `publish.message`, `Kitbag-Change`, `Kitbag-Version` trailers | Fixed `chore(kitbag): <op> <kind> instance <name>[ at <dir>]` (at most 72 characters), a body for extra edits, trailers `Kitbag-Host` and `Kitbag-Op: agent.<op>`. |
 | Defaults | Scope this host when present | Adding the first listed instance declares the documented default as `main`, so it stays managed. Removing the last listed instance is refused, since the target would start managing its default directory. |
 | Removal (open question 6) | Drop the declaration, let the planner remove owned outputs | After publishing, the dropped directory (remove, or an edit that moves the instance) is handed back by `kitbag unmanage`'s rules limited to it: unchanged outputs removed, displaced originals restored from their one-time backups, merged settings unmerged, changed outputs released with a warning. The planner alone would delete a merged `settings.json` whose original sits only in a backup, which the slice must not do. |
+| API | v1.1 `agents.preview`/`agents.apply`, `publish.*` | Additive v1.0 methods `agents.list` (caller's relocation variables in `env`), `agents.add`, `agents.edit`, `agents.remove` with `dry_run` previews and a `revision` guard, results identical to the CLI JSON; refusals carry `data.detail` ([local API](../api/local-api.md#agent-instances-additive-v1-methods)). Models `Agents` and `AgentForm` follow section 5 without the hosts and publication-queue steps ([ui.md](../ui.md#agents-and-instances)). |
 | Exit codes | As section 4 | 0 published and synchronized, previewed or `manual`; 1 `not_published` or a sync warning; 2 validation, refused layout or scope, dirty or ahead working copy; 3 stale preview or change no longer applying upstream. |
 
 Not in the slice: schema 2, `--probe` in the wizard, the queue, held changes,
-`kitbag push`, `kitbag manifest upgrade` and pull requests. The local API and
-view models for the slice are described in [ui.md](../ui.md).
+`kitbag push`, `kitbag manifest upgrade` and pull requests.
 
 ## Consequences
 

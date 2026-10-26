@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -12,17 +13,18 @@ func TestAppInitAndRouting(t *testing.T) {
 	t.Parallel()
 	app := NewApp(8, timefmt.Clock{})
 	cmds := app.Init()
-	if len(cmds) != 4 || cmds[0] != (LoadStatus{Seq: 1}) || cmds[1] != (LoadDrift{Seq: 1}) || cmds[2] != (LoadSettings{Seq: 1}) || cmds[3] != (Subscribe{}) {
+	want := []Cmd{LoadStatus{Seq: 1}, LoadDrift{Seq: 1}, LoadSettings{Seq: 1}, LoadAgents{Seq: 1}, Subscribe{}}
+	if !slices.Equal(cmds, want) {
 		t.Fatalf("init=%v", cmds)
 	}
 	if app.Log.Capacity() != 8 {
 		t.Fatal("log capacity not applied")
 	}
-	if cmds = app.Update(Refresh{}); len(cmds) != 3 {
+	if cmds = app.Update(Refresh{}); len(cmds) != 4 {
 		t.Fatalf("refresh=%v", cmds)
 	}
-	// A connection reloads both snapshots: hints may have been missed.
-	if cmds = app.Update(EventReceived{Event: Event{Kind: EventConnected}}); len(cmds) != 2 || len(app.Log.Entries()) != 1 {
+	// A connection reloads status, drift and agents: hints may have been missed.
+	if cmds = app.Update(EventReceived{Event: Event{Kind: EventConnected}}); len(cmds) != 3 || len(app.Log.Entries()) != 1 {
 		t.Fatalf("connected=%v", cmds)
 	}
 }
@@ -72,4 +74,12 @@ func TestAppDrivenThroughRunner(t *testing.T) {
 	if got := len(app.Log.Entries()); got != 10 {
 		t.Fatalf("log entries=%d", got)
 	}
+}
+
+func TestAppRoutesAgentForm(t *testing.T) {
+	t.Parallel()
+	app := NewApp(DefaultLogCapacity, timefmt.Clock{})
+	cmd := only(t, app.Update(OpenAgentForm{Op: AgentRemove, Target: "claude", Name: "second"}))
+	expect(t, as[PreviewAgent](t, cmd).Change.Name == "second" && app.AgentForm.Open(), "form not routed")
+	expect(t, len(app.Update(AgentChangeApplied{})) == 1, "agents reload after a change")
 }
