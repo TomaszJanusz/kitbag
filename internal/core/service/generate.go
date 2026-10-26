@@ -25,8 +25,15 @@ type Options struct {
 	Interval    time.Duration     `json:"interval"`
 }
 
-// DefaultInterval is the timer's default cadence.
-const DefaultInterval = 15 * time.Minute
+const (
+	// DefaultInterval is the timer's default cadence.
+	DefaultInterval = 15 * time.Minute
+	// RestartExitCode (sysexits EX_TEMPFAIL) is the daemon's exit status after
+	// its executable was replaced. Daemon definitions restart on it: systemd's
+	// Restart=on-failure restarts after any nonzero status, launchd's KeepAlive
+	// after any exit. Health checks do not count it as a failure.
+	RestartExitCode = 75
+)
 
 func (o Options) validate() error {
 	for _, path := range []string{o.Binary, o.Config, o.LogDir} {

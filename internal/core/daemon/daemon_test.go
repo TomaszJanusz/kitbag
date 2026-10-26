@@ -302,3 +302,115 @@ func TestTrimFollowsTimerWorkOnly(t *testing.T) {
 		t.Fatalf("trims=%d want 4", got)
 	}
 }
+
+type replaceable struct {
+	done          chan error
+	answers       chan bool
+	failures      chan error
+	logs          chan string
+	poll, replace *manualTimer
+	timers        []*manualTimer
+}
+
+// startReplaceable runs the scheduler with an executable check; answers and
+// failures script Replaced, and logs records only executable/restart actions.
+func startReplaceable(t *testing.T, options Options, deps Dependencies) replaceable {
+	t.Helper()
+	options.ExecutableCheck = time.Minute
+	clock := manualClock{timers: make(chan *manualTimer, 5)}
+	r := replaceable{done: make(chan error, 1), answers: make(chan bool, 4), failures: make(chan error, 4), logs: make(chan string, 16)}
+	deps.Clock = clock
+	deps.Replaced = func(context.Context) (bool, error) { return <-r.answers, <-r.failures }
+	deps.Log = func(action string, err error) {
+		if action == "executable" || action == "restart" {
+			r.logs <- action + map[bool]string{true: " failed", false: ""}[err != nil]
+		}
+	}
+	go func() { r.done <- Run(t.Context(), options, deps) }()
+	for range 5 {
+		r.timers = append(r.timers, receive(t, clock.timers))
+	}
+	r.poll, r.replace = r.timers[0], r.timers[4]
+	return r
+}
+
+func (r replaceable) check(t *testing.T, replaced bool, err error) {
+	t.Helper()
+	r.answers <- replaced
+	r.failures <- err
+	r.replace.tick <- time.Time{}
+}
+
+func TestReplacedExecutableReturnsBetweenOperations(t *testing.T) {
+	t.Parallel()
+	options, deps := defaults()
+	entered, release := make(chan struct{}, 1), make(chan struct{})
+	var syncs atomic.Int32
+	deps.Probe = func(context.Context) (string, error) { return "new", nil }
+	deps.Sync = func(context.Context) (string, error) {
+		if syncs.Add(1) == 1 {
+			return "old", nil
+		}
+		entered <- struct{}{}
+		<-release
+		return "new", nil
+	}
+	r := startReplaceable(t, options, deps)
+	receive(t, r.poll.resets)
+	// A missing or unreadable executable is logged and never restarts.
+	r.check(t, false, fs.ErrNotExist)
+	if d := receive(t, r.replace.resets); d != time.Minute {
+		t.Fatal(d)
+	}
+	if got := receive(t, r.logs); got != "executable failed" {
+		t.Fatal(got)
+	}
+	// An unchanged or identical executable is silent and keeps running.
+	r.check(t, false, nil)
+	receive(t, r.replace.resets)
+	// A confirmed replacement waits for the active sync before returning.
+	r.poll.tick <- time.Time{}
+	receive(t, entered)
+	r.check(t, true, nil)
+	select {
+	case err := <-r.done:
+		t.Fatalf("returned during active sync: %v", err)
+	case <-time.After(20 * time.Millisecond):
+	}
+	close(release)
+	if err := receive(t, r.done); !errors.Is(err, ErrReplaced) {
+		t.Fatalf("err=%v want ErrReplaced", err)
+	}
+	if got := receive(t, r.logs); got != "restart" || len(r.logs) != 0 || len(r.answers) != 0 {
+		t.Fatalf("log=%q, %d more logs, %d unused answers", got, len(r.logs), len(r.answers))
+	}
+	r.assertStopped(t)
+}
+
+func (r replaceable) assertStopped(t *testing.T) {
+	t.Helper()
+	for _, timer := range r.timers {
+		if !timer.stopped.Load() {
+			t.Error("timer leaked")
+		}
+	}
+}
+
+func TestExecutableCheckValidation(t *testing.T) {
+	t.Parallel()
+	options, deps := defaults()
+	deps.Clock = manualClock{make(chan *manualTimer, 5)}
+	for _, check := range []time.Duration{MinPoll - 1, maxPoll + 1, time.Minute} {
+		options.ExecutableCheck = check
+		if err := Run(t.Context(), options, deps); !errors.Is(err, fs.ErrInvalid) {
+			t.Fatalf("check=%v without Replaced: %v", check, err)
+		}
+	}
+	deps.Replaced = func(context.Context) (bool, error) { return false, nil }
+	for _, check := range []time.Duration{-time.Second, MinPoll - 1, maxPoll + 1} {
+		options.ExecutableCheck = check
+		if err := Run(t.Context(), options, deps); !errors.Is(err, fs.ErrInvalid) {
+			t.Fatalf("check=%v accepted: %v", check, err)
+		}
+	}
+}

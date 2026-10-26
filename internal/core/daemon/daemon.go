@@ -19,6 +19,11 @@ const (
 	updateInterval = 24 * time.Hour
 )
 
+// ErrReplaced reports that Replaced confirmed a different executable on disk.
+// Run returns it between operations; the caller exits so that its service
+// manager starts the new version.
+var ErrReplaced = errors.New("executable replaced on disk")
+
 // Timer is a resettable timer; implementations use nonblocking Stop and Reset.
 type Timer interface {
 	C() <-chan time.Time
@@ -30,9 +35,10 @@ type Timer interface {
 type Clock interface{ NewTimer(time.Duration) Timer }
 
 // Options are fixed for a daemon lifetime; restart after changing settings.
+// A nonzero ExecutableCheck asks Replaced at that interval.
 type Options struct {
-	Poll, Debounce time.Duration
-	UpdateCheck    bool
+	Poll, Debounce, ExecutableCheck time.Duration
+	UpdateCheck                     bool
 }
 
 // Dependencies never run concurrently with one another. Watch hints may be
@@ -41,22 +47,24 @@ type Options struct {
 // periodic scan, update check), so it runs at most a few times per poll interval
 // and never once per watch hint.
 type Dependencies struct {
-	Clock   Clock
-	Probe   func(context.Context) (string, error)
-	Sync    func(context.Context) (string, error)
-	Scan    func(context.Context) error
-	Update  func(context.Context) (bool, error)
-	Publish func(string)
-	Log     func(string, error)
-	Jitter  func(time.Duration) time.Duration
-	Watch   <-chan struct{}
-	Trim    func()
+	Clock    Clock
+	Probe    func(context.Context) (string, error)
+	Sync     func(context.Context) (string, error)
+	Scan     func(context.Context) error
+	Update   func(context.Context) (bool, error)
+	Publish  func(string)
+	Log      func(string, error)
+	Jitter   func(time.Duration) time.Duration
+	Watch    <-chan struct{}
+	Trim     func()
+	Replaced func(context.Context) (bool, error)
 }
 
 // Run performs an initial synchronization, probes with bounded jitter/backoff,
 // coalesces watcher hints, and scans periodically even if watching fails. It
 // finishes an active call before returning on cancellation; apply journals own
 // crash recovery. No goroutine is started for a sync, so runs cannot overlap.
+// A confirmed replaced executable returns ErrReplaced after the active call.
 func Run(ctx context.Context, options Options, deps Dependencies) error {
 	if err := validate(options, deps); err != nil {
 		return err
@@ -71,6 +79,11 @@ func Run(ctx context.Context, options Options, deps Dependencies) error {
 	defer loop.scan.Stop()
 	defer loop.update.Stop()
 	defer loop.debounce.Stop()
+	if options.ExecutableCheck > 0 {
+		loop.replace = deps.Clock.NewTimer(options.ExecutableCheck)
+		defer loop.replace.Stop()
+		loop.replaceC = loop.replace.C()
+	}
 	var err error
 	loop.head, err = synchronize(ctx, deps)
 	deps.Log("sync", err)
@@ -83,8 +96,9 @@ func Run(ctx context.Context, options Options, deps Dependencies) error {
 type scheduler struct {
 	deps                         Dependencies
 	poll, scan, update, debounce Timer
+	replace                      Timer
 	watch                        <-chan struct{}
-	debounceC                    <-chan time.Time
+	debounceC, replaceC          <-chan time.Time
 	head                         string
 	options                      Options
 	delay                        time.Duration
@@ -110,9 +124,28 @@ func (s *scheduler) run(ctx context.Context) error {
 			s.update.Reset(updateInterval)
 		case <-s.poll.C():
 			s.pollOnce(ctx)
+		case <-s.replaceC:
+			if s.replaced(ctx) {
+				return ErrReplaced
+			}
 		}
 	}
 	return nil
+}
+
+// replaced logs only failures and the restart decision, so a healthy check
+// adds no log record per interval.
+func (s *scheduler) replaced(ctx context.Context) bool {
+	replaced, err := s.deps.Replaced(ctx)
+	if err != nil {
+		s.deps.Log("executable", err)
+	}
+	if replaced {
+		s.deps.Log("restart", nil)
+		return true
+	}
+	s.replace.Reset(s.options.ExecutableCheck)
+	return false
 }
 
 func (s *scheduler) trim() {
@@ -163,6 +196,13 @@ func validate(o Options, d Dependencies) error {
 		}
 	}
 	if o.UpdateCheck && d.Update == nil {
+		return fs.ErrInvalid
+	}
+	return validateExecutableCheck(o, d)
+}
+
+func validateExecutableCheck(o Options, d Dependencies) error {
+	if o.ExecutableCheck != 0 && (o.ExecutableCheck < MinPoll || o.ExecutableCheck > maxPoll || d.Replaced == nil) {
 		return fs.ErrInvalid
 	}
 	return nil
