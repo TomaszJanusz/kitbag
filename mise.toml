@@ -45,7 +45,7 @@ run = [
   "bash scripts/coverage-test.sh",
   "bash scripts/quality-test.sh",
   "shfmt -d install.sh scripts",
-  "shellcheck install.sh scripts/install-test.sh scripts/package-check.sh scripts/release-channels.sh scripts/homebrew-formula.sh",
+  "shellcheck install.sh scripts/install-test.sh scripts/package-check.sh scripts/release-channels.sh scripts/homebrew-formula.sh scripts/upgrade-rehearsal.sh",
   "bash scripts/install-test.sh",
   "golangci-lint config verify",
   "golangci-lint run ./...",

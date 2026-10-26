@@ -42,6 +42,93 @@ trigger the required checks. Repository Actions must already permit Actions to
 create PRs; enabling that setting is a maintainer task, not done by this change.
 No PAT is introduced.
 
+## Upgrade rehearsal
+
+**Release gate.** After a package upgrade the user must not need any manual step:
+no `kitbag service install`, no restart, no `init`. Before asking the maintainer
+to approve a release PR, the release manager runs the upgrade rehearsal on the
+Linux QA host and attaches its summary to the request. A case that misses its
+expectation blocks the release until the change is fixed; a README note or a
+package caveat is not a fix.
+
+```sh
+scripts/upgrade-rehearsal.sh                      # latest release -> this checkout
+scripts/upgrade-rehearsal.sh --from-version 0.1.2 --from-version 0.1.1
+scripts/upgrade-rehearsal.sh --candidate ./kitbag --variant rename --timeout 300
+```
+
+The script runs every step as the restricted `testing` account through
+`sudo -n -iu testing`, whose login environment is clean, so it never touches the
+invoking user's HOME or agent directories. That account has a real
+`systemd --user` manager with `Linger=yes`, and `sudo -n testing-reset` wipes it.
+Fixtures are created by `testing` itself, because Git refuses repositories owned
+by another user (`safe.directory`). The script resets the account before each
+case and on exit (`--keep` leaves the last case running), refuses to start while
+the account runs anything besides its user manager, and serializes runs with
+`$TMPDIR/kitbag-upgrade-rehearsal.lock`.
+
+The default candidate is built from the current checkout exactly like a release,
+`CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=<version>"`,
+stamped `<next patch>-rehearsal.<commit>` (`.dirty` when tracked Go sources are
+modified). Build it from the commit you are about to release, normally
+`origin/main`. `--candidate PATH` uses an existing executable instead. The
+default previous version is the latest GitHub release tag.
+
+Each case (`--from-version` × `--variant`; the default runs all three variants):
+
+1. Installs the previous release with that release's published `install.sh`,
+   verifying SHA-256 and the keyless cosign signature with the cosign pinned in
+   `mise.toml`. It creates a local bare configuration remote with a tiny
+   `kitbag.toml` and `global/AGENTS.md`, runs `kitbag init --yes`, sets `host`,
+   `sync.poll_interval = 5s` and `daemon.update_check = false`, and runs
+   `kitbag service install`, so the old daemon runs under systemd.
+2. Replaces the executable like a package manager. `rename` copies the candidate
+   next to `~/.local/bin/kitbag` and renames it over the file (install.sh, dpkg
+   and rpm). `stale` does the same after changing `RestartSec` in the installed
+   unit and reloading systemd. It models a definition written by an older
+   generator, so the new daemon must repair its own unit at startup (rewrite,
+   `daemon-reload`, exit 75) and the script asserts the restored directive and the
+   repair marker. Plain `rename` from 0.1.2 does not test this: the 0.1.2 unit
+   already matches the current generator. `symlink` models Homebrew: the old
+   version lives in `Cellar/kitbag/<version>/libexec`, the user runs
+   `<prefix>/bin/kitbag`, and the upgrade pours a new keg, swaps the
+   `opt/kitbag` and `bin/kitbag` links with symlink plus `mv -T`, then deletes
+   the old keg like `brew cleanup`.
+3. Runs no command that could restart anything and waits up to `--timeout`
+   seconds (default 300) until the unit is active, its `MainPID` changed, the
+   status API's `daemon_version` equals the candidate, and `kitbag service
+   status` reports neither a stale definition nor a missing executable, stable
+   for one more poll. It then asserts that `Last check` is newer than that moment
+   and that `kitbag doctor` has no FAIL and reports `daemon-version` and
+   `service` as OK. Symlink cases also assert that the unit now names the stable
+   `opt` link.
+4. Asserts that `kitbag service install` says "already installed and up to date"
+   without changing `MainPID`, and that `kitbag service refresh --dry-run --json`
+   reports no change, rewrite or restart. Install persists the invoking shell's
+   PATH, so every session in the script uses the same PATH; a different PATH is
+   a changed definition and legitimately restarts the daemon.
+
+The script reads release tags to decide which cases must be hands-off: the old
+daemon has to restart itself when its executable changes (exit 75, first in
+0.1.2), and for `symlink` its Linux unit must already name the stable Homebrew
+link (not in any release up to 0.1.2). Cases older than that are observed for
+`--observe` seconds (default 130) to confirm they do not self-heal. The script
+then asserts that one `kitbag service install` with the new binary prints
+`Restarted the running daemon (<old> -> <candidate>)` and converges, and runs
+steps 3 and 4. Such a case passes as "needs one service install". It still means
+users of that version have one manual step ([service.md](service.md#refresh-after-upgrades)),
+so mention it in the release notes. The summary lists every case, its
+expectation, its result and its timings. The exit status is nonzero when any
+case misses its expectation.
+
+**What it cannot prove.** It covers Linux with systemd only. launchd on macOS
+(`KeepAlive`, bootout/bootstrap during startup repair, the detached refresh
+helper, Homebrew's real `opt` link under `/opt/homebrew`) still needs a manual
+rehearsal on a Mac, and so do real `brew`, dpkg and rpm transactions: the script
+reproduces their file operations, not the tools. It does not cover timer mode,
+`--no-start` installations, linger disabled, logout, reboot or SSH remotes. One
+host and one run cannot rule out timing races.
+
 ## Artifacts and trust
 
 GoReleaser creates `kitbag_<version>_<GOOS>_<GOARCH>.tar.gz`, each containing
