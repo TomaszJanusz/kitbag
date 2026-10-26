@@ -6,13 +6,13 @@ daemon 0.1.1, binary 0.1.3
 Repository    /home/user/.local/share/kitbag/repo
 Branch        main → origin/main (0 ahead, 1 behind)
 Working copy  Clean
-Last sync     2026-10-24 11:30:00 CEST (1 d ago): succeeded, 2 changed
-Last+ Repair service ------------------------------------------------------+
-Targ| Refresh service and restart if needed? y confirm · n/Esc cancel      |
-    |   [ Yes ]> [ No ]                                                    |
-Conn| Tab/↑/↓: focus · Enter: confirm · Esc/outside click: cancel          |
-    +----------------------------------------------------------------------+
-Warnings
+Last+----------------------------------------------------------------------+
+Last| Repair service                                                   esc |
+Targ|                                                                      |
+    | Refresh service and restart if needed? y confirm · n/Esc cancel      |
+Conn|                                                                      |
+    |                                                     [ Yes ] > [ No ] |
+Warn+----------------------------------------------------------------------+
 - kitbag.toml: unknown agent "zed" ignored
 - Daemon/binary version mismatch; run kitbag service refresh.
 - Service definition is stale; run kitbag service refresh.

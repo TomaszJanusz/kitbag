@@ -8,21 +8,21 @@ claude                                                                   | Sourc
   claude/second  /home/user/.claude_2                                    | On this host     active on this host
     missing · declared in kitbag.toml · only on laptop · active on this… | Settings         merges shared settings
   [found, not declared]                                                  | Next sync        installs the shared
-  /srv/claude                                                            |                  configuration here
-    outs+ Add an agent instance: What will change -------------------------------------------------------------+
+  /srv/c+------------------------------------------------------------------------------------------------------+
+    outs| Add an agent instance: What will change                                                          esc |
   /home/| Step 5/7                                                                                             |
-    pres| The change to kitbag.toml, its commit title and how it will be published.                            |fresh
-codex   | Commit: chore(kitbag): add claude instance work at ~/.claude_3                                       |d:
-  codex | Published directly to main.                                                                          |
-    pres|                                                                                                      |
-  [found| Changes to kitbag.toml:                                                                              |
-  /home/|   @@ kitbag.toml @@                                                                                  |
-    pres|   +[targets.claude.instances.work]                                                                   |
+    pres|                                                                                                      |fresh
+codex   | The change to kitbag.toml, its commit title and how it will be published.                            |d:
+  codex | Commit: chore(kitbag): add claude instance work at ~/.claude_3                                       |
+    pres| Published directly to main.                                                                          |
+  [found|                                                                                                      |
+  /home/| Changes to kitbag.toml:                                                                              |
+    pres|   @@ kitbag.toml @@                                                                                  |
+        |   +[targets.claude.instances.work]                                                                   |
         |   +dir = "~/.claude_3"                                                                               |
-        |   [ Cancel ]  [ Back ]> [ Next ]                                                                     |
-        | Tab/↑/↓: focus · Enter: confirm · Esc/outside click: cancel                                          |
+        |                                                                                                      |
+        |                                                                     [ Cancel ]   [ Back ] > [ Next ] |
         +------------------------------------------------------------------------------------------------------+
-                                                                         |
                                                                          |
                                                                          |
                                                                          |

@@ -59,6 +59,9 @@ func SettingDescription(path string) Key { return Key(settingPrefix + path) }
 // Static keys.
 const (
 	SettingCompactHint     Key = "setting.compact_hint"
+	DialogEscape           Key = "dialog.escape"
+	DialogScroll           Key = "dialog.scroll"
+	DialogOK               Key = "dialog.ok"
 	DialogYes              Key = "dialog.yes"
 	DialogNo               Key = "dialog.no"
 	DialogBack             Key = "dialog.back"
@@ -557,6 +560,9 @@ func formText() []entry {
 // terminalText is the chrome of the terminal renderer (kitbag tui).
 func terminalText() []entry {
 	return []entry{
+		{DialogEscape, "esc"},
+		{DialogScroll, "scroll ↑/↓"},
+		{DialogOK, "OK"},
 		{DialogYes, "Yes"},
 		{DialogNo, "No"},
 		{DialogBack, "Back"},

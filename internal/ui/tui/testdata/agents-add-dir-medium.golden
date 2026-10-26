@@ -6,18 +6,18 @@ claude                                                    | Source           dec
 > claude/main  /home/user/.claude                         | Directory state  present
     present · declared in kitbag.toml · all hosts · acti… | Hosts            all hosts
   claude/second  /home/user/.claude_2                     | On this host     active on this host
-    missing · declared in kitbag.toml · only on laptop ·… | Settings         merges shared settings
-  + Add an agent instance: Configuration directory ----------------------------------------------+
+  +----------------------------------------------------------------------------------------------+s
+  | Add an agent instance: Configuration directory                                           esc |
   | Step 3/7                                                                                     |
+  |                                                                                              |
   | The agent's configuration directory below your home directory, for example ~/.claude_2.      |
   | Configuration directory: >                                                                   |
-  | ✗ Use a directory below your home directory, starting with ~/ (or an absolute path).         |
-co| Directories found on this machine:                                                           |
-  |   ( ) /srv/claude · from CLAUDE_CONFIG_DIR, outside the home directory; cannot be declared   |:
+co| ✗ Use a directory below your home directory, starting with ~/ (or an absolute path).         |
+  | Directories found on this machine:                                                           |:
+  |   ( ) /srv/claude · from CLAUDE_CONFIG_DIR, outside the home directory; cannot be declared   |
   |   ( ) /home/user/.claude_3 · found by name, present                                          |
-  |   [ Cancel ]  [ Back ]  [ Next ] (unavailable)                                               |
-  | Tab/↑/↓: focus · Enter: confirm · Esc/outside click: cancel · Space/Enter/click: choose ·    |
-  | ←/→: previous/next choice                                                                    |
+  |                                                                                              |
+  |                                               [ Cancel ]   [ Back ]   [ Next (unavailable) ] |
   +----------------------------------------------------------------------------------------------+
                                                           |
                                                           |

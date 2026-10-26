@@ -7,22 +7,22 @@ claude                                                                   | Sourc
     present · declared in kitbag.toml · all hosts · active on this host  | Hosts            all hosts
   claude/second  /home/user/.claude_2                                    | On this host     active on this host
     missing · declared in kitbag.toml · only on laptop · active on this… | Settings         merges shared settings
-  [found, not declared]                                                  | Next sync        installs the shared
-  /srv/c+ Add an agent instance: What will change -------------------------------------------------------------+
+  [found+------------------------------------------------------------------------------------------------------+
+  /srv/c| Add an agent instance: What will change                                                          esc |
     outs| Step 5/7                                                                                             |
-codex   | The change to kitbag.toml, its commit title and how it will be published.                            |
-  codex | ✗ kitbag.toml changed since the preview. Review the new preview.                                     |fresh
-    pres| Commit: chore(kitbag): add claude instance extra at ~/.claude_3                                      |d:
+codex   |                                                                                                      |
+  codex | The change to kitbag.toml, its commit title and how it will be published.                            |fresh
+    pres| ✗ kitbag.toml changed since the preview. Review the new preview.                                     |d:
+        | Commit: chore(kitbag): add claude instance extra at ~/.claude_3                                      |
         | Published directly to main.                                                                          |
         |                                                                                                      |
         | Changes to kitbag.toml:                                                                              |
         |   @@ kitbag.toml @@                                                                                  |
         |   +[targets.claude.instances.extra]                                                                  |
         |   +dir = "~/.claude_3"                                                                               |
-        |   [ Cancel ]  [ Back ]> [ Next ]                                                                     |
-        | Tab/↑/↓: focus · Enter: confirm · Esc/outside click: cancel                                          |
+        |                                                                                                      |
+        |                                                                     [ Cancel ]   [ Back ] > [ Next ] |
         +------------------------------------------------------------------------------------------------------+
-                                                                         |
                                                                          |
                                                                          |
                                                                          |

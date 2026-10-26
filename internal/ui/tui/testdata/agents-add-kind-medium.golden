@@ -6,18 +6,18 @@ claude                                                    | Source           dec
 > claude/main  /home/user/.claude                         | Directory state  present
     present · declared in kitbag.toml · all hosts · acti… | Hosts            all hosts
   claude/second  /home/user/.claude_2                     | On this host     active on this host
-    missing · declared in kitbag.toml · only on laptop ·… | Settings         merges shared settings
-  + Add an agent instance: Agent ----------------------------------------------------------------+
+  +----------------------------------------------------------------------------------------------+s
+  | Add an agent instance: Agent                                                             esc |
   | Step 1/7                                                                                     |
+  |                                                                                              |
   | Choose the agent this configuration directory belongs to.                                    |
   | > (*) claude                                                                                 |
-  |   ( ) codex                                                                                  |
-co|   ( ) gemini                                                                                 |
-  |   ( ) opencode                                                                               |:
+co|   ( ) codex                                                                                  |
+  |   ( ) gemini                                                                                 |:
+  |   ( ) opencode                                                                               |
   |   ( ) generic                                                                                |
-  |   [ Cancel ]  [ Back ] (unavailable)  [ Next ]                                               |
-  | Tab/↑/↓: focus · Enter: confirm · Esc/outside click: cancel · Space/Enter/click: choose ·    |
-  | ←/→: previous/next choice                                                                    |
+  |                                                                                              |
+  |                                               [ Cancel ]   [ Back (unavailable) ]   [ Next ] |
   +----------------------------------------------------------------------------------------------+
                                                           |
                                                           |

@@ -9,19 +9,19 @@ claude                                                                   | Sourc
     missing · declared in kitbag.toml · only on laptop · active on this… | Settings         merges shared settings
   [found, not declared]                                                  | Next sync        installs the shared
   /srv/claude                                                            |                  configuration here
-    outside the home directory; cannot be declared · from CLAUDE_CONFIG… |
-codex   + Add an agent instance: Result -----------------------------------------------------------------------+
+    outs+------------------------------------------------------------------------------------------------------+
+codex   | Add an agent instance: Result                                                                    esc |
   codex | Step 7/7                                                                                             |fresh
-    pres| What happened to the change.                                                                         |d:
+    pres|                                                                                                      |d:
+        | What happened to the change.                                                                         |
         | ! Not written: publish mode is pr for this host; nothing was written                                 |
         | To propose it:                                                                                       |
         |   git -C '/home/user/.local/share/kitbag/repo' switch -c kitbag/claude-extra                         |
         |   git -C '/home/user/.local/share/kitbag/repo' push -u origin kitbag/claude-extra                    |
         | The agents list was reloaded.                                                                        |
-        |   [ Cancel ]  [ Back ] (unavailable)> [ Close ]                                                      |
-        | Tab/↑/↓: focus · Enter: confirm · Esc/outside click: cancel                                          |
+        |                                                                                                      |
+        |                                                      [ Cancel ]   [ Back (unavailable) ] > [ Close ] |
         +------------------------------------------------------------------------------------------------------+
-                                                                         |
                                                                          |
                                                                          |
                                                                          |

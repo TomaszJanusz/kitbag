@@ -52,7 +52,6 @@ func TestUnsetConfirmNoEscapeOutsideAndYes(t *testing.T) {
 	s := start(t, newFake())
 	s.waitFor("2 targets changed locally")
 	s.press("3", keyUnset, keyEnter)
-	s.waitFor("[3 Settings]")
 	s.press(keyUnset, keyEscape, keyUnset)
 	s.waitFor("Remove stored setting?")
 	s.click(0, 0)
@@ -73,7 +72,7 @@ func TestDialogResizeScreens(t *testing.T) {
 		name          string
 		width, height int
 	}{
-		{"dialog-wide", 120, 35}, {"dialog-medium", 100, 30}, {"dialog-narrow", 60, 20}, {"dialog-minimum", 40, 10},
+		{"dialog-wide", 120, 35}, {"dialog-medium", 80, 24}, {"dialog-narrow", 60, 20}, {"dialog-minimum", 40, 10},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -230,8 +229,11 @@ func TestDialogButtonMouseConfirmsStoredUnset(t *testing.T) {
 	s.waitFor("2 targets changed locally")
 	s.press("3", keyUnset)
 	s.waitFor("Remove stored setting?", "> [ No ]")
-	// 80x24: the Yes button is on row 12 in the centered six-line dialog.
-	s.click(8, 12)
+	// Use an independent projection of the same model-owned confirmation.
+	projection := loadedSettingsModel(t, termWidth, termHeight)
+	projection.dispatch(model.RequestUnsetSetting{Key: "host"})
+	hit := projection.windowLayout(projection.windows.top()).hits[0]
+	s.click(hit.rect.X+len(indent), hit.rect.Y)
 	if got := s.nextWrite(); got != [2]string{"host", ""} {
 		t.Fatal(got)
 	}

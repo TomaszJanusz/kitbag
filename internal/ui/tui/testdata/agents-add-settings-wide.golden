@@ -10,17 +10,17 @@ claude                                                                   | Sourc
   [found, not declared]                                                  | Next sync        installs the shared
   /srv/claude                                                            |                  configuration here
     outside the home directory; cannot be declared · from CLAUDE_CONFIG… |
-  /home/+ Add an agent instance: Merge shared settings --------------------------------------------------------+
-    pres| Step 4/7                                                                                             |fresh
-codex   | Whether this instance receives the target's shared settings fragment.                                |d:
-  codex | > (*) Default (merge shared settings)                                                                |
-    pres|   ( ) Merge shared settings                                                                          |
-  [found|   ( ) Do not merge shared settings                                                                   |
-  /home/|   [ Cancel ]  [ Back ]  [ Next ]                                                                     |
-    pres| Tab/↑/↓: focus · Enter: confirm · Esc/outside click: cancel · Space/Enter/click: choose · ←/→:       |
-        | previous/next choice                                                                                 |
+  /home/+------------------------------------------------------------------------------------------------------+
+    pres| Add an agent instance: Merge shared settings                                                     esc |fresh
+codex   | Step 4/7                                                                                             |d:
+  codex |                                                                                                      |
+    pres| Whether this instance receives the target's shared settings fragment.                                |
+  [found| > (*) Default (merge shared settings)                                                                |
+  /home/|   ( ) Merge shared settings                                                                          |
+    pres|   ( ) Do not merge shared settings                                                                   |
+        |                                                                                                      |
+        |                                                                     [ Cancel ]   [ Back ]   [ Next ] |
         +------------------------------------------------------------------------------------------------------+
-                                                                         |
                                                                          |
                                                                          |
                                                                          |

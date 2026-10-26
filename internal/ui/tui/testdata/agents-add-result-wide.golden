@@ -10,17 +10,17 @@ claude                                                                   | Sourc
   claude/work  /home/user/.claude_3                                      | Next sync        installs the shared
     present · declared in kitbag.toml · all hosts · active on this host  |                  configuration here
   [found, not declared]                                                  |
-  /srv/claude                                                            | [a] Add agent  [e] Edit  [d] Remove
-    outs+ Add an agent instance: Result -----------------------------------------------------------------------+fresh
+  /srv/c+------------------------------------------------------------------------------------------------------+
+    outs| Add an agent instance: Result                                                                    esc |fresh
 codex   | Step 7/7                                                                                             |d:
-  codex | What happened to the change.                                                                         |
-    pres| ✓ Published add claude instance work at ~/.claude_3 as 9b8c7d6e5f4a.                                 |
+  codex |                                                                                                      |
+    pres| What happened to the change.                                                                         |
+        | ✓ Published add claude instance work at ~/.claude_3 as 9b8c7d6e5f4a.                                 |
         | Sync succeeded, 2 changed                                                                            |
         | The agents list was reloaded.                                                                        |
-        |   [ Cancel ]  [ Back ] (unavailable)> [ Close ]                                                      |
-        | Tab/↑/↓: focus · Enter: confirm · Esc/outside click: cancel                                          |
+        |                                                                                                      |
+        |                                                      [ Cancel ]   [ Back (unavailable) ] > [ Close ] |
         +------------------------------------------------------------------------------------------------------+
-                                                                         |
                                                                          |
                                                                          |
                                                                          |

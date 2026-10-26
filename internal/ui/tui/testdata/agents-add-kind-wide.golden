@@ -9,19 +9,19 @@ claude                                                                   | Sourc
     missing · declared in kitbag.toml · only on laptop · active on this… | Settings         merges shared settings
   [found, not declared]                                                  | Next sync        installs the shared
   /srv/claude                                                            |                  configuration here
-    outs+ Add an agent instance: Agent ------------------------------------------------------------------------+
-  /home/| Step 1/7                                                                                             |
-    pres| Choose the agent this configuration directory belongs to.                                            |fresh
-codex   | > (*) claude                                                                                         |d:
-  codex |   ( ) codex                                                                                          |
-    pres|   ( ) gemini                                                                                         |
-  [found|   ( ) opencode                                                                                       |
-  /home/|   ( ) generic                                                                                        |
-    pres|   [ Cancel ]  [ Back ] (unavailable)  [ Next ]                                                       |
-        | Tab/↑/↓: focus · Enter: confirm · Esc/outside click: cancel · Space/Enter/click: choose · ←/→:       |
-        | previous/next choice                                                                                 |
+    outs+------------------------------------------------------------------------------------------------------+
+  /home/| Add an agent instance: Agent                                                                     esc |
+    pres| Step 1/7                                                                                             |fresh
+codex   |                                                                                                      |d:
+  codex | Choose the agent this configuration directory belongs to.                                            |
+    pres| > (*) claude                                                                                         |
+  [found|   ( ) codex                                                                                          |
+  /home/|   ( ) gemini                                                                                         |
+    pres|   ( ) opencode                                                                                       |
+        |   ( ) generic                                                                                        |
+        |                                                                                                      |
+        |                                                       [ Cancel ]   [ Back (unavailable) ]   [ Next ] |
         +------------------------------------------------------------------------------------------------------+
-                                                                         |
                                                                          |
                                                                          |
                                                                          |

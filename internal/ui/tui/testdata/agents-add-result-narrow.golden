@@ -2,18 +2,18 @@
 
 3 declared instances, 1 other directories found
 
-cl+ Add an agent instance: Result -----------------------+
-> | Step 7/7                                             |
-  | What happened to the change.                         | …
+cl+------------------------------------------------------+
+> | Add an agent instance: Result                    esc |
+  | Step 7/7                                             | …
+  |                                                      |
+  | What happened to the change.                         |c…
   | ✓ Published add claude instance work at ~/.claude_3  |
-  | as 9b8c7d6e5f4a.                                     |c…
-  | Sync succeeded, 2 changed                            |
-  | The agents list was reloaded.                        |
-cl|   [ Cancel ]  [ Back ] (unavailable)> [ Close ]      |
-[a| Tab/↑/↓: focus · Enter: confirm · Esc/outside click: |
-[p| cancel                                               |
-Di+------------------------------------------------------+
-Source           declared in kitbag.toml
+  | as 9b8c7d6e5f4a.                                     |
+cl| Sync succeeded, 2 changed                            |
+[a| The agents list was reloaded.                        |
+[p|                                                      |
+Di|      [ Cancel ]   [ Back (unavailable) ] > [ Close ] |
+So+------------------------------------------------------+
 Directory state  present
 Hosts            all hosts
 On this host     active on this host

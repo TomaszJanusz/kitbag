@@ -1,10 +1,10 @@
 [1 Status] 2 3 4 5
-  + Add agent -----------------------+
-2 | Step 2/5                         |
-  | Directory:   ~/.agent draft      |
-Re| > [ Back ]  [ Next ]             |ki
-  | Tab/↑/↓: focus · Enter: confirm  |
-Br| · Esc/outside click: cancel      |
   +----------------------------------+
-Working copy  Clean
+2 | Add agent                    esc |
+  | Step 2/5                         |
+Re|                                  |ki
+  | Directory:   ~/.agent draft      |
+Br|                                  |
+  |            > [ Back ]   [ Next ] |
+Wo+----------------------------------+
 ? help · a advanced · q quit · mouse: c…

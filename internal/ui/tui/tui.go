@@ -193,6 +193,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ShowDialog(msg)
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+		for _, w := range m.windows.windows {
+			w.followFocus = true
+		}
 		m.input.Width = max(msg.Width-inputMargin, 1)
 	case tea.KeyMsg:
 		return m, m.key(msg)

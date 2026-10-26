@@ -39,68 +39,79 @@ func (m *Model) windowLayout(w *dialogWindow) dialogLayout {
 	width = min(width, m.width-dialogMargin)
 	inner := width - dialogMargin
 	content, hits, focused := m.dialogContent(w, inner)
-	buttons, buttonHits := m.dialogButtons(w, inner)
-	header := []string{}
+	header := []string{edgeLine(m.say(w.view.Title), m.say(text.New(text.DialogEscape)), inner)}
 	if w.view.Steps > 0 {
 		header = append(header, m.say(text.New(text.DialogStep, number(w.view.Step), number(w.view.Steps))))
 	}
-	hint := m.dialogHint(w, inner, func(hint []string) bool {
-		return len(content) > m.height-borderEdges-borderEdges-len(header)-len(buttons)-len(hint)
-	})
-	buttonRows := max(m.height-borderEdges-borderEdges-len(header)-len(hint)-1, 1)
+	header = append(header, "")
+	buttons, buttonHits := m.dialogButtons(w, inner)
+	// Reserve a body row and a scroll-hint row even at the minimum size.
+	buttonRows := max(m.height-borderEdges-len(header)-borderEdges, 1)
 	buttons, buttonHits = buttonViewport(buttons, buttonHits, w.focus, buttonRows)
-	available := max(m.height-borderEdges-borderEdges-len(header)-len(buttons)-len(hint), 1)
-	maxScroll := max(len(content)-available, 0)
-	first := min(max(w.scroll, 0), maxScroll)
-	if w.focus >= 0 && w.focus < w.buttons() {
-		first = window(focused, len(content), available)
-	}
-	visible := min(available, len(content))
+	available := max(m.height-borderEdges-len(header)-len(buttons)-1, 1)
+	first, visible := w.viewport(len(content), focused, available)
 	lines := append([]string{}, header...)
 	lines = append(lines, content[first:first+visible]...)
 	hits = visibleDialogHits(hits, first, visible)
 	for i := range hits {
 		hits[i].rect.Y += len(header)
 	}
+	hint := ""
+	if w.maxScroll > 0 {
+		hint = m.say(text.New(text.DialogScroll))
+	}
+	lines = append(lines, m.styles.faint.Render(hint))
 	for _, hit := range buttonHits {
 		hit.rect.Y += len(lines)
 		hits = append(hits, hit)
 	}
 	lines = append(lines, buttons...)
-	lines = append(lines, hint...)
-	height := len(lines) + borderEdges
-	bounds := Rect{X: (m.width - width) / centerDivisor, Y: (m.height - height) / centerDivisor, Width: width, Height: height}
-	framed := m.frame(w.view.Title, lines, width)
+	bounds := Rect{X: (m.width - width) / centerDivisor, Y: (m.height - len(lines) - borderEdges) / centerDivisor, Width: width, Height: len(lines) + borderEdges}
+	framed := m.dialogFrame(lines, width, inner)
 	for i := range hits {
 		hits[i].rect.X += bounds.X + borderEdges
 		hits[i].rect.Y += bounds.Y + 1
 	}
-	return dialogLayout{bounds: bounds, lines: framed, hits: hits, page: available, maxScroll: maxScroll}
+	return dialogLayout{bounds: bounds, lines: framed, hits: hits, page: available, maxScroll: w.maxScroll}
 }
 
-// dialogHint is the key hint; options add their keys and content that
-// overflows (judged by overflows with the hint's lines) adds scrolling.
-func (m *Model) dialogHint(w *dialogWindow, width int, overflows func([]string) bool) []string {
-	hint := m.say(text.New(text.DialogHint))
-	if len(w.view.Options) > 0 {
-		hint += " · " + m.say(text.New(text.DialogChoiceHint))
-	}
-	lines := strings.Split(ansi.Wrap(hint, width, ""), "\n")
-	if !overflows(lines) {
-		return lines
-	}
-	return strings.Split(ansi.Wrap(hint+" · "+m.say(text.New(text.DialogScrollHint)), width, ""), "\n")
+func edgeLine(left, right string, width int) string {
+	right = ansi.Truncate(right, width, ellipsis)
+	left = ansi.Truncate(left, max(width-ansi.StringWidth(right)-1, 0), ellipsis)
+	return left + strings.Repeat(" ", max(width-ansi.StringWidth(left)-ansi.StringWidth(right), 0)) + right
 }
 
-// frame draws the titled border around lines.
-func (m *Model) frame(title text.Message, lines []string, width int) []string {
-	label := ansi.Truncate(" "+m.say(title)+" ", width-borderEdges, ellipsis)
+func (w *dialogWindow) viewport(count, focused, rows int) (int, int) {
+	w.rows, w.maxScroll = rows, max(count-rows, 0)
+	if w.followFocus && w.focus >= 0 && w.focus < w.buttons() {
+		if focused < w.scroll {
+			w.scroll = focused
+		}
+		if focused >= w.scroll+rows {
+			w.scroll = focused - rows + 1
+		}
+	}
+	w.followFocus = false
+	w.scroll = min(max(w.scroll, 0), w.maxScroll)
+	return w.scroll, min(rows, count)
+}
+
+func (m *Model) dialogFrame(lines []string, width, inner int) []string {
+	top, bottom := strings.Repeat(" ", width), strings.Repeat(" ", width)
+	if m.styles.mono {
+		top = "+" + strings.Repeat("-", width-borderEdges) + "+"
+		bottom = top
+	}
 	framed := make([]string, 0, len(lines)+borderEdges)
-	framed = append(framed, "+"+label+strings.Repeat("-", max(width-borderEdges-ansi.StringWidth(label), 0))+"+")
+	framed = append(framed, m.styles.panel.Render(top))
 	for _, line := range lines {
-		framed = append(framed, "| "+cellLine(line, width-dialogMargin)+" |")
+		left, right := "  ", "  "
+		if m.styles.mono {
+			left, right = "| ", " |"
+		}
+		framed = append(framed, m.panelLine(left+cellLine(line, inner)+right))
 	}
-	return append(framed, "+"+strings.Repeat("-", width-borderEdges)+"+")
+	return append(framed, m.styles.panel.Render(bottom))
 }
 
 func visibleDialogHits(hits []dialogHit, first, rows int) []dialogHit {
@@ -121,7 +132,7 @@ func (m *Model) dialogContent(w *dialogWindow, width int) ([]string, []dialogHit
 	local.width = width
 	var lines []string
 	if message := m.say(w.view.Message); message != "" {
-		lines = append(lines, strings.Split(ansi.Wrap(message, width, ""), "\n")...)
+		lines = append(lines, styledLines(m.styles.faint, message, width)...)
 	}
 	hits := make([]dialogHit, 0, len(w.view.Fields)+len(w.view.Options))
 	focused := 0
@@ -144,7 +155,7 @@ func (m *Model) dialogContent(w *dialogWindow, width int) ([]string, []dialogHit
 		hits = append(hits, dialogHit{rect: Rect{Y: len(lines), Width: width, Height: 1}, index: i})
 		lines = append(lines, label+input.View())
 		if hint := m.say(field.Hint); hint != "" {
-			lines = append(lines, strings.Split(ansi.Wrap(hint, width, ""), "\n")...)
+			lines = append(lines, styledLines(m.styles.faint, hint, width)...)
 		}
 	}
 	for _, line := range w.view.Body {
@@ -221,25 +232,31 @@ func (m *Model) dialogButtons(w *dialogWindow, width int) ([]string, []dialogHit
 	lines := []string{""}
 	hits := make([]dialogHit, 0, len(w.view.Buttons))
 	x, y := 0, 0
-	for i, button := range w.view.Buttons {
-		label := "[ " + m.say(button.Label) + " ]"
-		if !button.Enabled {
-			label = m.say(text.New(text.ControlDisabled, text.Plain(label)))
-		}
-		prefix := indent
-		if w.focus == w.buttons()+i {
-			prefix = marker
-		}
-		label = prefix + label
-		size := min(ansi.StringWidth(label), width)
-		if x > 0 && x+size > width {
+	for i, control := range w.view.Buttons {
+		label := m.buttonView(button{control: control, focused: w.focus == w.buttons()+i, primary: primaryButton(w.view, i)}, width)
+		size := ansi.StringWidth(label)
+		if x > 0 && x+size+1 > width {
 			lines = append(lines, "")
 			x = 0
 			y++
 		}
 		hits = append(hits, dialogHit{rect: Rect{X: x, Y: y, Width: size, Height: 1}, index: w.buttons() + i})
-		lines[y] += ansi.Truncate(label, width, ellipsis)
+		if x > 0 {
+			lines[y] += " "
+			hits[len(hits)-1].rect.X++
+			x++
+		}
+		lines[y] += label
 		x += size
+	}
+	for row, line := range lines {
+		offset := max(width-ansi.StringWidth(line), 0)
+		lines[row] = strings.Repeat(" ", offset) + line
+		for i := range hits {
+			if hits[i].rect.Y == row {
+				hits[i].rect.X += offset
+			}
+		}
 	}
 	return lines, hits
 }
@@ -257,11 +274,17 @@ func (m *Model) overlayWindows(screen []string) []string {
 }
 
 func (m *Model) windowMouse(msg tea.MouseMsg) model.Msg {
-	if msg.Action != tea.MouseActionPress || m.windowWheel(msg.Button) || msg.Button != tea.MouseButtonLeft {
-		return nil
-	}
 	w := m.windows.top()
 	layout := m.windowLayout(w)
+	if msg.Action != tea.MouseActionPress {
+		return nil
+	}
+	if scrollWindowMouse(w, layout.bounds, msg) {
+		return nil
+	}
+	if msg.Button != tea.MouseButtonLeft {
+		return nil
+	}
 	if !layout.bounds.Contains(msg.X, msg.Y) {
 		m.windows.Pop()
 		return w.view.Cancel
@@ -282,20 +305,6 @@ func (m *Model) windowMouse(msg tea.MouseMsg) model.Msg {
 	return nil
 }
 
-// windowWheel scrolls the top window one line per notch and reports
-// whether button was the wheel.
-func (m *Model) windowWheel(button tea.MouseButton) bool {
-	if button != tea.MouseButtonWheelUp && button != tea.MouseButtonWheelDown {
-		return false
-	}
-	lines := 1
-	if button == tea.MouseButtonWheelUp {
-		lines = -1
-	}
-	m.scrollWindow(lines)
-	return true
-}
-
 // scrollWindow moves the top window's content by lines (the wheel) or, for
 // PgUp/PgDn, by pages; a focused field or option keeps itself visible.
 func (m *Model) scrollWindow(lines int) {
@@ -303,8 +312,8 @@ func (m *Model) scrollWindow(lines int) {
 	if w == nil {
 		return
 	}
-	layout := m.windowLayout(w)
-	w.scroll = min(max(min(max(w.scroll, 0), layout.maxScroll)+lines, 0), layout.maxScroll)
+	m.windowLayout(w)
+	w.scrollBody(lines)
 }
 
 // windowPage scrolls the top window by one page.
@@ -334,4 +343,37 @@ func buttonViewport(lines []string, hits []dialogHit, focus, rows int) ([]string
 	first := window(selected, len(lines), rows)
 	visible := min(rows, len(lines))
 	return lines[first : first+visible], visibleDialogHits(hits, first, visible)
+}
+
+func styledLines(style lipgloss.Style, value string, width int) []string {
+	lines := strings.Split(ansi.Wrap(value, width, ""), "\n")
+	for i := range lines {
+		lines[i] = style.Render(lines[i])
+	}
+	return lines
+}
+
+// Restore the panel surface after nested text/button ANSI resets, including
+// padding to the right of a muted body line.
+func (m *Model) panelLine(line string) string {
+	if m.styles.mono {
+		return line
+	}
+	sample := m.styles.panel.Render("x")
+	prefix, _, _ := strings.Cut(sample, "x")
+	return prefix + strings.ReplaceAll(line, "\x1b[0m", "\x1b[0m"+prefix) + "\x1b[0m"
+}
+
+func scrollWindowMouse(w *dialogWindow, bounds Rect, msg tea.MouseMsg) bool {
+	if msg.Button != tea.MouseButtonWheelUp && msg.Button != tea.MouseButtonWheelDown {
+		return false
+	}
+	delta := 1
+	if msg.Button == tea.MouseButtonWheelUp {
+		delta = -1
+	}
+	if bounds.Contains(msg.X, msg.Y) {
+		w.scrollBody(delta)
+	}
+	return true
 }
