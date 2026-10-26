@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.2](https://github.com/TomaszJanusz/kitbag/compare/v0.1.1...v0.1.2) (2026-10-26)
+
+
+### Features
+
+* **agent:** add read-only instance listing ([#78](https://github.com/TomaszJanusz/kitbag/issues/78)) ([432286a](https://github.com/TomaszJanusz/kitbag/commit/432286a4c53a7e67abf0c4e311fa4df1f72f83a1))
+* **daemon:** restart after the executable is replaced ([#74](https://github.com/TomaszJanusz/kitbag/issues/74)) ([98b4577](https://github.com/TomaszJanusz/kitbag/commit/98b4577e7178ef2811cbefee938129e80e00fc05))
+* **init:** offer the background service in init and adopt ([#77](https://github.com/TomaszJanusz/kitbag/issues/77)) ([65179fe](https://github.com/TomaszJanusz/kitbag/commit/65179fe66a61d68cf5d3b3a61fd3a02c15042090))
+* **status:** expose daemon check health ([#79](https://github.com/TomaszJanusz/kitbag/issues/79)) ([c7bc22a](https://github.com/TomaszJanusz/kitbag/commit/c7bc22a4c9a34cbc20a05d3806a809a61cec4482))
+* **tui:** guide settings editing ([#75](https://github.com/TomaszJanusz/kitbag/issues/75)) ([34d5622](https://github.com/TomaszJanusz/kitbag/commit/34d56228fb12015af3c69c5663c688c22e21e732))
+
+
+### Bug Fixes
+
+* **ui:** show human-facing times in the local zone ([#76](https://github.com/TomaszJanusz/kitbag/issues/76)) ([f728afa](https://github.com/TomaszJanusz/kitbag/commit/f728afa9927816c3ba3d5cc4d49a06567e641b3b))
+
 ## [0.1.1](https://github.com/TomaszJanusz/kitbag/compare/v0.1.0...v0.1.1) (2026-10-26)
 
 
