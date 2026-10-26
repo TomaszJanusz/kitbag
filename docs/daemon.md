@@ -224,3 +224,50 @@ interval, force-applying from a watcher, and blocking event publication. Each
 was rejected by its focused test (the zero-interval and blocking-publication
 controls intentionally reached the test timeout). The drift check runs before
 any update creates a one-time backup, so backup safety cannot mask auto-repair.
+
+## Startup service repair
+
+Before opening the API or starting sync, the daemon compares its own installed
+daemon definition with the current generator. It requires the saved config to
+match this process and an active installed daemon service; timer installations,
+other configs and foreground-only operation are left alone. The generator uses
+saved installation inputs, not a transient shell environment.
+
+On systemd it writes definitions atomically, runs `systemctl --user daemon-reload`,
+then releases the daemon lock and exits **75**. The reloaded `Restart=on-failure`
+policy starts the new command line. `daemon-reload` reloads units without
+restarting the process ([systemctl manual](https://www.freedesktop.org/software/systemd/man/latest/systemctl.html#daemon-reload)).
+A detached child alone would not escape systemd's default control-group cleanup,
+so Linux never uses that approach.
+
+A rewritten launchd plist needs bootout/bootstrap
+([launchctl manual](https://keith.github.io/xcode-man-pages/launchctl.1.html)).
+The macOS daemon starts a separate `kitbag --config <config> service refresh`
+helper with a new session/process group and no inherited API/lock descriptors.
+The helper does the full rewrite and supervisor replacement; the parent keeps
+serving until launchd stops it. This avoids having bootout kill the process that
+still needs to bootstrap the job. launchd cleans up processes in the original
+job's process group ([AbandonProcessGroup](https://keith.github.io/xcode-man-pages/launchd.plist.5.html#AbandonProcessGroup)).
+Helper output and failures go to `<log>/service.refresh.log` (0600); like the
+supervisor output streams this file is not rotated. The helper is reaped if the
+parent survives. Real launchd/systemd behavior remains
+unverified; platform stubs and subprocess tests verify the requested operations.
+
+A private `<state>/service-refresh.json` records attempt times **before** the
+supervisor work. Startup attempts are limited to once per **10 minutes per
+binary version**, including failed attempts and backwards clock changes. A new
+version has its own budget. A pending record keeps failed rewrite/reload work
+visible as stale. Failures/deferred attempts leave the daemon usable; explicit
+`service refresh` bypasses the automatic cooldown. No recurring automatic repair
+is scheduled: a deferred startup repair waits for another startup or an explicit
+refresh. Neither marker contains credentials.
+
+API v1 status and events carry optional `daemon_version`, the serving process's
+version, independently of the client binary and API version. Clients fall back
+to existing `version.get` for older v1 daemons. Missing version metadata or an
+unavailable version handshake identifies an active supervised daemon as older.
+Both service install and refresh restart that process even if the definition
+has not changed. `kitbag status`, doctor and the
+TUI show `daemon X, binary Y` and warn on a mismatch; they never restart a service
+implicitly. A daemon predating executable watching still needs the first explicit
+refresh/confirmed TUI action after upgrading.

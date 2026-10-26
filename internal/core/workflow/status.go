@@ -57,6 +57,8 @@ type GitStatus struct {
 
 // Status is versioned independently of plan and state JSON.
 type Status struct {
+	DaemonVersion string                      `json:"daemon_version,omitempty"`
+	BinaryVersion string                      `json:"binary_version,omitempty"`
 	ToolTooOld    *compatibility.Event        `json:"tool_too_old,omitempty"`
 	LastCheck     *state.CheckRecord          `json:"last_check"`
 	LastSync      *state.SyncRecord           `json:"last_sync"`
@@ -65,6 +67,7 @@ type Status struct {
 	Warnings      []string                    `json:"warnings"`
 	Git           GitStatus                   `json:"git"`
 	DaemonRunning bool                        `json:"daemon_running"`
+	ServiceStale  bool                        `json:"service_stale,omitempty"`
 	StatusSchema  int                         `json:"status_schema"`
 }
 

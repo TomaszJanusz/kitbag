@@ -27,6 +27,7 @@ type fakeClient struct {
 	delay        time.Duration
 	inflight     atomic.Int32
 	overlapped   atomic.Bool
+	refreshes    atomic.Int32
 	statusCalls  atomic.Int32
 	subscribed   atomic.Int32
 	unsubscribed atomic.Int32
@@ -151,3 +152,5 @@ func (f *fakeClient) Subscribe(ctx context.Context, deliver func(model.Event)) e
 		}
 	}
 }
+
+func (f *fakeClient) RefreshService(context.Context) error { f.refreshes.Add(1); return nil }

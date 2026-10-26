@@ -12,9 +12,11 @@ import (
 	"time"
 
 	"github.com/TomaszJanusz/kitbag/internal/api"
+	"github.com/TomaszJanusz/kitbag/internal/api/client"
 	"github.com/TomaszJanusz/kitbag/internal/core/apply"
 	"github.com/TomaszJanusz/kitbag/internal/core/compatibility"
 	"github.com/TomaszJanusz/kitbag/internal/core/plan"
+	"github.com/TomaszJanusz/kitbag/internal/core/service"
 	"github.com/TomaszJanusz/kitbag/internal/core/settings"
 	"github.com/TomaszJanusz/kitbag/internal/core/state"
 	"github.com/TomaszJanusz/kitbag/internal/core/workflow"
@@ -41,7 +43,8 @@ type Local struct {
 // for this process exactly as kitbag config list does; Options forwards the
 // explicit selections the CLI forwards to the daemon.
 type Client struct {
-	Transport Transport
+	BinaryVersion string
+	Transport     Transport
 	// Host and OpenGit optionally enrich settings with local read-only context.
 	Host    platform.Host
 	OpenGit func(context.Context, string) (vcs.Backend, error)
@@ -67,7 +70,12 @@ func (c Client) Status(ctx context.Context) (model.StatusSnapshot, error) {
 		daemon = false
 		result, err = c.localStatus(ctx)
 	}
-	return statusSnapshot(result, daemon), classify(err)
+	snapshot := statusSnapshot(result, daemon)
+	snapshot.BinaryVersion = c.BinaryVersion
+	if err == nil {
+		c.serviceStatus(ctx, &snapshot)
+	}
+	return snapshot, classify(err)
 }
 
 func (c Client) localStatus(ctx context.Context) (workflow.Status, error) {
@@ -211,7 +219,7 @@ func (c Client) Subscribe(ctx context.Context, deliver func(model.Event)) error 
 
 func statusSnapshot(s workflow.Status, daemon bool) model.StatusSnapshot {
 	snapshot := model.StatusSnapshot{
-		Repository: s.Repository, Warnings: s.Warnings, Daemon: daemon, LastSync: lastSync(s.LastSync),
+		DaemonVersion: s.DaemonVersion, Repository: s.Repository, Warnings: s.Warnings, Daemon: daemon, LastSync: lastSync(s.LastSync),
 		Git: model.GitState{
 			Branch: s.Git.Branch, Commit: s.Git.Commit, Upstream: s.Git.Upstream, Ahead: s.Git.Ahead,
 			Behind: s.Git.Behind, Dirty: s.Git.Dirty, UpstreamGone: s.Git.UpstreamGone,
@@ -281,4 +289,42 @@ func settingValues(entries []settings.Entry) []model.SettingValue {
 		values = append(values, value)
 	}
 	return values
+}
+
+// serviceStatus observes the local supervisor and older v1 daemon versions too.
+func (c Client) serviceStatus(ctx context.Context, snapshot *model.StatusSnapshot) {
+	if c.Host == nil {
+		return
+	}
+	report, err := (service.Service{Host: c.Host, Config: c.Options.Config}).Status(ctx)
+	if err == nil {
+		snapshot.ServiceStale, snapshot.ServiceInstalled = report.Stale, report.Installed
+	}
+	if snapshot.Daemon && snapshot.DaemonVersion == "" {
+		var info api.VersionInfo
+		callErr := c.Transport.Call(ctx, "version.get", c.params(), &info, nil)
+		version, running, err := client.VersionObservation(info, callErr)
+		if err == nil && running {
+			snapshot.DaemonVersion = version
+		}
+	}
+}
+
+// RefreshService is explicitly confirmed local work; it must not run inside the
+// daemon it restarts, and does not require a newer API method on old daemons.
+func (c Client) RefreshService(ctx context.Context) error {
+	if c.Host == nil {
+		return platform.ErrUnsupported
+	}
+	var info api.VersionInfo
+	err := c.Transport.Call(ctx, "version.get", c.params(), &info, nil)
+	if ctx.Err() != nil {
+		return classify(ctx.Err())
+	}
+	version, running, err := client.VersionObservation(info, err)
+	if err != nil {
+		return classify(err)
+	}
+	_, err = (service.Service{Host: c.Host, Config: c.Options.Config}).Refresh(ctx, service.RefreshRequest{BinaryVersion: c.BinaryVersion, DaemonVersion: version, Running: running})
+	return classify(err)
 }

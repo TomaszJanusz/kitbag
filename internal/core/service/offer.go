@@ -37,9 +37,11 @@ func Decide(install, decline, interactive bool) Offer {
 
 // Installation lists the files an installation wrote, or found up to date.
 type Installation struct {
-	Mode    string
-	Paths   []string
-	Changed bool
+	DaemonVersion, BinaryVersion string
+	Mode                         string
+	Paths                        []string
+	Changed                      bool
+	Restarted, Started, Deferred bool
 }
 
 // InstallDefault installs and starts the daemon-mode service, exactly like

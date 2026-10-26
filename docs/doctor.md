@@ -111,3 +111,10 @@ An installed, active daemon also has a `daemon-poll` check. It reads the bounded
 intervals or the record cannot be read. It does not contact the remote. Missing
 records are reported as not recorded yet (including older daemon versions).
 Timer services and stopped services do not get this check.
+
+The `daemon-version` check reads the existing local API `version.get` method,
+including for older API v1 daemons. A running process shows **daemon X, binary Y**;
+a mismatch is WARN with `kitbag service refresh` as its fix. No listening daemon
+adds no version check; authentication/protocol failures warn without assuming a
+version. `--report` still permits this local observation while skipping remote
+network probes. Doctor never installs, reloads or restarts the service.

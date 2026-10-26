@@ -164,3 +164,12 @@ as a warning with its age. While the daemon is running, an age greater than
 three poll intervals warns “daemon is not checking”. A lightweight clock tick
 updates ages and warnings even when no daemon events arrive. With no daemon,
 the persisted check says “stale; daemon not running” and no next check is shown.
+
+Status shows **daemon X, binary Y** and warns about version mismatch or a stale
+installed service definition. Press **h** on Status to request repair, then **y**
+to confirm or **n/Esc** to cancel. The shared view model owns the warning,
+confirmation and refresh intent; the terminal renderer draws them and forwards
+keys. Refresh runs locally through the service core rather than an RPC inside
+the daemon being restarted, so older API v1 daemons can be repaired too. Matching
+or uninstalled services have no repair action. No repair runs before confirmation;
+ordinary **r** only reloads views. A failed repair remains visible and retryable.

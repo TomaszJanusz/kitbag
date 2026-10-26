@@ -79,6 +79,9 @@ func (c *commandLine) runDaemon(ctx context.Context) (err error) {
 		return err
 	}
 	defer func() { err = errors.Join(err, lock.Unlock()) }()
+	if restart, refreshErr := c.startupRefresh(ctx); refreshErr != nil || restart {
+		return refreshErr
+	}
 	token, err := api.EnsureToken(c.host)
 	if err != nil {
 		return err
@@ -130,7 +133,7 @@ func removeStaleSocket(ctx context.Context, host platform.Host, path string) err
 func (c *commandLine) serveDaemon(ctx context.Context, listener net.Listener, token string, dirs platform.Dirs) (err error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	events := api.NewEvents()
+	events := api.NewEvents(toolVersion())
 	handlers := c.apiHandlers(token, events)
 	runtime := &daemonRuntime{host: c.host, events: events, service: func(ctx context.Context) (workflow.Service, error) { return handlers.Service(ctx, c.apiOptions()) }}
 	handlers.Check = runtime.lastCheck

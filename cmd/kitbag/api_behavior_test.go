@@ -30,6 +30,9 @@ func TestAPIReadConsistency(t *testing.T) {
 	callAPI(t, c, "plan.get", api.Params{}, &inspected)
 	var drift []plan.Observation
 	callAPI(t, c, "drift.list", api.Params{}, &drift)
+	if status.DaemonVersion != toolVersion() || !status.DaemonRunning {
+		t.Fatal("daemon version absent", status)
+	}
 	if status.Drift[plan.UpdateNeeded] != 1 || status.LastSync != nil {
 		t.Fatalf("status=%+v", status)
 	}

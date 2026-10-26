@@ -74,7 +74,7 @@ rm $HOME/.never
 cp $HOME/.local/state/kitbag/service.json $WORK/service.json.bak
 cp missing-binary.json $HOME/.local/state/kitbag/service.json
 exec kitbag service status
-stdout 'Service executable /kitbag-removed/Cellar/kitbag/0.1.0/libexec/kitbag no longer exists.*run kitbag service install'
+stdout 'Service executable /kitbag-removed/Cellar/kitbag/0.1.0/libexec/kitbag no longer exists.*run kitbag service refresh'
 exec kitbag service status --json
 stdout '"binary_missing":true'
 exec kitbag doctor --json
@@ -83,6 +83,7 @@ cp $WORK/service.json.bak $HOME/.local/state/kitbag/service.json
 exec kitbag service status --json
 stdout '"binary_missing":false'
 
+localapi start
 # Switching to daemon mode boots out the loaded job before replacing it.
 exec kitbag service install --mode=daemon
 stdout 'Service installed/updated'
@@ -109,6 +110,48 @@ exec kitbag doctor --json
 stdout '"message": "loaded=true active=true enabled=true stale=false'
 rm $HOME/.never
 
+# Upgrade incident: an identical stable-path plist can still run the old process.
+localapi stop
+localapi start-old
+rm $HOME/commands
+exec kitbag service install
+stdout 'Restarted the running daemon \(0.1.1 -> 0.0.0-dev\)'
+grep 'launchctl bootout' $HOME/commands
+grep 'launchctl bootstrap' $HOME/commands
+cmp $HOME/Library/LaunchAgents/dev.kitbag.agent.plist $WORK/daemon.plist
+exec kitbag service refresh
+stdout 'Restarted the running daemon \(0.1.1 -> 0.0.0-dev\)'
+localapi stop
+localapi start-unversioned
+rm $HOME/commands
+exec kitbag service install
+stdout 'Restarted the running daemon \(older -> 0.0.0-dev\)'
+grep 'launchctl bootout' $HOME/commands
+exec kitbag service refresh
+stdout 'Restarted the running daemon \(older -> 0.0.0-dev\)'
+cmp $HOME/Library/LaunchAgents/dev.kitbag.agent.plist $WORK/daemon.plist
+localapi stop
+localapi start
+rm $HOME/commands
+exec kitbag service install
+stdout 'already installed and up to date'
+exec kitbag service install
+stdout 'already installed and up to date'
+exec kitbag service refresh --json
+stdout '"changed":false'
+! grep 'launchctl (bootout|bootstrap|kickstart)' $HOME/commands
+
+# Refresh must replace launchd's in-memory definition through bootout/bootstrap.
+cp old-plist $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
+execstatus 0 kitbag service refresh --json --dry-run
+stdout '"definition_changed":true'
+grep 'old service' $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
+execstatus 0 kitbag service refresh --json
+stdout '"changed":true'
+grep 'KeepAlive' $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
+execstatus 0 kitbag service refresh --json
+stdout '"changed":false'
+localapi stop
 exec kitbag service uninstall
 stdout 'Configuration, working copies and sync state were kept'
 grep 'launchctl disable gui/[0-9]+/dev.kitbag.agent' $HOME/commands
@@ -148,3 +191,6 @@ kickstart) ;;
 bootout) rm -f "$HOME/.loaded";;
 *) exit 64;;
 esac
+
+-- old-plist --
+<!-- old service -->

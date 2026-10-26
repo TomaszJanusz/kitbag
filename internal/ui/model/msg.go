@@ -139,3 +139,19 @@ func (ToggleAdvancedSettings) isMsg() {}
 func (BeginSetting) isMsg()           {}
 func (StepSetting) isMsg()            {}
 func (ChooseSetting) isMsg()          {}
+
+// RequestServiceRefresh opens confirmation for an installed stale/mismatched service.
+type (
+	RequestServiceRefresh struct{}
+	// ConfirmServiceRefresh answers that confirmation; only Accept runs work.
+	ConfirmServiceRefresh struct{ Accept bool }
+	// ServiceRefreshed reports the local refresh result.
+	ServiceRefreshed struct{ Err error }
+	// RunServiceRefresh performs an explicitly confirmed repair.
+	RunServiceRefresh struct{}
+)
+
+func (RequestServiceRefresh) isMsg() {}
+func (ConfirmServiceRefresh) isMsg() {}
+func (ServiceRefreshed) isMsg()      {}
+func (RunServiceRefresh) isCmd()     {}

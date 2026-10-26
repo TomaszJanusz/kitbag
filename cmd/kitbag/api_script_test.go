@@ -19,9 +19,10 @@ import (
 type (
 	scriptAPIKey struct{}
 	scriptAPI    struct {
-		cancel context.CancelFunc
-		done   chan error
-		once   sync.Once
+		cancel  context.CancelFunc
+		done    chan error
+		runtime string
+		once    sync.Once
 	}
 )
 
@@ -46,7 +47,11 @@ func localAPICommand(ts *testscript.TestScript, neg bool, args []string) {
 	}
 	switch args[0] {
 	case "start":
-		server.start(ts)
+		server.start(ts, toolVersion())
+	case "start-old":
+		server.start(ts, "0.1.1")
+	case "start-unversioned":
+		server.start(ts, "")
 	case "stop":
 		server.stop(ts)
 	default:
@@ -54,13 +59,18 @@ func localAPICommand(ts *testscript.TestScript, neg bool, args []string) {
 	}
 }
 
-func (s *scriptAPI) start(ts *testscript.TestScript) {
+func (s *scriptAPI) start(ts *testscript.TestScript, version string) {
 	if s.cancel != nil {
 		ts.Fatalf("API fixture already started")
 	}
-	runtime, err := os.MkdirTemp("/tmp", "kitbag-api-")
-	ts.Check(err)
-	ts.Defer(func() { ts.Check(os.RemoveAll(runtime)) })
+	runtime := s.runtime
+	if runtime == "" {
+		var err error
+		runtime, err = os.MkdirTemp("/tmp", "kitbag-api-")
+		ts.Check(err)
+		s.runtime = runtime
+		ts.Defer(func() { ts.Check(os.RemoveAll(runtime)) })
+	}
 	ts.Setenv("XDG_RUNTIME_DIR", runtime)
 	// Snapshot only the script's environment. Server goroutines never access the
 	// mutable testscript environment, real HOME or ambient agent directories.
@@ -76,15 +86,18 @@ func (s *scriptAPI) start(ts *testscript.TestScript) {
 	listener, err := host.ListenLocal(path)
 	ts.Check(err)
 	ctx, cancel := context.WithCancel(context.Background())
+	s.once = sync.Once{}
 	s.cancel, s.done = cancel, make(chan error, 1)
 	cli := &commandLine{host: host, stdout: io.Discard, stderr: io.Discard}
-	go func() { s.done <- api.Serve(ctx, listener, cli.apiHandlers(token, api.NewEvents())) }()
+	handlers := cli.apiHandlers(token, api.NewEvents(version))
+	handlers.ToolVersion = version
+	go func() { s.done <- api.Serve(ctx, listener, handlers) }()
 	ts.Defer(func() { s.stop(ts) })
 }
 
 func (s *scriptAPI) stop(ts *testscript.TestScript) {
 	if s.cancel == nil {
-		ts.Fatalf("API fixture was not started")
+		return
 	}
 	s.once.Do(func() {
 		s.cancel()
@@ -95,4 +108,5 @@ func (s *scriptAPI) stop(ts *testscript.TestScript) {
 			ts.Fatalf("API fixture did not stop")
 		}
 	})
+	s.cancel = nil
 }

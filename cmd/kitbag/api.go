@@ -45,10 +45,20 @@ func (c *commandLine) status(ctx context.Context) (workflow.Status, error) {
 		return service.Status(ctx)
 	}
 	if c.flags.verbose {
-		return c.verboseStatus(ctx, local)
+		snapshot, err := c.verboseStatus(ctx, local)
+		snapshot.BinaryVersion = toolVersion()
+		if err == nil {
+			c.statusService(ctx, &snapshot)
+		}
+		return snapshot, err
 	}
 	options := c.apiOptions()
-	return (client.Client{Host: c.host}).Status(ctx, options, local)
+	result, err := (client.Client{Host: c.host}).Status(ctx, options, local)
+	result.BinaryVersion = toolVersion()
+	if err == nil {
+		c.statusService(ctx, &result)
+	}
+	return result, err
 }
 
 func (c *commandLine) apiOptions() api.Options {
