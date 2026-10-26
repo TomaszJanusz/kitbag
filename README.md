@@ -64,8 +64,9 @@ checked in CI against snapshot builds, not against a published release.
    the service any time with `kitbag service install`, and diagnose problems with
    `kitbag doctor`, which warns while the service is not installed.
 
-   For an interactive view, run `kitbag tui`: Status, Drift, Settings and
-   Activity tabs (press `?` for keys). It uses the daemon when one runs and reads
+   For an interactive view, run `kitbag tui`: Status, Drift, Settings, Agents
+   and Activity tabs (press `?` for keys); the Agents tab adds, edits and
+   removes agent instances with a previewed, confirmed wizard. It uses the daemon when one runs and reads
    this machine directly otherwise, honours `NO_COLOR`, and exits 2 when stdin or
    stdout is not a terminal. See the [terminal UI](docs/tui.md).
 

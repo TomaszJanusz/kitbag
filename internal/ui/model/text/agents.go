@@ -44,6 +44,15 @@ func agentsText() []entry {
 		{AgentWarnMissingDir, "%s does not exist. Sync warns and skips it until the agent creates it."},
 		{AgentErrorStale, "kitbag.toml changed since the preview. Review the new preview."},
 		{AgentProblem, "%s: %s"},
+		{AgentsDetailSync, "Next sync"},
+		{AgentsSyncInstalls, "installs the shared configuration here"},
+		{AgentsSyncMissing, "warns and skips it until the directory exists"},
+		{AgentsSyncSkips, "warns and skips it"},
+		{AgentsSyncInactive, "skips it on this host"},
+		{AgentsSyncUndeclared, "leaves it alone until it is added"},
+		{AgentsSyncCannot, "leaves it alone; it cannot be declared"},
+		{AgentsSectionFound, "found, not declared"},
+		{AgentsListHint, "↑/↓: select · Enter: edit · a: add · d: remove · p: look for more"},
 	}
 }
 
@@ -90,5 +99,13 @@ func wizardText() []entry {
 		{AgentResultNotApplied, "Not applied: %s"},
 		{AgentResultSync, "Sync %s, %s changed"},
 		{AgentResultReleased, "Handed back %s"},
+		{WizardWindowTitle, "%s: %s"},
+		{WizardCurrentDir, "Now %s; leave empty to keep it."},
+		{WizardHintsHeading, "Directories found on this machine:"},
+		{WizardDiffHeading, "Changes to kitbag.toml:"},
+		{WizardNextCommands, "To propose it:"},
+		{WizardRefreshed, "The agents list was reloaded."},
+		{WizardDiscardTitle, "Discard this change?"},
+		{WizardDiscardConfirm, "Nothing has been written. Discard the draft and close the wizard?"},
 	}
 }

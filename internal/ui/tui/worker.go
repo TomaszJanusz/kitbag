@@ -53,6 +53,9 @@ func supersedes(next, queued model.Cmd) bool {
 	case model.LoadSettings:
 		_, same := queued.(model.LoadSettings)
 		return same
+	case model.LoadAgents:
+		_, same := queued.(model.LoadAgents)
+		return same
 	default:
 		return false
 	}

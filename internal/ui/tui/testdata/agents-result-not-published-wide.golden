@@ -1,0 +1,35 @@
+ 1 Status   2 Drift   3 Settings  [4 Agents]  5 Activity
+
+2 declared instances, 1 other directories found                          | claude/main
+                                                                         | Directory        /home/user/.claude
+claude                                                                   | Source           declared in kitbag.toml
+> claude/main  /home/user/.claude                                        | Directory state  present
+    present · declared in kitbag.toml · all hosts · active on this host  | Hosts            all hosts
+  claude/second  /home/user/.claude_2                                    | On this host     active on this host
+    missing · declared in kitbag.toml · only on laptop · active on this… | Settings         merges shared settings
+  [found, not declared]                                                  | Next sync        installs the shared
+  /srv/claude                                                            |                  configuration here
+    outs+ Add an agent instance: Result -----------------------------------------------------------------------+
+codex   | Step 7/7                                                                                             |
+  codex | What happened to the change.                                                                         |fresh
+    pres| ! Committed 4f2a9c1d0b7e on this machine but not published: push rejected: the remote branch moved   |d:
+        | twice                                                                                                |
+        | To propose it:                                                                                       |
+        |   git -C '/home/user/.local/share/kitbag/repo' pull --rebase                                         |
+        |   git -C '/home/user/.local/share/kitbag/repo' push                                                  |
+        | The agents list was reloaded.                                                                        |
+        |   [ Cancel ]  [ Back ] (unavailable)> [ Close ]                                                      |
+        | Tab/↑/↓: focus · Enter: confirm · Esc/outside click: cancel                                          |
+        +------------------------------------------------------------------------------------------------------+
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+? help · a add · e edit · d remove · p probe · q quit · mouse: click, wheel

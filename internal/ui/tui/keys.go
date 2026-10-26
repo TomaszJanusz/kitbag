@@ -31,6 +31,10 @@ const (
 	keyFollow   = "f"
 	keyAdvanced = "a"
 	keySpace    = " "
+	keyAdd      = "a"
+	keyEdit     = "e"
+	keyRemove   = "d"
+	keyProbe    = "p"
 )
 
 // inputMargin leaves room for the prompt and cursor of the settings editor.
@@ -44,7 +48,7 @@ func (m *Model) key(msg tea.KeyMsg) tea.Cmd {
 	case m.app.Status.Dialog() != nil && (name == "y" || name == "n"):
 		return m.serviceRefreshKey(name)
 	case m.windows.Len() > 0:
-		m.dispatch(m.windows.Key(msg))
+		m.windowKey(msg)
 		return nil
 	case m.editing:
 		return m.editKey(msg)
@@ -65,6 +69,8 @@ func (m *Model) tabKey(name string) tea.Cmd {
 		return m.settingsKey(name)
 	case logTab:
 		m.logKey(name)
+	case agentsTab:
+		m.agentsKey(name)
 	case statusTab:
 		m.statusKey(name)
 	case tabCount:
@@ -103,7 +109,7 @@ func (m *Model) globalKey(name string) bool {
 		m.tab = (m.tab + 1) % tabCount
 	case keyPrevious:
 		m.tab = (m.tab + tabCount - 1) % tabCount
-	case "1", "2", "3", "4":
+	case "1", "2", "3", "4", "5":
 		m.tab = tab(name[0] - '1')
 	case keyRefresh:
 		m.dispatch(model.Refresh{})
@@ -324,5 +330,36 @@ func (m *Model) serviceRefreshKey(name string) tea.Cmd {
 func (m *Model) statusKey(name string) {
 	if name == "h" {
 		m.dispatch(model.RequestServiceRefresh{})
+	}
+}
+
+// windowKey scrolls the top window with PgUp/PgDn and gives it every
+// other key.
+func (m *Model) windowKey(msg tea.KeyMsg) {
+	switch msg.String() {
+	case keyPageUp:
+		m.windowPage(-1)
+	case keyPageDown:
+		m.windowPage(1)
+	default:
+		m.dispatch(m.windows.Key(msg))
+	}
+}
+
+// agentsKey moves the selection and opens the model's actions: a add, e or
+// Enter edit, d remove, p probe. Disabled actions do nothing.
+func (m *Model) agentsKey(name string) {
+	switch name {
+	case keyUp, keyVimUp:
+		m.dispatch(model.MoveAgent{Delta: -1})
+	case keyDown, keyVimDown:
+		m.dispatch(model.MoveAgent{Delta: 1})
+	case keyAdd, keyEdit, keyEnter, keyRemove, keyProbe:
+		for _, c := range m.app.Agents.View().Actions {
+			if c.Enabled && (intentName(c.Intent) == name || (name == keyEnter && intentName(c.Intent) == keyEdit)) {
+				m.dispatch(c.Intent)
+				return
+			}
+		}
 	}
 }

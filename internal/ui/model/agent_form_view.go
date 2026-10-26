@@ -16,26 +16,30 @@ type AgentOption struct {
 }
 
 // AgentPreviewView is the loaded preview: the manifest diff lines verbatim,
-// the generated commit title and the publication route.
+// the generated commit title and the publication route. Next lists the
+// commands that propose a change the publish mode does not write (pr).
 type AgentPreviewView struct {
 	Dropped  *text.Message
 	Title    text.Message
 	Commit   text.Message
 	Route    text.Message
 	Diff     []string
+	Next     []text.Message
 	Warnings []text.Message
 }
 
 // AgentResultView is the outcome of an applied change. Next lists commands
 // that finish a manual or unpublished change; Released reports a directory
-// handed back by unmanage rules.
+// handed back by unmanage rules. Published is set when the commit reached
+// the remote.
 type AgentResultView struct {
-	Sync     *text.Message
-	Headline text.Message
-	Commit   string
-	Next     []text.Message
-	Released []text.Message
-	Warnings []text.Message
+	Sync      *text.Message
+	Headline  text.Message
+	Commit    string
+	Next      []text.Message
+	Released  []text.Message
+	Warnings  []text.Message
+	Published bool
 }
 
 // AgentFormView is everything a renderer shows for the agent form. Field is
@@ -201,7 +205,7 @@ func (m *AgentForm) nextControl(valid bool) Control {
 }
 
 func previewView(p AgentPreview) *AgentPreviewView {
-	view := &AgentPreviewView{Title: text.Plain(p.Title), Commit: text.New(text.WizardCommit, text.Plain(p.Title)), Diff: p.Diff, Warnings: plain(p.Warnings)}
+	view := &AgentPreviewView{Title: text.Plain(p.Title), Commit: text.New(text.WizardCommit, text.Plain(p.Title)), Diff: p.Diff, Next: plain(p.Publication.Next), Warnings: plain(p.Warnings)}
 	view.Route = text.New(text.PublishRouteDirect, text.Plain(p.Publication.Branch))
 	if p.Publication.Mode != "" && p.Publication.Mode != "direct" {
 		view.Route = text.New(text.PublishRouteManual)
@@ -217,7 +221,7 @@ func resultView(a AgentApplied) *AgentResultView {
 	p := a.Publication
 	commit := p.Commit[:min(len(p.Commit), shortCommit)]
 	subject := text.Plain(strings.TrimPrefix(a.Title, "chore(kitbag): "))
-	view := &AgentResultView{Commit: p.Commit, Next: plain(p.Next), Warnings: plain(a.Warnings)}
+	view := &AgentResultView{Commit: p.Commit, Next: plain(p.Next), Warnings: plain(a.Warnings), Published: p.State == PublishPublished}
 	switch p.State {
 	case PublishPublished:
 		view.Headline = text.New(text.AgentResultPublished, subject, text.Plain(commit))

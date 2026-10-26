@@ -4,7 +4,7 @@ Open the interactive terminal interface
 
 ### Synopsis
 
-Show status, drift, settings and activity in a full-screen terminal interface. It uses the running daemon and falls back to reading this machine directly when none listens. Requires an interactive terminal; NO_COLOR or ui.color=never disables colour. Press ? for keys.
+Show status, drift, settings, agents and activity in a full-screen terminal interface; the Agents tab adds, edits and removes agent instances with a previewed, confirmed wizard. It uses the running daemon and falls back to reading this machine directly when none listens. Requires an interactive terminal; NO_COLOR or ui.color=never disables colour. Press ? for keys.
 
 ```
 kitbag tui [flags]

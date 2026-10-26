@@ -69,8 +69,10 @@ hints unavailable without blocking the form. Host files are regular
 
 `DialogView`, `DialogField`, `ConfirmDialog` and `FormDialog` describe reusable
 confirmation and wizard windows without a terminal dependency. They carry
-`text.Message` labels, enabled model controls, stable dialog/field IDs and
-optional step counts. `EditDialogField` forwards draft changes to the owning
+`text.Message` labels, enabled model controls, stable dialog/field IDs,
+optional step counts, toned body lines (`DialogLine`), choice lists
+(`DialogOption`, each with the intent its choice dispatches) and a wide-window
+request. `EditDialogField` forwards draft changes to the owning
 model. The owner validates, updates its projection and decides when the window
 closes; a form action does not automatically advance a step or persist a value.
 Cancel is an explicit intent, so a wizard can ask about a dirty draft by
@@ -201,6 +203,20 @@ confirm, result; remove — preview, confirm, result.
 - `AgentFormBack{}` goes back; on the first step, and `CancelAgentForm{}`, close
   the form, asking first (`Discarding`) when a draft exists; a second cancel
   discards.
+- `ResumeAgentForm{}` answers the discard question with no and keeps the
+  draft. The form also accepts `EditDialogField` from its own window
+  (`AgentFormDialog`) as `EditAgentField`.
+- `AgentForm.Dialog()` projects the open form as a `FormDialog`
+  (`AgentFormDialog`): title "operation: step", Step n/N, the explanation as the
+  message, the name or directory as a field (the edited instance's directory as
+  its hint), options for kinds, found directories and settings, body lines for
+  validation, warnings, problems, the busy state, the preview (commit, route,
+  commands to propose a `pr`-mode change, handed-back directory, warnings and,
+  on the preview step, the diff) and the result, then Cancel, Back and
+  Next/Apply/Close. The initial focus is the text field or chosen option, Next
+  on preview and result, and Back on confirm, so a stray Enter never applies.
+  `AgentForm.DiscardDialog()` is a `ConfirmDialog` (`AgentDiscardDialog`) while
+  `Discarding`: Yes cancels again (discarding), No resumes.
 - `AgentFormView` carries `Op`, `Step`, `Steps`, `StepIndex`, `Title`,
   `Explanation`, `Field` and `TextEntry` for text steps, `Options`, `Invalid`,
   `Warnings`, `Problem`, `Busy`, `Preview` (title, commit, route, diff lines,
@@ -208,6 +224,11 @@ confirm, result; remove — preview, confirm, result.
   released outputs, sync line, warnings) and the `Back`, `Next`, `Cancel` and
   (on confirm) `Confirm` controls.
 
+The selected row's detail ends with **Next sync**: what a sync does with the
+directory (installs the shared configuration, skips it on this host, warns and
+skips a missing or unusable directory, or leaves an undeclared or outside-HOME
+directory alone).
+
 All texts are in `internal/ui/model/text` (`agents.*`, `wizard.*`, `agent.*`,
-`publish.*` keys). The terminal Agents tab and wizard that render these
-models are separate work (KIT-80).
+`publish.*` keys). The terminal renders them in the
+[Agents tab](tui.md#agents-tab-and-wizard).

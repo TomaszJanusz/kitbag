@@ -5,15 +5,52 @@ import "github.com/TomaszJanusz/kitbag/internal/ui/model/text"
 // DialogView describes a window without terminal geometry or toolkit state.
 // IDs are stable across steps. A renderer sends field edits and button intents
 // back to the owning model; only that model validates and advances a wizard.
+//
+// Focus indexes count Fields, then Options, then Buttons. Body lines follow
+// the fields and precede the options. Wide asks for a wider window, for
+// example to show diffs.
 type DialogView struct {
 	Cancel         Msg
 	ID             string
 	Title, Message text.Message
 	Fields         []DialogField
+	Body           []DialogLine
+	Options        []DialogOption
 	Buttons        []Control
 	Step, Steps    int
 	InitialFocus   int
 	CloseOnAction  bool
+	Wide           bool
+}
+
+// Tone classifies a dialog body line. Renderers style it, and mark warnings
+// and problems in text too, so the meaning survives without colour.
+type Tone int
+
+// Body line tones. ToneCode lines are verbatim (diffs, commands): renderers
+// truncate instead of wrapping them.
+const (
+	ToneNormal Tone = iota
+	ToneHeading
+	ToneHint
+	ToneSuccess
+	ToneWarning
+	ToneProblem
+	ToneCode
+)
+
+// DialogLine is one paragraph of a window body; an empty Text is a blank line.
+type DialogLine struct {
+	Text text.Message
+	Tone Tone
+}
+
+// DialogOption is one choice of a window's choice list. Choosing it dispatches
+// Intent to the owning model, which reprojects Selected.
+type DialogOption struct {
+	Intent        Msg
+	Label, Detail text.Message
+	Selected      bool
 }
 
 // DialogField is a text field. Value is a draft supplied by its owning model.

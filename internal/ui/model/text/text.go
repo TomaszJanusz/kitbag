@@ -258,6 +258,10 @@ const (
 	HelpMouse        Key = "help.mouse"
 	HelpToggle       Key = "help.toggle"
 	HelpQuit         Key = "help.quit"
+	HelpAgents       Key = "help.agents"
+	FooterAgents     Key = "terminal.footer_agents"
+	DialogChoiceHint Key = "dialog.choice_hint"
+	DialogScrollHint Key = "dialog.scroll_hint"
 )
 
 // Agents list, agent form and publication keys (ADR 12, v1 slice).
@@ -345,6 +349,23 @@ const (
 	AgentResultNotApplied Key = "agent.result.not_applied"
 	AgentResultSync       Key = "agent.result.sync"
 	AgentResultReleased   Key = "agent.result.released"
+	AgentsDetailSync      Key = "agents.detail.sync"
+	AgentsSyncInstalls    Key = "agents.sync.installs"
+	AgentsSyncMissing     Key = "agents.sync.missing"
+	AgentsSyncSkips       Key = "agents.sync.skips"
+	AgentsSyncInactive    Key = "agents.sync.inactive"
+	AgentsSyncUndeclared  Key = "agents.sync.undeclared"
+	AgentsSyncCannot      Key = "agents.sync.cannot"
+	AgentsSectionFound    Key = "agents.section.found"
+	AgentsListHint        Key = "agents.list_hint"
+	WizardWindowTitle     Key = "wizard.window_title"
+	WizardCurrentDir      Key = "wizard.current_dir"
+	WizardHintsHeading    Key = "wizard.hints_heading"
+	WizardDiffHeading     Key = "wizard.diff_heading"
+	WizardNextCommands    Key = "wizard.next_commands"
+	WizardRefreshed       Key = "wizard.refreshed"
+	WizardDiscardTitle    Key = "wizard.discard_title"
+	WizardDiscardConfirm  Key = "wizard.discard_confirm"
 )
 
 // English returns the default catalog, including plain-language setting descriptions.
@@ -562,8 +583,8 @@ func terminalText() []entry {
 		{SettingEditing, "Editing: Enter saves, Esc cancels"},
 		{SettingListHint, "↑/↓: select · Enter: edit"},
 		{HelpTitle, "Keyboard"},
-		{HelpTabs, "Tab, Shift-Tab, 1–4: switch tabs"},
-		{HelpRefresh, "r: reload status, drift and settings"},
+		{HelpTabs, "Tab, Shift-Tab, 1–5: switch tabs"},
+		{HelpRefresh, "r: reload status, drift, settings and agents"},
 		{HelpSync, "s: sync now"},
 		{HelpMove, "↑/↓ or k/j: move the selection"},
 		{HelpDetail, "Enter: open drift details; Esc: close them"},
@@ -572,8 +593,12 @@ func terminalText() []entry {
 		{HelpChoices, "←/→/Space or click while editing: choose; Custom/Other: type"},
 		{HelpAdvanced, "a on Settings: expand or collapse Advanced"},
 		{HelpFollow, "f: follow new activity; ↑/↓, PgUp/PgDn: scroll"},
-		{HelpMouse, "Mouse: click a tab or row, click a target again for details; wheel: scroll"},
+		{HelpMouse, "Mouse: click a tab, row or action; a row again opens it; wheel: scroll"},
 		{HelpToggle, "?: show or hide this help"},
 		{HelpQuit, "q or Ctrl-C: quit"},
+		{HelpAgents, "Agents: a add, e or Enter edit, d remove, p look for more directories"},
+		{FooterAgents, "? help · a add · e edit · d remove · p probe · q quit · mouse: click, wheel"},
+		{DialogChoiceHint, "Space/Enter/click: choose · ←/→: previous/next choice"},
+		{DialogScrollHint, "PgUp/PgDn or wheel: scroll"},
 	}
 }

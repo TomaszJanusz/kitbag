@@ -1,7 +1,7 @@
 # Terminal interface (`kitbag tui`)
 
-`kitbag tui` is a full-screen terminal interface for status, drift, settings and
-activity. It renders the [shared view models](ui.md) and owns no behavior of its
+`kitbag tui` is a full-screen terminal interface for status, drift, settings,
+agent instances and activity. It renders the [shared view models](ui.md) and owns no behavior of its
 own: keys become model intents, every text comes from the catalog in
 `internal/ui/model/text`, and validation stays in the settings registry
 ([ADR 5](adr/0005-ui-layers.md)). The renderer is `internal/ui/tui` (Bubble Tea,
@@ -41,9 +41,10 @@ touch zones. The API, state files and JSON keep UTC RFC 3339.
 | 1 Status | Headline (in sync, drift, conflicts, syncing with the current phase, another sync running, tool too old with required and running version), last known status when a reload fails, update available, result of the last sync started here, repository, branch and upstream, working copy, last sync, target counts, connection, warnings | `s` sync now, `r` refresh |
 | 2 Drift | Targets other than in sync with their classification; Enter opens the selected target's planned actions (source, backup path, warnings) | `↑`/`↓`, `k`/`j`, Enter, Esc |
 | 3 Settings | Common settings with value, source, override note, default and plain-language description; sensitive values are redacted and never prefilled | `↑`/`↓`, Enter edit/save, Esc cancel, `←`/`→`/Space choose, `a` Advanced, `w` save a kept draft, `u` confirm removal from `config.toml` |
-| 4 Activity | The bounded activity log (256 entries; dropped entries are counted): daemon hints, sync phases and setting writes | `f` follow, `↑`/`↓`, PgUp/PgDn |
+| 4 Agents | Declared instances and found directories per agent kind, with the selected one's details; the add, edit and remove wizard ([below](#agents-tab-and-wizard)) | `↑`/`↓`, `k`/`j`, `a` add, `e` or Enter edit, `d` remove, `p` look for more directories, `r` refresh |
+| 5 Activity | The bounded activity log (256 entries; dropped entries are counted): daemon hints, sync phases and setting writes | `f` follow, `↑`/`↓`, PgUp/PgDn |
 
-`Tab`, `Shift-Tab` and `1`–`4` switch tabs, `?` shows the key help, `q` or
+`Tab`, `Shift-Tab` and `1`–`5` switch tabs, `?` shows the key help, `q` or
 `Ctrl-C` quits. While a setting is being edited, typed keys go to the editor;
 `Ctrl-C` still quits. `←`/`→`/Space cycle picker options; letters cannot change an enum or toggle. Every
 keystroke is validated with the registry rules: an invalid draft shows its
@@ -82,8 +83,15 @@ behavior; this adds no new persistence semantics.
 The shared contract is in `internal/ui/model/dialog.go`, with all labels in
 `internal/ui/model/text`:
 
-- `DialogView` carries a stable ID, title/message, fields, enabled `Control`
-  buttons, cancel intent, optional step/step-count and initial focus index.
+- `DialogView` carries a stable ID, title/message, fields, body lines, options,
+  enabled `Control` buttons, cancel intent, optional step/step-count, initial
+  focus index and a `Wide` request (up to 104 columns instead of 72).
+  Focus indexes count fields, then options, then buttons. `DialogLine` has a
+  `Tone` (normal, heading, hint, success, warning, problem, code); warnings,
+  problems and successes carry `!`, `✗` and `✓` markers so they survive
+  `NO_COLOR`, and code lines (diffs, commands) are truncated, not wrapped.
+  `DialogOption` carries a label, detail, `Selected` (drawn `(*)`) and the intent
+  a choice dispatches.
   `DialogField` carries a stable field ID, draft, label/hint, enabled state and
   sensitivity. Supply only editable drafts, never a stored secret.
 - `ConfirmDialog(id, title, message, confirm, cancel)` supplies Yes/No and
@@ -100,7 +108,12 @@ The shared contract is in `internal/ui/model/dialog.go`, with all labels in
   loop) opens/replaces a projection by ID; `HideDialog(id)` removes a
   model-closed window. Call these only on the renderer loop. Replacements
   preserve focus and the text cursor of unchanged drafts. Distinct IDs stack;
-  closing the top restores the window beneath it.
+  closing the top restores the window beneath it. A replacement keeps the
+  focus only if the user moved it on the same step; a new step, or a step the
+  user has not touched, starts at its initial focus. A disabled initial button
+  falls back to the one before it (Back), never around to Cancel. PgUp/PgDn and
+  the wheel scroll a window whose content does not fit while a button has the
+  focus; a focused field or option keeps itself visible.
 - `WindowStack` implements Push/Replace/Pop/Remove/Len and Key-to-intent
   translation for renderer composition. `MasterDetail(width, height,
   masterWidth, stackedRows)` returns `PaneLayout` with cell `Rect`s for drawing
@@ -108,9 +121,70 @@ The shared contract is in `internal/ui/model/dialog.go`, with all labels in
   requests a fixed list width, clamped to leave a usable detail pane. Call it
   after the minimum-size guard. No toolkit types enter shared models.
 
-The future Agents tab can project its model-owned wizard into `FormDialog`,
-handle field/button intents in the shared model and call ShowDialog with the
-same ID at each step. Confirmation can stack above it using a different ID.
+The Agents tab does exactly this: `AgentForm.Dialog()` projects the wizard into
+`FormDialog` under one ID at each step, and `AgentForm.DiscardDialog()` stacks
+the discard confirmation above it under another.
+
+## Agents tab and wizard
+
+The Agents tab renders the shared `Agents` and `AgentForm` models
+([agents and instances](ui.md#agents-and-instances)); the list and the wizard
+read and write through the same API methods as `kitbag agent list/add/edit/remove`,
+with the daemon's dry-run preview and revision check. It sits after Settings,
+so Activity moved from `4` to `5`.
+
+**List.** The left pane groups rows by agent kind. Each kind shows its declared
+instances (`target/name`, or the implicit default directory), then a
+**[found, not declared]** section with directories found from the environment,
+the documented default or the name probe. Each row has a second line with the
+directory state, where it comes from, the host scope and whether it is active on
+this host. `p` (or the action button) runs the explicit HOME name probe, which
+can add more found directories. The right pane describes the selected row:
+directory, source (where it is declared), directory state, hosts, whether it is
+active here, the settings merge, and what the **next sync** does with it
+(installs, skips on this host, warns and skips a missing directory, or leaves an
+undeclared or outside-HOME directory alone). Below follow the actions as
+clickable `[key] label` buttons (unavailable ones say so), a key hint and the
+listing's warnings. Below 100 columns the panes stack and the actions move
+right below the title so they stay visible. Only the declared instances of a
+target can be edited or removed; the implicit default and found directories offer
+Add, which a found directory prefills with its kind and directory.
+
+**Wizard.** `a`, `e` (or Enter, or a second click on the selected row) and `d`
+open the model's form as a wide modal window titled with the operation and the
+step, for example **Add an agent instance: Instance name**, with **Step n/N**:
+
+- add: agent, instance name, directory, settings merge, preview, confirm, result;
+- edit: directory (empty keeps the current one, which the field's hint shows),
+  settings merge, preview, confirm, result;
+- remove: preview, confirm, result.
+
+Text steps validate every keystroke with the model's catalog messages (name
+grammar and taken names, `~/` or absolute directories, outside HOME,
+directories another instance declares, `generic` refused); an invalid step keeps
+**Next** unavailable. Choice steps (agent, settings, and the directory step's
+**Directories found on this machine**) are option lists marked `(*)`: Space,
+Enter or a click chooses, `←`/`→` step to the previous/next choice, and Enter on
+an option moves the focus to Next, so Enter, Enter accepts a choice and goes on.
+The preview step shows the commit title, how it will be published (directly to
+the branch, or for `pr` publish mode that nothing is written and the commands to
+propose it follow in the result), a directory that is handed back, warnings and
+the `kitbag.toml` diff; PgUp/PgDn or the wheel scroll a long preview. A refused
+preview shows the server's detail and focuses Back. The confirm step starts on
+**Back**, so a stray Enter never applies; **Apply** must be chosen. While the
+daemon applies, the window says so, every button is unavailable and Esc or an
+outside click is refused. A preview made stale by another change to
+`kitbag.toml` is not applied: the window returns to the preview, says it changed
+and shows the new one. The result says published (with the short commit),
+committed but not published (with the reason and the `git pull --rebase` and
+`git push` commands), not written in `pr` mode (with the commands to propose it)
+or not applied; it reports handed-back outputs and the sync that ran, and notes
+that the list was reloaded. Close (or Cancel) returns to the refreshed list.
+
+Cancel, Esc and an outside click close the wizard at once while nothing was
+chosen or typed; otherwise a **Discard this change?** window asks first,
+initially on **No**. No, Esc or an outside click returns to the draft; Yes
+discards it. Nothing is written before Apply.
 
 ## Settings controls
 
@@ -156,9 +230,10 @@ and the wheel, and the renderer turns them into the same intents as the keys:
 
 - Click a tab title to switch to it (the digits in the narrow tab bar too).
 - Click a row on the Drift tab to select it; click the selected row again to
-  open its details, like Enter. Click a row on the Settings tab to select it;
+  open its details, like Enter. On the Agents tab the same opens the edit
+  wizard of a declared instance, and clicking an action button runs it. Click a row on the Settings tab to select it;
   editing stays on Enter, so a stray click never starts a change.
-- The wheel moves the Drift selection and scrolls the Activity log one line per
+- The wheel moves the Drift and Agents selection, scrolls an open window and scrolls the Activity log one line per
   notch, like `↑`/`↓`. Scrolling back to the end resumes following.
 - While a setting is edited, click an option to change the draft, including
   Custom/Other. Enter still saves; Esc cancels. Clicks outside the options
@@ -203,6 +278,10 @@ panics, like the alternate screen. The footer and the `?` help mention the mouse
   displayed. Use the CLI command for the full error.
 - Settings writes through the daemon have no compare-and-swap.
 - Skills and catalog tabs follow with the skill catalog (KIT-52, KIT-46).
+- The Agents wizard edits only what `kitbag agent add/edit/remove` can (v1 slice
+  of ADR 12: all hosts, no `generic` kind, no pull requests opened in `pr`
+  mode). Host scopes, targets with several kinds and target choice stay hand
+  edits of `kitbag.toml`.
 - Windows is refused before any command runs, like every other command.
 
 ## Tests
@@ -217,6 +296,16 @@ and subscription shutdown. Golden screens in `internal/ui/tui/testdata` are
 ANSI-stripped at fixed sizes; after reviewing a change, rewrite them with
 `go test ./internal/ui/tui -args -update-screens`. A testscript covers the
 non-terminal refusal.
+
+Agents flows cover list navigation and the probe, the add wizard typed through
+the real program loop, every add step at 120×35, 100×30 and 60×20 as golden
+screens, validation (taken name, invalid name, outside HOME, duplicate
+directory, `generic`), editing a directory, removal that needs Apply on the
+confirm step, the discard question, `pr` mode, a not-published result, a failed
+apply, a refused preview with its detail, a stale preview, the busy state, mouse
+rows and buttons, resizes with the wizard open and scrolling a long preview.
+Most agent screens use a synchronous driver that runs the queued commands on
+the test goroutine, so each step's screen is deterministic.
 
 Pane and window flows additionally cover the 99/100-column breakpoint, inline
 steppers, side-panel help, selection hit testing, modal focus trapping, disabled

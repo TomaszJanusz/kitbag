@@ -1,0 +1,35 @@
+ 1 Status   2 Drift   3 Settings  [4 Agents]  5 Activity
+
+2 declared instances, 3 other directories found                          | claude/main
+                                                                         | Directory        /home/user/.claude
+claude                                                                   | Source           declared in kitbag.toml
+> claude/main  /home/user/.claude                                        | Directory state  present
+    present · declared in kitbag.toml · all hosts · active on this host  | Hosts            all hosts
+  claude/second  /home/user/.claude_2                                    | On this host     active on this host
+    missing · declared in kitbag.toml · only on laptop · active on this… | Settings         merges shared settings
+  [found, not declared]                                                  | Next sync        installs the shared
+  /srv/claude                                                            |                  configuration here
+    outs+ Add an agent instance: Configuration directory ------------------------------------------------------+
+  /home/| Step 3/7                                                                                             |
+    pres| The agent's configuration directory below your home directory, for example ~/.claude_2.              |fresh
+codex   | Configuration directory: >                                                                           |d:
+  codex | ✗ Use a directory below your home directory, starting with ~/ (or an absolute path).                 |
+    pres| Directories found on this machine:                                                                   |
+  [found|   ( ) /srv/claude · from CLAUDE_CONFIG_DIR, outside the home directory; cannot be declared           |
+  /home/|   ( ) /home/user/.claude_3 · found by name, present                                                  |
+    pres|   [ Cancel ]  [ Back ]  [ Next ] (unavailable)                                                       |
+        | Tab/↑/↓: focus · Enter: confirm · Esc/outside click: cancel · Space/Enter/click: choose · ←/→:       |
+        | previous/next choice                                                                                 |
+        +------------------------------------------------------------------------------------------------------+
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+? help · a add · e edit · d remove · p probe · q quit · mouse: click, wheel
