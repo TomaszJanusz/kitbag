@@ -23,6 +23,7 @@ Keyboard model tests drive the actual huh forms without starting a TTY.
 | Question or choice | Flag | Default |
 | --- | --- | --- |
 | Repository URL | positional URL or `--repo` | Required; prompted interactively |
+| Working copy | `--repo-path ~/dir` | `<data>/repos/<name>` |
 | Git backend | `--git-backend` | Environment, then `auto` |
 | Materialization mode | `--mode` | Environment, then `link` |
 | Commit name, only when Git lacks an identity | `--identity-name` | Headless consumers may leave unset |
@@ -63,7 +64,17 @@ dangling link. Repeating init exits successfully and explains that setup already
 exists, without reading its contents, cloning again or changing it. If setup
 was cancelled after cloning, the clone remains available for another attempt.
 An existing clone is reused only when it is a real directory with the exact
-requested origin and branch. A different origin, different requested branch or
+requested origin and branch.
+
+`--repo-path` (or `KITBAG_REPO_PATH`) stores `repo.path` and uses that working
+copy instead of `<data>/repos/<name>`: an existing clone there is reused under
+the same origin and branch rule, otherwise init clones into it. The path must
+lie below HOME; the shell-expanded spelling of `~/dir` is stored as `~/dir`.
+Use it to keep the clone `agent-config-sync` ran from
+([migration guide](guide-migrate-agent-config-sync.md)), so no second clone is
+made. Changing `repo.url` or `repo.path` later with `kitbag config set` or
+`unset` prints a note naming the former working copy when it exists and is no
+longer used; kitbag never deletes it, because it may hold unpushed work. A different origin, different requested branch or
 non-repository is an error; init never resets or fetches an existing clone.
 A failed clone may leave partial files; inspect them before retrying.
 

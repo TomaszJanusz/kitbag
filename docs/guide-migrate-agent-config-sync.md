@@ -18,12 +18,20 @@ manifest first.
    or the LaunchAgent you created for the script, for example
    `systemctl --user disable --now <name>.timer`, or `launchctl bootout` and
    `launchctl disable gui/$(id -u)/<label>` (booted out alone, it loads again at login).
-2. **Connect the repository.** `kitbag init <git-url>` clones it into kitbag's
-   own working copy. To keep using the clone the script ran from, set it as
-   `repo.path` instead (`kitbag config set repo.path ~/src/agent-config` after
-   creating a configuration with `init` or `config set repo.url`); adoption then
-   leaves every byte alone. See
-   [choosing the working copy](adopt.md#migration-walkthrough) for the difference.
+2. **Connect the repository**, keeping the clone the script ran from:
+
+   ```sh
+   kitbag init <git-url> --repo-path ~/src/agent-config
+   ```
+
+   The clone's `origin` must be `<git-url>` exactly. Init then uses it as
+   `repo.path`, makes no second clone, and adoption leaves every byte alone.
+   Without `--repo-path`, init clones into kitbag's own working copy instead
+   (see [choosing the working copy](adopt.md#migration-walkthrough)); setting
+   `repo.path` afterwards leaves that clone unused, which `kitbag config set`
+   points out but never deletes. Without a terminal (SSH command, script),
+   `init` needs `--yes`, which accepts the defaults and writes the configuration
+   after printing the dry plan.
 3. **Declare the legacy roots.** Adoption refuses to run without them; kitbag never
    guesses. List the old clone and the old skills directory:
 
@@ -41,7 +49,7 @@ manifest first.
 ```sh
 kitbag adopt --dry-run     # report only; add --json for adopt_schema 1
 kitbag adopt               # record ownership; no file is rewritten
-kitbag plan                # "No changes." when everything was adopted
+kitbag plan                # "No changes." if repo.path is the old clone
 ```
 
 The report lists every adopted destination, what the next sync would still change
@@ -51,8 +59,9 @@ The report lists every adopted destination, what the next sync would still chang
 
 ## Parity check
 
-1. `kitbag plan` should print `No changes.`. If it lists operations, they are
-   what `sync` would do: links into a legacy root that point elsewhere are
+1. With the old clone as `repo.path`, `kitbag plan` should print `No changes.`.
+   With a separate working copy it lists the one-time replacements described in
+   the next step. Any operations listed are what `sync` would do: links into a legacy root that point elsewhere are
    re-linked, the script's renderings for an old clone are rewritten with kitbag's
    marker, hand-written files are backed up once, real directories are conflicts.
 2. `kitbag sync` should then change nothing for adopted destinations and a second

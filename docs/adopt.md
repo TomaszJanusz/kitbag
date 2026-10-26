@@ -9,9 +9,9 @@ reach the host only through `platform.FS`.
 ## Migration walkthrough
 
 1. **Choose the working copy.** With the clone the script runs from as
-   `repo.path`, KitBag renders exactly what the script wrote and adoption
-   leaves every byte alone. With a separate working copy (the one `kitbag init`
-   creates), adoption cannot keep links or renderings that name the old clone;
+   `repo.path` (`kitbag init <url> --repo-path ~/src/agent-config`), KitBag
+   renders exactly what the script wrote and adoption leaves every byte alone.
+   With a separate working copy (the one a plain `kitbag init` creates), adoption cannot keep links or renderings that name the old clone;
    the next sync replaces them in place instead (see below). Either way use a
    `kitbag.toml` that declares the same layout
    ([example](../schemas/examples/kitbag/valid/agent-config.toml)).
@@ -35,7 +35,7 @@ reach the host only through `platform.FS`.
    ```sh
    kitbag adopt --dry-run      # or --dry-run --json (adopt_schema 1)
    kitbag adopt
-   kitbag plan                 # "No changes." when everything was adopted
+   kitbag plan                 # "No changes." only with the old clone as repo.path
    ```
 
    The report lists every adopted destination, what the next sync would still

@@ -20,7 +20,7 @@ stdout 'Already set up:'
 
 # A different remote with the same basename cannot hijack an existing clone.
 ! exec kitbag --config=$WORK/other.toml init $WORK/other/config.git --yes --git-backend=embedded
-stderr 'different origin'
+stderr 'has origin .*, not .*other/config\.git'
 ! exists $WORK/other.toml
 
 # Missing identity is advisory for headless consumers; it must never prompt.

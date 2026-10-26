@@ -77,14 +77,14 @@ func (s Service) checkClone(ctx context.Context, repo string) error {
 		return err
 	}
 	if origin != s.Config.Repo.URL {
-		return fmt.Errorf("working copy has a different origin: %w", fs.ErrExist)
+		return fmt.Errorf("working copy %s has origin %q, not %q: %w", repo, origin, s.Config.Repo.URL, fs.ErrExist)
 	}
 	head, err := s.Backend.Head(ctx, repo)
 	if err != nil {
 		return err
 	}
 	if s.Config.Repo.Branch != "" && head.Branch != s.Config.Repo.Branch {
-		return fmt.Errorf("working copy has a different branch: %w", fs.ErrExist)
+		return fmt.Errorf("working copy %s is on branch %q, not %q: %w", repo, head.Branch, s.Config.Repo.Branch, fs.ErrExist)
 	}
 	return nil
 }
