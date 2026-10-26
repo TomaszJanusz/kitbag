@@ -109,6 +109,62 @@ func (m *Model) logo() []string {
 	return lines
 }
 
+// Credits are decorative: they are dropped when they would not fit, and keep
+// one spare column at the right edge because emoji widths differ per terminal.
+const (
+	creditMinWidth = 60
+	cornerMargin   = 1
+	creditGap      = 2
+)
+
+func (m *Model) madeWith() string {
+	key := text.HomeMadeWith
+	if m.styles.mono || m.width < pixelMinWidth {
+		key = text.HomeMadeWithPlain
+	}
+	return m.say(text.New(key))
+}
+
+// cornerLine right-aligns plain text within width columns, or returns "" when
+// it does not fit.
+func (m *Model) cornerLine(plain string, width int) string {
+	pad := width - cornerMargin - ansi.StringWidth(plain)
+	if plain == "" || pad < 0 {
+		return ""
+	}
+	return strings.Repeat(" ", pad) + m.styles.faint.Render(plain)
+}
+
+// homeCorners puts the version in the top-right and the first credit line in the
+// bottom-right of the body; only blank rows are used, so the logo and menu never move.
+func (m *Model) homeCorners(body []string) {
+	last := len(body) - 1
+	if last < 1 {
+		return
+	}
+	if strings.TrimSpace(ansi.Strip(body[0])) == "" {
+		if line := m.cornerLine(m.say(m.app.Home(m.version).Version), m.width); line != "" {
+			body[0] = line
+		}
+	}
+	if m.creditsFit() && strings.TrimSpace(ansi.Strip(body[last])) == "" {
+		if line := m.cornerLine(m.say(text.New(text.HomeCreatedBy)), m.width); line != "" {
+			body[last] = line
+		}
+	}
+}
+
+// creditsFit is all-or-nothing: both credit lines show, or neither does. The
+// footer hint stays centred and keeps creditGap columns from the credit.
+func (m *Model) creditsFit() bool {
+	if m.width < creditMinWidth {
+		return false
+	}
+	hint := ansi.StringWidth(m.footerText())
+	end := max((m.width-hint)/centerDivisor, 0) + hint
+	return end+creditGap+ansi.StringWidth(m.madeWith())+cornerMargin <= m.width
+}
+
 func (m *Model) homeFooter() string {
 	view := m.app.Home(m.version)
 	center := m.footerText()
@@ -117,7 +173,10 @@ func (m *Model) homeFooter() string {
 	branch := ansi.Truncate(m.say(view.Branch), max(leftWidth/centerDivisor, 1), ellipsis)
 	path := ansi.Truncate(m.say(view.Repository), max(leftWidth-ansi.StringWidth(branch)-paneGap, 1), ellipsis)
 	left := cellLine(m.say(text.New(text.HomeRepository, text.Plain(path), text.Plain(branch))), leftWidth)
-	rightWidth := max(m.width-ansi.StringWidth(left)-ansi.StringWidth(center)-1, 0)
-	right := ansi.Truncate(m.say(view.Version), rightWidth, ellipsis)
-	return m.styles.faint.Render(left + " " + center + strings.Repeat(" ", max(rightWidth-ansi.StringWidth(right), 0)) + right)
+	used := ansi.StringWidth(left) + 1 + ansi.StringWidth(center)
+	line := left + " " + center
+	if credit := m.madeWith(); m.creditsFit() {
+		line += strings.Repeat(" ", m.width-used-cornerMargin-ansi.StringWidth(credit)) + credit
+	}
+	return m.styles.faint.Render(line)
 }

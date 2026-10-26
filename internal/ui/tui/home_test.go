@@ -177,3 +177,70 @@ func assertPlainLogo(t *testing.T, m *Model, lines []string, width, height int) 
 		t.Fatal("plain logo missing", lines)
 	}
 }
+
+func TestHomeCornerTextWidths(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		text string
+		want int
+	}{
+		{"Created by Tomasz Janusz", 24},
+		{"Made with ❤ in \U0001F1F5\U0001F1F1", 17},
+		{"Made with love in Poland", 24},
+		{"kitbag 0.1.2", 12},
+	} {
+		if got := ansi.StringWidth(tc.text); got != tc.want {
+			t.Errorf("%q: width %d, want %d", tc.text, got, tc.want)
+		}
+	}
+}
+
+func TestHomeCornersAlignAndDegrade(t *testing.T) {
+	t.Parallel()
+	heart := "Made with \u2764 in \U0001F1F5\U0001F1F1"
+	for _, tc := range []struct {
+		credit        string // expected bottom-right text, "" when dropped
+		width, height int
+		profile       Profile
+	}{
+		{heart, 120, 35, termenv.TrueColor},
+		{heart, 80, 24, termenv.TrueColor},
+		{"Made with love in Poland", 80, 24, termenv.Ascii},
+		{"Made with love in Poland", 79, 24, termenv.TrueColor},
+		{"", 60, 20, termenv.TrueColor},
+		{"", 59, 20, termenv.TrueColor},
+		{"", 40, 10, termenv.TrueColor},
+	} {
+		m := homeProjection(t, tc.width, tc.height)
+		m.styles = newStyles(tc.profile)
+		rows := strings.Split(ansi.Strip(m.View()), "\n")
+		assertScreenFits(t, strings.Join(rows, "\n"), tc.width, tc.height)
+		assertCorner(t, rows[0], "kitbag 0.1.2", tc.width)
+		last := rows[len(rows)-1]
+		if strings.Contains(last, "kitbag 0.1.2") {
+			t.Errorf("%dx%d: version still in the bottom row: %q", tc.width, tc.height, last)
+		}
+		if tc.credit == "" {
+			if strings.Contains(rows[len(rows)-2]+last, "Created by") || strings.Contains(last, "Made with") {
+				t.Errorf("%dx%d: credits not dropped: %q", tc.width, tc.height, last)
+			}
+			continue
+		}
+		assertCorner(t, rows[len(rows)-2], "Created by Tomasz Janusz", tc.width)
+		assertCorner(t, last, tc.credit, tc.width)
+		if !strings.Contains(last, "? help · q quit") {
+			t.Errorf("%dx%d: hint lost: %q", tc.width, tc.height, last)
+		}
+		if tc.profile == termenv.Ascii && (strings.Contains(last, "\u2764") || strings.Contains(last, "\U0001F1F5")) {
+			t.Errorf("emoji in NO_COLOR: %q", last)
+		}
+	}
+}
+
+func assertCorner(t *testing.T, row, want string, width int) {
+	t.Helper()
+	row = strings.TrimRight(row, " ")
+	if !strings.HasSuffix(row, want) || ansi.StringWidth(row) != width-cornerMargin {
+		t.Errorf("width %d: %q is not right-aligned %q", width, row, want)
+	}
+}

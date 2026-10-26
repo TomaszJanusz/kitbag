@@ -33,6 +33,7 @@ func (m *Model) View() string {
 	screen := make([]string, 0, m.height)
 	if m.home {
 		screen = pad(m.fit(lines, m.height-1), m.height-1)
+		m.homeCorners(screen)
 		screen = append(screen, m.homeFooter())
 	} else {
 		screen = append(screen, m.styles.faint.Render(m.say(text.New(text.ScreenBreadcrumb, m.screenTitle()))), "")

@@ -3,10 +3,10 @@ package tui
 import "strings"
 
 // Each terminal cell contains two square vertical subpixels. The front mask
-// and three-step extrusion occupy the same five rows as the original wordmark.
+// and two-step extrusion occupy the same five rows as the original wordmark.
 const (
-	logoDepth  = 3
-	logoWidth  = 28
+	logoDepth  = 2
+	logoWidth  = 27
 	logoHeight = 5
 	cellPixels = 2
 )
@@ -25,7 +25,7 @@ type logoCell struct{ upper, lower logoShade }
 
 func wordmarkMask() []string {
 	glyphs := [][]string{
-		{"#  #", "# # ", "##  ", "# # ", "# # ", "#  #", "#  #"},
+		{"#   ", "#   ", "#  #", "# # ", "##  ", "# # ", "#  #"},
 		{"#", " ", "#", "#", "#", "#", "#"},
 		{" # ", " # ", "###", " # ", " # ", " # ", " ##"},
 		{"#   ", "#   ", "### ", "#  #", "#  #", "#  #", "### "},

@@ -75,6 +75,9 @@ const (
 	HomeRepository         Key = "home.repository"
 	HomeFooter             Key = "home.footer"
 	HomeUnavailable        Key = "home.unavailable"
+	HomeCreatedBy          Key = "home.created_by"
+	HomeMadeWith           Key = "home.made_with"
+	HomeMadeWithPlain      Key = "home.made_with_plain"
 	HomeSyncKey            Key = "home.sync_key"
 	HomeAgentsKey          Key = "home.agents_key"
 	HomeDriftKey           Key = "home.drift_key"
@@ -653,6 +656,9 @@ func homeText() []entry {
 		{HomeRepository, "%s · %s"},
 		{HomeFooter, "%s · %s"},
 		{HomeUnavailable, "unavailable"},
+		{HomeCreatedBy, "Created by Tomasz Janusz"},
+		{HomeMadeWith, "Made with ❤ in 🇵🇱"},
+		{HomeMadeWithPlain, "Made with love in Poland"},
 		{HomeSyncKey, "s"},
 		{HomeAgentsKey, "a"},
 		{HomeDriftKey, "d"},
