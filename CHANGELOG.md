@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.1.1](https://github.com/TomaszJanusz/kitbag/compare/v0.1.0...v0.1.1) (2026-10-26)
+
+
+### Features
+
+* **init:** reuse an existing clone with --repo-path ([#67](https://github.com/TomaszJanusz/kitbag/issues/67)) ([6e701b5](https://github.com/TomaszJanusz/kitbag/commit/6e701b5bc5c12a2d94f4f13f94bcfaa85151eb85))
+* **manifest:** preflight schema and min_tool_version before validation ([#69](https://github.com/TomaszJanusz/kitbag/issues/69)) ([fb33188](https://github.com/TomaszJanusz/kitbag/commit/fb33188871f27ccb16013401393eef80b1ddae16))
+* **tui:** add mouse support ([#62](https://github.com/TomaszJanusz/kitbag/issues/62)) ([d6e7b70](https://github.com/TomaszJanusz/kitbag/commit/d6e7b708772c7085433bbaa5b5b0af3e105097be))
+
+
+### Bug Fixes
+
+* **deps:** update go module patches ([#59](https://github.com/TomaszJanusz/kitbag/issues/59)) ([ced5ce2](https://github.com/TomaszJanusz/kitbag/commit/ced5ce2a06d2286a7ecd57a8baa6651924feac66))
+* remove adopt and doctor false positives from macOS migration ([#60](https://github.com/TomaszJanusz/kitbag/issues/60)) ([b4d80e0](https://github.com/TomaszJanusz/kitbag/commit/b4d80e06e25512a29123d95601445b049d79b2b9))
+* **service:** cover Homebrew libexec upgrades ([#72](https://github.com/TomaszJanusz/kitbag/issues/72)) ([2eca5ae](https://github.com/TomaszJanusz/kitbag/commit/2eca5ae852fc443d4a87d6d71d71c86e4ce53923))
+* **service:** harden the launchd service for Homebrew installs ([#57](https://github.com/TomaszJanusz/kitbag/issues/57)) ([0fd0d41](https://github.com/TomaszJanusz/kitbag/commit/0fd0d416c95dc9d5a66e16283f544dc5406c5553))
+* **sync:** keep file modes, name linked parents and match linked includes ([#66](https://github.com/TomaszJanusz/kitbag/issues/66)) ([6a2c2d3](https://github.com/TomaszJanusz/kitbag/commit/6a2c2d37ab6d7db17df39e9e5bb107e798e65e5b))
+
 ## 0.1.0 (2026-10-25)
 
 
