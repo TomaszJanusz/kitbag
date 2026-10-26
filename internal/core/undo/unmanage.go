@@ -31,7 +31,10 @@ func Unmanage(fsys platform.FS, session *state.Session, declarations []target.Ta
 	}
 	p := newPlan(false)
 	for _, t := range db.Targets {
-		op, opErr := unmanageTarget(fsys, db, t, byPath[t.Path], options.LegacyRoots)
+		if options.Only != nil && !options.Only(t.Path) {
+			continue
+		}
+		op, opErr := unmanageTarget(fsys, db, t, byPath[t.Path], options)
 		if opErr != nil {
 			return Outcome{Plan: p}, opErr
 		}
@@ -40,8 +43,13 @@ func Unmanage(fsys platform.FS, session *state.Session, declarations []target.Ta
 	return execute(fsys, session, p, options)
 }
 
-func unmanageTarget(fsys platform.FS, db state.Database, t state.Target, d target.Target, roots []string) (plan.Operation, error) {
-	entry, settled, err := ownedEntry(fsys, t, roots)
+func unmanageTarget(fsys platform.FS, db state.Database, t state.Target, d target.Target, options Options) (plan.Operation, error) {
+	entry, settled, err := ownedEntry(fsys, t, options.LegacyRoots)
+	if settled != nil && options.ReleaseChanged && settled.Kind == plan.Skip && settled.Warning == changedWarning {
+		released := record(t.Path, nil, entry)
+		released.Warning = "changed since KitBag wrote it; left in place and no longer managed"
+		return released, err
+	}
 	if err != nil || settled != nil {
 		return *settled, err
 	}
@@ -58,6 +66,9 @@ func unmanageTarget(fsys platform.FS, db state.Database, t state.Target, d targe
 	}
 	return plan.Operation{Kind: plan.Discard, Path: t.Path, Classification: plan.UpdateNeeded, Expected: &entry}, nil
 }
+
+// changedWarning marks an output that differs from what KitBag wrote.
+const changedWarning = "changed since KitBag wrote it; left alone"
 
 // ownedEntry returns t's destination when it is exactly KitBag's output;
 // otherwise settled releases a missing one or skips an unsafe or changed one.
@@ -76,7 +87,7 @@ func ownedEntry(fsys platform.FS, t state.Target, roots []string) (state.Entry, 
 		if ownedErr != nil || unchanged {
 			return entry, nil, ownedErr
 		}
-		settled = skip(t.Path, "changed since KitBag wrote it; left alone")
+		settled = skip(t.Path, changedWarning)
 	}
 	return entry, &settled, nil
 }

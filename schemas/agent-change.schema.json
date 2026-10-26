@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kitbag.sh/schemas/agent-change.schema.json",
+  "title": "KitBag agent add, edit or remove (agent_change_schema 1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "agent_change_schema",
+    "dry_run",
+    "manifest",
+    "plan",
+    "publication",
+    "released",
+    "sync"
+  ],
+  "properties": {
+    "agent_change_schema": {
+      "const": 1
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "manifest": {
+      "type": "string",
+      "minLength": 1
+    },
+    "revision_after": {
+      "$ref": "#/$defs/revision"
+    },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "change",
+        "revision",
+        "title",
+        "message",
+        "diff",
+        "warnings"
+      ],
+      "properties": {
+        "change": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "name"
+          ],
+          "properties": {
+            "op": {
+              "enum": [
+                "add",
+                "edit",
+                "remove"
+              ]
+            },
+            "kind": {
+              "type": "string"
+            },
+            "target": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "dir": {
+              "type": "string",
+              "pattern": "^~/"
+            },
+            "settings": {
+              "type": "boolean"
+            }
+          }
+        },
+        "revision": {
+          "$ref": "#/$defs/revision"
+        },
+        "title": {
+          "type": "string",
+          "pattern": "^chore\\(kitbag\\): ",
+          "maxLength": 72
+        },
+        "message": {
+          "type": "string",
+          "pattern": "\\nKitbag-Host: [^\\n]+\\nKitbag-Op: agent\\.(add|edit|remove)\\n$"
+        },
+        "dropped_dir": {
+          "type": "string",
+          "pattern": "^~/"
+        },
+        "diff": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(@@ |[ +-])"
+          }
+        },
+        "warnings": {
+          "$ref": "#/$defs/strings"
+        }
+      }
+    },
+    "publication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "mode",
+        "branch",
+        "next",
+        "attempts"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "dry_run",
+            "published",
+            "not_published",
+            "manual",
+            "conflict"
+          ]
+        },
+        "mode": {
+          "enum": [
+            "",
+            "direct",
+            "pr"
+          ]
+        },
+        "branch": {
+          "type": "string"
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40,64}$"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "next": {
+          "$ref": "#/$defs/strings"
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        }
+      }
+    },
+    "released": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "dir",
+            "changed",
+            "warnings"
+          ],
+          "properties": {
+            "dir": {
+              "type": "string",
+              "pattern": "^~/"
+            },
+            "changed": {
+              "$ref": "#/$defs/strings"
+            },
+            "warnings": {
+              "$ref": "#/$defs/strings"
+            }
+          }
+        }
+      ]
+    },
+    "sync": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "exit_code",
+            "changed",
+            "warnings"
+          ],
+          "properties": {
+            "exit_code": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "changed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "warnings": {
+              "$ref": "#/$defs/strings"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "revision": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "strings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

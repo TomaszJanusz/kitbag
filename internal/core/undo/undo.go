@@ -23,10 +23,16 @@ import (
 // LegacyRoots lets an adopted link that reaches its source through declared
 // legacy roots count as unchanged (plan.LinkReaches).
 type Options struct {
-	Now         func() time.Time
+	Now func() time.Time
+	// Only, when set, limits unmanage to the state targets it accepts, such as
+	// the outputs inside an instance directory the manifest stopped declaring.
+	Only        func(path string) bool
 	LegacyRoots []string
 	Force       bool
 	DryRun      bool
+	// ReleaseChanged makes unmanage forget, instead of keep owning, outputs
+	// changed since KitBag wrote them; their content is left in place.
+	ReleaseChanged bool
 }
 
 // Outcome is the plan that was (or would be) executed and the apply result.

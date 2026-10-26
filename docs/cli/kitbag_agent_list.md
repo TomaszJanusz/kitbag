@@ -31,5 +31,5 @@ kitbag agent list [flags]
 
 ### SEE ALSO
 
-* [kitbag agent](kitbag_agent.md)	 - Inspect agent kinds and instances
+* [kitbag agent](kitbag_agent.md)	 - Inspect and change agent kinds and instances
 

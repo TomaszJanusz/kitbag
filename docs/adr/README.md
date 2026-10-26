@@ -24,7 +24,7 @@ Implementation decisions:
 
 Proposals awaiting a maintainer decision:
 
-12. [Discover agent instances and add them through the manifest](0012-agent-instance-discovery.md) — Proposed (KIT-80)
+12. [Discover agent instances and add them through the manifest](0012-agent-instance-discovery.md) — Proposed (KIT-80); its [v1 slice](0012-agent-instance-discovery.md#v1-slice-shipped-first) is implemented
 
 ## Planning sources and revisions
 

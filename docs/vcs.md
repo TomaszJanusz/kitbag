@@ -25,15 +25,23 @@ always passes an explicit environment; unit tests inject fakes.
 
 `Clone`, `Fetch`, `FastForward`, `Status` (branch, commit, upstream,
 ahead/behind, local changes), `Diff` (name and kind of each path between two
-revisions), `Preview` (unified text diff of committed trees), `Commit` (everything in the working tree), `Push`, `CreateBranch`,
+revisions), `Preview` (unified text diff of committed trees), `Commit` (everything in the working tree), `DropCommit`, `Push`, `CreateBranch`,
 `DeleteBranch`, `RemoteURL`, `RemoteHead` and `Head`. Every operation takes the absolute,
 clean path of the working copy's top-level directory. The remote is always
 `origin`. Errors are classified with `errors.Is`: `ErrNotFastForward`,
 `ErrPushRejected`, `ErrNoUpstream`, `ErrDetachedHead`, `ErrNothingToCommit`,
-`ErrNoRemote`, `ErrUnsupported` and `ErrInvalidArgument` (relative paths, revisions or names
+`ErrNoRemote`, `ErrDirty`, `ErrPublished`, `ErrUnsupported` and `ErrInvalidArgument` (relative paths, revisions or names
 that look like options, empty messages).
 
-Nothing in the interface merges, rebases, forces a push or discards changes.
+A commit that fails after staging (a refusing hook, a missing identity)
+unstages again, so the index matches HEAD and the working tree is unchanged.
+`DropCommit` exists for one caller: [agent edits](agents.md#add-edit-and-remove-instances)
+rebuild a commit whose push was rejected. It moves the branch back to the
+parent only when the commit is the HEAD of a clean working copy, has one parent
+and is not reachable from the upstream (`git reset --keep` for system Git, a
+merge reset for embedded Git); anything else is refused.
+
+Nothing else in the interface merges, rebases, forces a push or discards changes.
 
 ## Pull policy
 
