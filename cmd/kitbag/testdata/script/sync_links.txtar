@@ -31,8 +31,11 @@ stdout '^~/unrelated\.gitconfig$'
 
 # macOS: /var is a link to private/var, the case of a HOME below /tmp. The
 # message names the link, so the user can use the resolved path instead.
-[darwin] exec sh -c 'HOME="${WORK#/private}/home" kitbag plan'
-[darwin] stderr 'symbolic link in source parents: /var -> private/var'
+# WORK gets the same spelling so the harness guard still sees HOME inside it.
+[darwin] exec sh -c 'WORK="${WORK#/private}"; HOME="$WORK/home" exec kitbag plan'
+[darwin] stdout 'skip ".*/\.codex/AGENTS\.md" \[unmanaged obstacle\]: symbolic link in destination parents: /var -> private/var$'
+[darwin] stdout 'source: symbolic link in source parents: /var -> private/var: '
+
 
 -- machine.toml --
 schema=1
