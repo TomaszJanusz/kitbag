@@ -126,7 +126,7 @@ func TestAgentsActions(t *testing.T) {
 	m.Update(SelectAgent{Index: 4})
 	expect(t, !action(t, m.View().Actions, OpenAgentForm{Op: AgentEdit}).Enabled, "edit of an implicit default")
 	expect(t, action(t, m.View().Actions, ProbeAgents{}).Enabled && action(t, m.View().Actions, Refresh{}).Enabled, "probe and refresh")
-	expect(t, len(m.View().Detail.Rows) == 6, "instance detail rows")
+	expect(t, len(m.View().Detail.Rows) == 7, "instance detail rows")
 	checkText(t, agentsTexts(m.View())...)
 }
 

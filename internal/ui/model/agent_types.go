@@ -171,6 +171,8 @@ type (
 	// CancelAgentForm closes the form; with a draft it first asks, and a
 	// second CancelAgentForm discards.
 	CancelAgentForm struct{}
+	// ResumeAgentForm answers the discard question with no: the draft stays.
+	ResumeAgentForm struct{}
 )
 
 // Agent command results.
@@ -223,6 +225,7 @@ func (ChooseAgentOption) isMsg()  {}
 func (AgentFormNext) isMsg()      {}
 func (AgentFormBack) isMsg()      {}
 func (CancelAgentForm) isMsg()    {}
+func (ResumeAgentForm) isMsg()    {}
 func (AgentsLoaded) isMsg()       {}
 func (AgentPreviewed) isMsg()     {}
 func (AgentChangeApplied) isMsg() {}

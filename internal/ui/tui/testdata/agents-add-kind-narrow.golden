@@ -1,0 +1,20 @@
+ 1 Status   2 Drift   3 Settings  [4 Agents]  5 Activity
+
+2 declared instances, 3 other directories found
+  + Add an agent instance: Agent ------------------------+
+cl| Step 1/7                                             |
+> | Choose the agent this configuration directory        |
+  | belongs to.                                          | …
+  | > (*) claude                                         |
+  |   ( ) codex                                          |c…
+  |   ( ) gemini                                         |
+  |   ( ) opencode                                       |
+cl|   ( ) generic                                        |
+[a|   [ Cancel ]  [ Back ] (unavailable)  [ Next ]       |
+[p| Tab/↑/↓: focus · Enter: confirm · Esc/outside click: |
+Di| cancel · Space/Enter/click: choose · ←/→:            |
+So| previous/next choice                                 |
+Di+------------------------------------------------------+
+Hosts            all hosts
+On this host     active on this host
+? help · a add · e edit · d remove · p probe · q quit · mou…

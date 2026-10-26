@@ -52,6 +52,8 @@ func (m *Model) click(x, y int) {
 		m.clickDrift(y)
 	case settingsTab:
 		m.clickSetting(x, y)
+	case agentsTab:
+		m.clickAgents(x, y)
 	case statusTab, logTab, tabCount:
 	}
 }
@@ -94,6 +96,8 @@ func (m *Model) wheel(direction int) {
 	switch {
 	case m.tab == driftTab && !m.detail:
 		m.dispatch(model.MoveDrift{Delta: direction})
+	case m.tab == agentsTab:
+		m.dispatch(model.MoveAgent{Delta: direction})
 	case m.tab == logTab:
 		m.scrollLog(direction, m.logRows())
 	}

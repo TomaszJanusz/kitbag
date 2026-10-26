@@ -1,0 +1,35 @@
+ 1 Status   2 Drift   3 Settings  [4 Agents]  5 Activity
+
+3 declared instances, 1 other directories found                          | claude/main
+                                                                         | Directory        /home/user/.claude
+claude                                                                   | Source           declared in kitbag.toml
+> claude/main  /home/user/.claude                                        | Directory state  present
+    present · declared in kitbag.toml · all hosts · active on this host  | Hosts            all hosts
+  claude/second  /home/user/.claude_2                                    | On this host     active on this host
+    missing · declared in kitbag.toml · only on laptop · active on this… | Settings         merges shared settings
+  claude/work  /home/user/.claude_3                                      | Next sync        installs the shared
+    present · declared in kitbag.toml · all hosts · active on this host  |                  configuration here
+  [found, not declared]                                                  |
+  /srv/claude                                                            | [a] Add agent  [e] Edit  [d] Remove
+    outs+ Add an agent instance: Result -----------------------------------------------------------------------+fresh
+codex   | Step 7/7                                                                                             |d:
+  codex | What happened to the change.                                                                         |
+    pres| ✓ Published add claude instance work at ~/.claude_3 as 9b8c7d6e5f4a.                                 |
+        | Sync succeeded, 2 changed                                                                            |
+        | The agents list was reloaded.                                                                        |
+        |   [ Cancel ]  [ Back ] (unavailable)> [ Close ]                                                      |
+        | Tab/↑/↓: focus · Enter: confirm · Esc/outside click: cancel                                          |
+        +------------------------------------------------------------------------------------------------------+
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+? help · a add · e edit · d remove · p probe · q quit · mouse: click, wheel

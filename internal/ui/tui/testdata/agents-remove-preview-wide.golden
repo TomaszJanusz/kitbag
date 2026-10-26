@@ -1,0 +1,35 @@
+ 1 Status   2 Drift   3 Settings  [4 Agents]  5 Activity
+
+2 declared instances, 1 other directories found                          | claude/second
+                                                                         | Directory        /home/user/.claude_2
+claude                                                                   | Source           declared in kitbag.toml
+  claude/main  /home/user/.claude                                        | Directory state  missing
+    present · declared in kitbag.toml · all hosts · active on this host  | Hosts            only on laptop
+> claude/second  /home/user/.claude_2                                    | On this host     active on this host
+    missing · declared in kitbag.toml · only on laptop · active on this… | Settings         merges shared settings
+  [found, not declared]                                                  | Next sync        warns and skips it until the
+  /srv/c+ Remove claude/second: What will change --------------------------------------------------------------+
+    outs| Step 1/3                                                                                             |
+codex   | The change to kitbag.toml, its commit title and how it will be published.                            |
+  codex | Commit: chore(kitbag): remove claude instance second                                                 |fresh
+    pres| Published directly to main.                                                                          |d:
+        | ! ~/.claude_2 is handed back: KitBag removes only what it created there and restores what it         |
+        | replaced.                                                                                            |
+        |                                                                                                      |
+        | Changes to kitbag.toml:                                                                              |
+        |   -[targets.claude.instances.second]                                                                 |
+        |   -dir = "~/.claude_2"                                                                               |
+        |   [ Cancel ]  [ Back ] (unavailable)> [ Next ]                                                       |
+        | Tab/↑/↓: focus · Enter: confirm · Esc/outside click: cancel                                          |
+        +------------------------------------------------------------------------------------------------------+
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+? help · a add · e edit · d remove · p probe · q quit · mouse: click, wheel

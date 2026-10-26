@@ -1,0 +1,35 @@
+ 1 Status   2 Drift   3 Settings  [4 Agents]  5 Activity
+
+2 declared instances, 1 other directories found                          | claude/main
+                                                                         | Directory        /home/user/.claude
+claude                                                                   | Source           declared in kitbag.toml
+> claude/main  /home/user/.claude                                        | Directory state  present
+    present · declared in kitbag.toml · all hosts · active on this host  | Hosts            all hosts
+  claude/second  /home/user/.claude_2                                    | On this host     active on this host
+    missing · declared in kitbag.toml · only on laptop · active on this… | Settings         merges shared settings
+  [found, not declared]                                                  | Next sync        installs the shared
+  /srv/claude                                                            |                  configuration here
+    outside the home directory; cannot be declared · from CLAUDE_CONFIG… |
+codex                                                                    | [a] Add agent  [e] Edit  [d] Remove
+  codex (default directory)  /home/user/.codex                           | [p] Look for more directories  [r] Refresh
+    present · documented default · all hosts · active on this host       | ↑/↓: select · Enter: edit · a: add · d:
+                                                                         | remove · p: look for more
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+? help · a add · e edit · d remove · p probe · q quit · mouse: click, wheel

@@ -1,4 +1,4 @@
- 1 Status   2 Drift  [3 Settings]  4 Activity
+ 1 Status   2 Drift  [3 Settings]  4 Agents   5 Activity
 
 Precedence: flag > KITBAG_* environment > config.toml >
 default

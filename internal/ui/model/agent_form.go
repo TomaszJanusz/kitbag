@@ -94,7 +94,7 @@ func (m *AgentForm) Update(msg Msg) []Cmd {
 		m.previewed(msg)
 	case AgentChangeApplied:
 		return m.finished(msg)
-	case EditAgentField, ChooseAgentOption, AgentFormNext, AgentFormBack, CancelAgentForm:
+	case EditAgentField, ChooseAgentOption, AgentFormNext, AgentFormBack, CancelAgentForm, ResumeAgentForm, EditDialogField:
 		if m.open && !m.applying {
 			return m.intent(msg)
 		}
@@ -103,10 +103,26 @@ func (m *AgentForm) Update(msg Msg) []Cmd {
 }
 
 func (m *AgentForm) intent(msg Msg) []Cmd {
-	if _, cancel := msg.(CancelAgentForm); cancel {
+	switch msg := msg.(type) {
+	case CancelAgentForm:
 		m.cancel()
 		return nil
+	case ResumeAgentForm:
+		m.asking = false
+		return nil
+	case EditDialogField:
+		// The form window's text field edits the current step's draft.
+		if msg.Dialog != AgentFormDialog {
+			return nil
+		}
+		return m.draftIntent(EditAgentField{Value: msg.Value})
 	}
+	return m.draftIntent(msg)
+}
+
+// draftIntent edits or moves through the draft; it answers a pending
+// discard question with no, except Back on the first step, which cancels.
+func (m *AgentForm) draftIntent(msg Msg) []Cmd {
 	if _, back := msg.(AgentFormBack); !back || m.step > 0 {
 		m.asking = false
 	}

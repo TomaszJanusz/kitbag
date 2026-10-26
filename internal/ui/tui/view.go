@@ -30,24 +30,33 @@ func (m *Model) View() string {
 			number(MinWidth), number(MinHeight), number(m.width), number(m.height)))), m.height), "\n")
 	}
 	body := m.height - chromeLines
-	var lines []string
-	switch {
-	case m.help:
-		lines = m.helpView()
-	case m.tab == driftTab:
-		lines = m.driftView(body)
-	case m.tab == settingsTab:
-		lines = m.settingsView(body)
-	case m.tab == logTab:
-		lines = m.logView(body)
-	default:
-		lines = m.statusView()
-	}
 	screen := make([]string, 0, m.height)
 	screen = append(screen, m.tabBar(), "")
-	screen = append(screen, pad(m.fit(lines, body), body)...)
-	screen = append(screen, m.styles.faint.Render(m.say(text.New(text.TerminalFooter))))
+	screen = append(screen, pad(m.fit(m.body(body), body), body)...)
+	footer := text.TerminalFooter
+	if m.tab == agentsTab {
+		footer = text.FooterAgents
+	}
+	screen = append(screen, m.styles.faint.Render(m.say(text.New(footer))))
 	return strings.Join(m.overlayWindows(m.fit(screen, m.height)), "\n")
+}
+
+// body renders the help overlay or the active tab in height lines.
+func (m *Model) body(height int) []string {
+	switch {
+	case m.help:
+		return m.helpView()
+	case m.tab == driftTab:
+		return m.driftView(height)
+	case m.tab == settingsTab:
+		return m.settingsView(height)
+	case m.tab == logTab:
+		return m.logView(height)
+	case m.tab == agentsTab:
+		return m.agentsScreen(height).lines
+	default:
+		return m.statusView()
+	}
 }
 
 func (m *Model) say(message text.Message) string { return m.catalog.Render(message) }
@@ -66,7 +75,7 @@ type tabSpan struct{ start, end int }
 // tabLayout renders the tab bar and reports where each tab sits, so clicks
 // hit the same cells that are drawn.
 func (m *Model) tabLayout() (string, []tabSpan) {
-	titles := []text.Message{m.app.Status.View().Title, m.app.Drift.View().Title, m.app.Settings.View().Title, m.app.Log.View().Title}
+	titles := []text.Message{m.app.Status.View().Title, m.app.Drift.View().Title, m.app.Settings.View().Title, text.New(text.AgentsTitle), m.app.Log.View().Title}
 	full := make([]string, 0, len(titles))
 	compact := make([]string, 0, len(titles))
 	for i, title := range titles {
@@ -162,7 +171,7 @@ func (m *Model) controls(controls []model.Control) string {
 }
 
 func intentName(intent model.Msg) string {
-	switch intent.(type) {
+	switch intent := intent.(type) {
 	case model.RequestServiceRefresh:
 		return "h"
 	case model.SyncNow:
@@ -175,6 +184,10 @@ func intentName(intent model.Msg) string {
 		return keyUnset
 	case model.RevertSetting:
 		return keyEscape
+	case model.ProbeAgents:
+		return keyProbe
+	case model.OpenAgentForm:
+		return map[model.AgentOp]string{model.AgentAdd: keyAdd, model.AgentEdit: keyEdit, model.AgentRemove: keyRemove}[intent.Op]
 	default:
 		return ""
 	}
@@ -183,7 +196,7 @@ func intentName(intent model.Msg) string {
 func (m *Model) helpView() []string {
 	keys := []text.Key{
 		text.HelpTabs, text.HelpRefresh, text.HelpSync, text.HelpCheckSync, text.HelpMove, text.HelpDetail, text.HelpEdit,
-		text.HelpSave, text.HelpDialogs, text.HelpChoices, text.HelpAdvanced, text.HelpFollow, text.HelpMouse, text.HelpToggle, text.HelpQuit,
+		text.HelpSave, text.HelpDialogs, text.HelpChoices, text.HelpAdvanced, text.HelpAgents, text.HelpFollow, text.HelpMouse, text.HelpToggle, text.HelpQuit,
 	}
 	lines := make([]string, 0, len(keys)+1)
 	lines = append(lines, m.styles.heading.Render(m.say(text.New(text.HelpTitle))))

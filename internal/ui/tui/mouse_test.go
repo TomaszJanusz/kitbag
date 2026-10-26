@@ -20,7 +20,8 @@ const (
 	driftSecondRow = 5
 	driftTabX      = 13 // inside " 2 Drift "
 	settingsTabX   = 24 // inside " 3 Settings "
-	logTabX        = 38 // inside " 4 Activity "
+	agentsTabX     = 38 // inside " 4 Agents "
+	logTabX        = 50 // inside " 5 Activity "
 	separatorX     = 10 // the blank between " 1 Status " and "[2 Drift]" (end of the first tab)
 )
 
@@ -40,8 +41,10 @@ func TestClickingATabSwitchesToIt(t *testing.T) {
 	s.waitFor("[2 Drift]", "2 targets differ")
 	s.click(settingsTabX, 0)
 	s.waitFor("[3 Settings]", "Precedence:")
+	s.click(agentsTabX, 0)
+	s.waitFor("[4 Agents]", "No agents are declared")
 	s.click(logTabX, 0)
-	s.waitFor("[4 Activity]", "Connected to the daemon")
+	s.waitFor("[5 Activity]", "Connected to the daemon")
 	s.click(1, 0)
 	s.waitFor("[1 Status]", "Daemon, live updates")
 }
@@ -160,7 +163,7 @@ func TestWheelScrollsTheActivityLog(t *testing.T) {
 	t.Parallel()
 	s := start(t, newFake())
 	s.tm.Send(tea.WindowSizeMsg{Width: termWidth, Height: MinHeight})
-	s.press("4")
+	s.press("5")
 	s.waitFor("Following new entries")
 	for range 8 {
 		s.client.events <- model.Event{Kind: model.EventDriftDetected}
@@ -210,7 +213,7 @@ func TestHelpAndFooterMentionTheMouse(t *testing.T) {
 	s := start(t, newFake())
 	s.waitFor("? help", "a advanced", "mouse: click, wheel")
 	s.press(keyHelp)
-	s.waitFor("Mouse: click a tab or row", "wheel: scroll")
+	s.waitFor("Mouse: click a tab, row or action", "wheel: scroll")
 }
 
 // syncBuffer is an output safe to read while the program writes to it.

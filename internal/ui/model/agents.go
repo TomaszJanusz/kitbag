@@ -255,7 +255,26 @@ func agentDetailRows(e agentEntry, row AgentRow) []Row {
 			Row{Label: text.New(text.AgentsDetailState), Value: state},
 			Row{Label: text.New(text.AgentsDetailSettings), Value: settings})
 	}
-	return rows
+	return append(rows, Row{Label: text.New(text.AgentsDetailSync), Value: agentSyncText(e)})
+}
+
+// agentSyncText says what the next sync does with the directory.
+func agentSyncText(e agentEntry) text.Message {
+	i := e.instance
+	switch {
+	case i == nil && e.Presence == PresenceOutsideHome:
+		return text.New(text.AgentsSyncCannot)
+	case i == nil:
+		return text.New(text.AgentsSyncUndeclared)
+	case !i.ActiveHere:
+		return text.New(text.AgentsSyncInactive)
+	case e.Presence == PresencePresent:
+		return text.New(text.AgentsSyncInstalls)
+	case e.Presence == PresenceMissing:
+		return text.New(text.AgentsSyncMissing)
+	default:
+		return text.New(text.AgentsSyncSkips)
+	}
 }
 
 // agentActions offers add (prefilled from a selected candidate), edit and

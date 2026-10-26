@@ -1,0 +1,20 @@
+ 1 Status   2 Drift   3 Settings  [4 Agents]  5 Activity
+
+2 declared instances, 3 other directories found
+
+cl+ Add an agent instance: Confirm ----------------------+
+> | Step 6/7                                             |
+  | Apply writes kitbag.toml for all machines, commits,  | …
+  | publishes and syncs this machine.                    |
+  | Commit: chore(kitbag): add claude instance work at   |c…
+  | ~/.claude_3                                          |
+  | Published directly to main.                          |
+cl|   [ Cancel ]> [ Back ]  [ Apply ]                    |
+[a| Tab/↑/↓: focus · Enter: confirm · Esc/outside click: |
+[p| cancel                                               |
+Di+------------------------------------------------------+
+Source           declared in kitbag.toml
+Directory state  present
+Hosts            all hosts
+On this host     active on this host
+? help · a add · e edit · d remove · p probe · q quit · mou…

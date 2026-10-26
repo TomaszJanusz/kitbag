@@ -20,7 +20,7 @@ import (
 func (c *commandLine) tuiCommand() *cobra.Command {
 	return &cobra.Command{
 		Use: "tui", Short: "Open the interactive terminal interface",
-		Long: "Show status, drift, settings and activity in a full-screen terminal interface. It uses the running daemon and falls back to reading this machine directly when none listens. Requires an interactive terminal; NO_COLOR or ui.color=never disables colour. Press ? for keys.",
+		Long: "Show status, drift, settings, agents and activity in a full-screen terminal interface; the Agents tab adds, edits and removes agent instances with a previewed, confirmed wizard. It uses the running daemon and falls back to reading this machine directly when none listens. Requires an interactive terminal; NO_COLOR or ui.color=never disables colour. Press ? for keys.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return classified(c.runTUI(cmd.Context(), cmd.InOrStdin()))

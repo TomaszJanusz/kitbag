@@ -51,6 +51,7 @@ const (
 	statusTab tab = iota
 	driftTab
 	settingsTab
+	agentsTab
 	logTab
 	tabCount
 )
@@ -153,6 +154,23 @@ func (m *Model) dispatch(msg model.Msg) {
 		m.ShowDialog(*dialog)
 	} else {
 		m.HideDialog(model.ServiceRefreshDialog)
+	}
+	m.agentDialogs()
+}
+
+// agentDialogs projects the agent form and its discard question; the model
+// decides when they open, change step and close.
+func (m *Model) agentDialogs() {
+	form := m.app.AgentForm
+	if dialog := form.Dialog(); dialog != nil {
+		m.ShowDialog(*dialog)
+	} else {
+		m.HideDialog(model.AgentFormDialog)
+	}
+	if dialog := form.DiscardDialog(); dialog != nil {
+		m.ShowDialog(*dialog)
+	} else {
+		m.HideDialog(model.AgentDiscardDialog)
 	}
 }
 

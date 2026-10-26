@@ -345,3 +345,74 @@ func TestDialogMouseTakesPriorityOverHelp(t *testing.T) {
 		t.Fatal("help swallowed the top window's outside click")
 	}
 }
+
+func choiceFixture(step int, chosen int, nextEnabled bool) model.DialogView {
+	view := model.FormDialog("choices", text.Plain("Choose"), step, 3, nil,
+		model.Control{Intent: model.Refresh{}, Enabled: true}, model.Control{Intent: model.SyncNow{}, Enabled: nextEnabled}, model.DismissDialog{ID: "choices"})
+	for i, label := range []string{"one", "two", "three"} {
+		view.Options = append(view.Options, model.DialogOption{Intent: model.ChooseAgentOption{Index: i}, Label: text.Plain(label), Selected: i == chosen})
+	}
+	view.InitialFocus = max(chosen, 0)
+	return view
+}
+
+func TestWindowOptionsChooseAndStep(t *testing.T) {
+	t.Parallel()
+	var windows WindowStack
+	windows.Push(choiceFixture(1, -1, false))
+	if got := windows.Key(keyMsg(keySpace)); got != (model.ChooseAgentOption{Index: 0}) || windows.top().focus != 0 {
+		t.Fatalf("space chose %#v, focus %d", got, windows.top().focus)
+	}
+	if got := windows.Key(keyMsg(keyRight)); got != (model.ChooseAgentOption{Index: 1}) || windows.top().option() != 1 {
+		t.Fatalf("right stepped to %#v", got)
+	}
+	windows.Key(keyMsg(keyRight))
+	if got := windows.Key(keyMsg(keyRight)); got != (model.ChooseAgentOption{Index: 2}) {
+		t.Fatalf("stepping past the last option: %#v", got)
+	}
+	if got := windows.Key(keyMsg("x")); got != nil {
+		t.Fatalf("a letter on an option: %#v", got)
+	}
+}
+
+func TestWindowOptionEnterFocusesNext(t *testing.T) {
+	t.Parallel()
+	var windows WindowStack
+	windows.Push(choiceFixture(1, 2, false))
+	if got := windows.Key(keyMsg(keyEnter)); got != (model.ChooseAgentOption{Index: 2}) {
+		t.Fatalf("enter chose %#v", got)
+	}
+	// The model enables Next for the choice; the focus waits there.
+	windows.Replace(choiceFixture(1, 2, true))
+	if top := windows.top(); top.focus != 4 {
+		t.Fatalf("focus %d after choosing, want Next", top.focus)
+	}
+	if got := windows.Key(keyMsg(keyEnter)); got != (model.SyncNow{}) {
+		t.Fatalf("second enter: %#v", got)
+	}
+}
+
+func TestWindowReplaceFocusRules(t *testing.T) {
+	t.Parallel()
+	var windows WindowStack
+	windows.Push(choiceFixture(1, 0, true))
+	windows.Key(keyMsg(keyDown))
+	// A new step starts at its initial focus.
+	windows.Replace(choiceFixture(2, 1, true))
+	if top := windows.top(); top.focus != 1 || top.moved {
+		t.Fatalf("new step focus %d moved %v", top.focus, top.moved)
+	}
+	// Without user movement a reprojection follows the initial focus; a
+	// disabled initial button falls back to the one before it.
+	view := choiceFixture(2, -1, false)
+	view.InitialFocus = 4
+	windows.Replace(view)
+	if top := windows.top(); top.focus != 3 {
+		t.Fatalf("disabled initial Next fell to %d, want Back", top.focus)
+	}
+	view.Buttons[1].Enabled = true
+	windows.Replace(view)
+	if top := windows.top(); top.focus != 4 {
+		t.Fatalf("enabled Next not focused: %d", top.focus)
+	}
+}

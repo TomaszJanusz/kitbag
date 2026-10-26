@@ -14,17 +14,18 @@ import (
 // phases and finishes when phases is closed; Subscribe delivers events until
 // its context ends.
 type fakeClient struct {
-	statusErr    error
 	settingErr   error
-	configData   string
+	statusErr    error
 	phases       chan string
 	events       chan model.Event
 	writes       chan [2]string
+	configData   string
 	settings     []model.SettingValue
 	drift        model.DriftSnapshot
+	agents       agentFake
 	status       model.StatusSnapshot
-	mu           sync.Mutex
 	delay        time.Duration
+	mu           sync.Mutex
 	inflight     atomic.Int32
 	overlapped   atomic.Bool
 	refreshes    atomic.Int32

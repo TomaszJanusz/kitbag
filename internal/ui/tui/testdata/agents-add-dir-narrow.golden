@@ -1,0 +1,20 @@
+ 1 Status   2 Drift   3 Settings  [4 Agents]  5 Activity
+
+2 + Add an agent instance: Configuration directory ------+
+  | Step 3/7                                             |
+cl| The agent's configuration directory below your home  |
+> | directory, for example ~/.claude_2.                  |
+  | Configuration directo…: >                            | …
+  | ✗ Use a directory below your home directory,         |
+  | starting with ~/ (or an absolute path).              |c…
+  | Directories found on this machine:                   |
+  |   ( ) /srv/claude · from CLAUDE_CONFIG_DIR, outside… |
+cl|   ( ) /home/user/.claude_3 · found by name, present  |
+[a|   [ Cancel ]  [ Back ]  [ Next ] (unavailable)       |
+[p| Tab/↑/↓: focus · Enter: confirm · Esc/outside click: |
+Di| cancel · Space/Enter/click: choose · ←/→:            |
+So| previous/next choice                                 |
+Di+------------------------------------------------------+
+Hosts            all hosts
+On this host     active on this host
+? help · a add · e edit · d remove · p probe · q quit · mou…
