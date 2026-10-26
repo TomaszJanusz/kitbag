@@ -98,24 +98,13 @@ func (m *Model) centerLine(line string) string {
 
 // The pixels are decorative; the plain brand label always comes from catalog.
 func (m *Model) logo() []string {
-	if m.styles.mono || m.width < pixelMinWidth || m.height < pixelMinHeight {
+	if m.styles.mono || m.width < max(pixelMinWidth, logoWidth+dialogMargin) || m.height < pixelMinHeight {
 		return []string{m.centerLine(m.styles.heading.Render(m.say(text.New(text.HomeBrand))))}
 	}
-	glyphs := [][]string{
-		{"█  █", "█ █ ", "██  ", "█ █ ", "█  █"},
-		{" ▀ ", "   ", " █ ", " █ ", " █ "},
-		{" █ ", "███", " █ ", " █ ", " ▀▀"},
-		{"█   ", "█   ", "███▄", "█  █", "███▀"},
-		{"    ", "    ", "▄▀▀█", "█  █", "▀▄▄█"},
-		{"    ", "    ", "▄▀▀█", "▀▄▄█", "▄▄▄▀"},
-	}
-	lines := make([]string, len(glyphs[0]))
-	for row := range lines {
-		parts := make([]string, len(glyphs))
-		for i, glyph := range glyphs {
-			parts[i] = glyph[row]
-		}
-		lines[row] = m.centerLine(m.styles.heading.Render(strings.Join(parts, " ")))
+	cells := maskToCells(wordmarkMask(), logoDepth, logoDepth, logoWidth, logoHeight)
+	lines := make([]string, len(cells))
+	for row, line := range cells {
+		lines[row] = m.centerLine(m.styles.logoLine(line))
 	}
 	return lines
 }

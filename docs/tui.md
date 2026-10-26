@@ -35,9 +35,11 @@ contract for the staged implementation below.
 | Dialog panel | `#242424` | 235 | black (0) | ASCII frame `+--+`, vertical sides |
 | Text | `#dedbd4` | 253 | white (7) | plain text |
 | Muted | `#99958e` | 246 | bright black (8) | plain text, positional hierarchy |
-| Accent / primary | `#e9b872` | 180 | yellow (3) | `[ Label ]` |
+| Accent / primary | `#e9b872` | 179 | yellow (3) | `[ Label ]` |
+| Logo side | `#8e6338` | 95 | bright black (8) | omitted |
+| Logo lower edge | `#50391f` | 58 | bright black (8) | omitted |
 | Primary text | `#181818` | 234 | black (0) | plain text |
-| Warning | `#e9b872` | 180 | yellow (3) | explicit warning text |
+| Warning | `#e9b872` | 179 | yellow (3) | explicit warning text |
 | Failure | terminal red | red (1) | red (1) | explicit error text |
 | Focus | `> ` + emphasis | same | same | `> [ Label ]` |
 | Disabled | muted + unavailable label | same | same | `[ Label (unavailable) ]` |
@@ -48,12 +50,48 @@ ANSI fallback colours use the terminal palette; the two dark surfaces can be
 identical on 16-colour terminals, so spacing and focus markers still carry the
 hierarchy. No capability depends on colour alone.
 
+### Wordmark and extrusion
+
+The colour wordmark is a seven-subpixel-high pixel mask. Each terminal cell
+contains two vertical subpixels, drawn with `▀`, `▄` and `█`; mixed cells use
+foreground and background colours to preserve both shades. The accent front
+face takes precedence over every shadow pixel. Sweeping the same mask three
+subpixels right and down forms joined side faces; exposed lower shadow edges
+receive the darkest shade, suggesting light from the top left.
+
+The complete footprint is 28 columns by five terminal rows, including the
+extrusion. It occupies the original five-row logo area, so the status and menu
+do not move. The pure mask-to-cells function clips every layer to its rectangle.
+Truecolor uses the two dark shades above; 256-colour mode uses their nearest
+palette entries and 16-colour mode uses one dark shade for both. NO_COLOR and
+ui.color=never use catalog text `kitbag`, without ANSI. Below 80 columns or 24
+rows the logo is also plain text; any viewport narrower than the mask plus its
+extrusion must use that fallback. Resizing never adds a shadow beyond the edge.
+
+The shade-index golden below shows one line per **subpixel** row (two per
+terminal row): `█` front, `▓` side, `▒` lower edge, space background. Raw-ANSI
+and stripped home goldens cover 120×35, 80×24, 60×20 and 40×10 in truecolor,
+256 and 16 colours, alongside NO_COLOR goldens.
+
+```text
+█  █ █  █  █
+█▓█ ▒ ▒ █▓ █▓
+██▓▓ █ ███▓███   ███  ███
+█▓█▓▒█▓ █▓▓█▓▓█ █ ▒█▓█ ▓█▓
+█▓█▓ █▓▓█▓▓█▓▓█▓█▓ █▓▓███▓▓
+█▓▓█▓█▓▓█▓▓█▓▓█▓█▓▓█▓▓▓▓█▓▓▓
+█▓▓█▓█▓▓██▓███▓▒▓███▓███▓▓▓▓
+ ▒▓▓▒▓▓▓▓▒▓▓▒▓▓ ▒▓▒▓▓▓▓▓▓▓▒▓
+  ▒▓ ▒▓▒▓ ▒▓ ▒▓▓ ▒ ▒▓▓▓▒▓▓ ▒
+   ▒  ▒ ▒  ▒▒ ▒▒▒   ▒▒▒ ▒▒▒
+```
+
 ### Home mockups
 
 These ASCII layouts show placement in the stated viewport (blank space is
 abbreviated above and below the centered content). The implementation uses
-block pixels for the wordmark when colour is available and the viewport has
-space; ASCII/plain mode uses `kitbag`. Values are examples, never renderer text.
+block pixels for the wordmark with its darker extrusion when colour is available
+and the viewport has space; ASCII/plain mode uses `kitbag`. Values are examples, never renderer text.
 The status line is focusable above the menu; its Enter action opens Status.
 
 120×35:

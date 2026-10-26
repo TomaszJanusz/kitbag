@@ -105,16 +105,26 @@ func TestHomeGoldenScreens(t *testing.T) {
 			m.app.Update(model.Refresh{})
 			m.app.Update(model.StatusLoaded{Seq: 2, Snapshot: model.StatusSnapshot{Repository: "/repo/kitbag", Git: model.GitState{Branch: "main"}, Daemon: true, Drift: model.DriftCounts{InSync: 4}, LastCheck: &model.LastCheck{At: clock().Add(-2 * time.Minute), NextAt: clock().Add(time.Minute), Outcome: "ok", Interval: time.Minute}}})
 			m.app.Update(model.AgentsLoaded{Seq: 2, Snapshot: model.AgentsSnapshot{Instances: make([]model.AgentInstance, 4)}})
-			for _, profile := range []Profile{termenv.Ascii, termenv.TrueColor} {
+			for _, profile := range []Profile{termenv.Ascii, termenv.TrueColor, termenv.ANSI256, termenv.ANSI} {
 				m.styles = newStyles(profile)
 				screen := m.View()
 				assertScreenFits(t, screen, size[0], size[1])
 				profileName := "color"
-				if profile == termenv.Ascii {
+				switch profile {
+				case termenv.TrueColor:
+					profileName = "color"
+				case termenv.Ascii:
 					profileName = "no-color"
+				case termenv.ANSI256:
+					profileName = "256-color"
+				case termenv.ANSI:
+					profileName = "16-color"
 				}
 				name := fmt.Sprintf("v2-home-%dx%d-%s", size[0], size[1], profileName)
 				golden(t, name, screen)
+				if profile != termenv.Ascii {
+					rawGolden(t, name+"-raw-ansi", screen)
+				}
 			}
 		})
 	}
@@ -124,7 +134,7 @@ func TestHomeLogoNarrowAndNoColour(t *testing.T) {
 	t.Parallel()
 	for _, size := range [][2]int{{120, 35}, {80, 24}, {60, 20}, {40, 10}} {
 		m := homeProjection(t, size[0], size[1])
-		for _, profile := range []Profile{termenv.Ascii, termenv.TrueColor} {
+		for _, profile := range []Profile{termenv.Ascii, termenv.TrueColor, termenv.ANSI256, termenv.ANSI} {
 			m.styles = newStyles(profile)
 			lines := m.logo()
 			for _, line := range lines {
