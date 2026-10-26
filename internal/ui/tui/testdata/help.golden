@@ -1,9 +1,6 @@
     +----------------------------------------------------------------------+
     | Keyboard                                                         esc |
     |                                                                      |
-    |                                                                      |
-    | Enter: edit a setting, Enter again saves; Esc cancels                |
-    |                                                                      |
     | w: save a kept draft; u: confirm removal from config.toml            |
     |                                                                      |
     | Dialogs: Tab/arrows focus; Enter confirms; Esc/outside click cancels |
@@ -11,6 +8,9 @@
     | ←/→/Space or click while editing: choose; Custom/Other: type         |
     |                                                                      |
     | a on Settings: expand or collapse Advanced                           |
+    |                                                                      |
+    | Agents: a add, e or Enter edit, d remove, p look for more            |
+    | directories                                                          |
     |                                                                      |
     | f: follow new activity; ↑/↓, PgUp/PgDn: scroll                       |
     |                                                                      |

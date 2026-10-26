@@ -1,0 +1,35 @@
+kitbag › Agents
+
+2 declared instances, 1 other directories found                          | claude/main
+                                                                         | Directory        /home/user/.claude
+claude                                                                   | Source           declared in kitbag.toml
+> claude/main  /home/user/.claude                                        | Directory state  present
+    present · declared in kitbag.toml · all hosts · active on this host  | Hosts            all hosts
+  claude/second  /home/user/.claude_2                                    | On this host     active on this host
+    missing · declared in kitbag.toml · only on laptop · active on this… | Settings         merges shared settings
+  [found, not declared]                                                  | Next sync        installs the shared
+  /srv/claude                                                            |                  configuration here
+    outside the home directory; cannot be declared · from CLAUDE_CONFIG… | ↑/↓: select · Enter: edit · a: add · d:
+codex                                                                    | remove · p: look for more
+  codex (default directory)  /home/user/.codex                           |
+    present · documented default · all hosts · active on this host       |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+  [ Add agent ]  [ Edit ]  [ Remove ]  [ Look for more directories ]  [ Refresh ]
+esc back · ? help · q home

@@ -9,12 +9,10 @@ claude                                                    | Source           dec
     missing · declared in kitbag.toml · only on laptop ·… | Settings         merges shared settings
   [found, not declared]                                   | Next sync        installs the shared
   /srv/claude                                             |                  configuration here
-    outside the home directory; cannot be declared · fro… |
-codex                                                     | [a] Add agent  [e] Edit  [d] Remove
-  codex (default directory)  /home/user/.codex            | [p] Look for more directories
-    present · documented default · all hosts · active on… | [r] Refresh
-                                                          | ↑/↓: select · Enter: edit · a: add · d:
-                                                          | remove · p: look for more
+    outside the home directory; cannot be declared · fro… | ↑/↓: select · Enter: edit · a: add · d:
+codex                                                     | remove · p: look for more
+  codex (default directory)  /home/user/.codex            |
+    present · documented default · all hosts · active on… |
                                                           |
                                                           |
                                                           |
@@ -27,4 +25,6 @@ codex                                                     | [a] Add agent  [e] E
                                                           |
                                                           |
                                                           |
+                                                          |
+  [ Add agent ]  [ Edit ]  [ Remove ]  [ Look for more directories ]  [ Refresh ]
 esc back · ? help · q home

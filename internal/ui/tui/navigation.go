@@ -98,7 +98,7 @@ func (m *Model) clickHome(x, y int) {
 }
 
 func (m *Model) showHelp() {
-	keys := []text.Key{text.HelpTabs, text.HelpRefresh, text.HelpSync, text.HelpCheckSync, text.HelpMove, text.HelpDetail, text.HelpEdit, text.HelpSave, text.HelpDialogs, text.HelpChoices, text.HelpAdvanced, text.HelpFollow, text.HelpMouse, text.HelpToggle, text.HelpQuit}
+	keys := []text.Key{text.HelpTabs, text.HelpRefresh, text.HelpSync, text.HelpCheckSync, text.HelpMove, text.HelpDetail, text.HelpEdit, text.HelpSave, text.HelpDialogs, text.HelpChoices, text.HelpAdvanced, text.HelpAgents, text.HelpFollow, text.HelpMouse, text.HelpToggle, text.HelpQuit}
 	body := make([]string, len(keys))
 	for i, key := range keys {
 		body[i] = m.say(text.New(key))

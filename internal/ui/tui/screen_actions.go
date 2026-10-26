@@ -32,7 +32,9 @@ func (m *Model) screenControls() []model.Control {
 		return []model.Control{{Label: text.New(text.ActionDetails), Enabled: m.app.Drift.View().Detail != nil}}
 	case logTab:
 		return []model.Control{{Label: text.New(text.ActionFollow), Enabled: true}}
-	case agentsTab, tabCount:
+	case agentsTab:
+		return m.app.Agents.View().Actions
+	case tabCount:
 	}
 	return nil
 }

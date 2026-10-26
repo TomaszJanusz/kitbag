@@ -1,0 +1,24 @@
+kitbag › Agents
+
+2 declared instances, 1 other directories found
+
+claude
+> claude/main  /home/user/.claude
+    present · declared in kitbag.toml · all hosts · active on this host
+  claude/second  /home/user/.claude_2
+    missing · declared in kitbag.toml · only on laptop · active on this host
+  [found, not declared]
+  /srv/claude
+
+claude/main
+Directory        /home/user/.claude
+Source           declared in kitbag.toml
+Directory state  present
+Hosts            all hosts
+On this host     active on this host
+Settings         merges shared settings
+Next sync        installs the shared configuration here
+↑/↓: select · Enter: edit · a: add · d: remove · p: look for more
+  [ Add agent ]  [ Edit ]  [ Remove ]  [ Look for more directories ]
+  [ Refresh ]
+esc back · ? help · q home
