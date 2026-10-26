@@ -1,24 +1,24 @@
 [1 Status]  2 Drift   3 Settings   4 Activity
 
-2 targets changed locally
+Keyboard
 
-Repository    /home/user/.local/share/kitbag/repo
-Branch        main → origin/main (0 ahead, 1 behind)
-Working copy  Clean
-Last sync     2026-10-24T09:30:00Z: succeeded, 2 changed
-Targets       5 in sync, 1 to update, 2 changed locally, 0 conflicts, 0
-              obstacles
-Connection    Daemon, live updates
-
-Warnings
-- kitbag.toml: unknown agent "zed" ignored
-
-[s] Sync now  [r] Refresh
-
-
-
+  Tab, Shift-Tab, 1–4: switch tabs
+  r: reload status, drift and settings
+  s: sync now
+  ↑/↓ or k/j: move the selection
+  Enter: open drift details; Esc: close them
+  Enter: edit a setting, Enter again saves; Esc cancels
+  w: save a kept draft; u: remove the value from config.toml
+  ←/→/Space or click while editing: choose; Custom/Other: type
+  a on Settings: expand or collapse Advanced
+  f: follow new activity; ↑/↓, PgUp/PgDn: scroll
+  Mouse: click a tab or row, click a target again for details; wheel: scroll
+  ?: show or hide this help
+  q or Ctrl-C: quit
 
 
 
 
-? help · q quit · mouse: click, wheel
+
+
+? help · a advanced · q quit · mouse: click, wheel

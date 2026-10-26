@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"slices"
-
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -31,6 +29,8 @@ const (
 	keySave     = "w"
 	keyUnset    = "u"
 	keyFollow   = "f"
+	keyAdvanced = "a"
+	keySpace    = " "
 )
 
 // inputMargin leaves room for the prompt and cursor of the settings editor.
@@ -130,6 +130,15 @@ func (m *Model) settingsKey(name string) tea.Cmd {
 		m.setting = max(m.setting-1, 0)
 	case keyDown, keyVimDown:
 		m.setting = min(m.setting+1, fields-1)
+	case keyAdvanced:
+		path := m.field().Path
+		m.dispatch(model.ToggleAdvancedSettings{})
+		m.setting = 0
+		for i, field := range m.app.Settings.View().Fields {
+			if field.Path == path {
+				m.setting = i
+			}
+		}
 	case keyEnter:
 		return m.startEdit()
 	case keySave:
@@ -144,14 +153,19 @@ func (m *Model) settingsKey(name string) tea.Cmd {
 
 func (m *Model) startEdit() tea.Cmd {
 	field := m.field()
-	if field.Saving {
+	if field.Saving || field.Editor == model.SettingReadOnly {
 		return nil
 	}
+	m.dispatch(model.BeginSetting{Key: field.Path})
+	field = m.field()
 	m.editing = true
 	m.input.EchoMode = echoMode(field.Sensitive)
 	m.input.SetValue(field.Draft)
 	m.input.CursorEnd()
-	return m.input.Focus()
+	if field.TextEntry {
+		return m.input.Focus()
+	}
+	return nil
 }
 
 // editKey forwards keys to the line editor. Enter saves a valid change and
@@ -159,6 +173,9 @@ func (m *Model) startEdit() tea.Cmd {
 // discards the draft.
 func (m *Model) editKey(msg tea.KeyMsg) tea.Cmd {
 	field := m.field()
+	if field.Saving {
+		return nil
+	}
 	switch name := msg.String(); {
 	case name == keyEnter:
 		m.finishEdit(field)
@@ -167,19 +184,19 @@ func (m *Model) editKey(msg tea.KeyMsg) tea.Cmd {
 		m.dispatch(model.RevertSetting{Key: field.Path})
 		m.stopEdit()
 		return nil
-	case (name == keyLeft || name == keyRight) && len(field.Choices) > 0:
-		m.input.SetValue(cycle(field.Choices, m.input.Value(), name == keyRight))
-		m.input.CursorEnd()
-	default:
-		var cmd tea.Cmd
-		m.input, cmd = m.input.Update(msg)
-		if m.input.Value() != field.Draft {
-			m.dispatch(model.EditSetting{Key: field.Path, Value: m.input.Value()})
+	case pickerKey(field, name):
+		delta := 1
+		if name == keyLeft {
+			delta = -1
 		}
-		return cmd
+		m.dispatch(model.StepSetting{Key: field.Path, Delta: delta})
+		return m.syncInput()
+	default:
+		if !field.TextEntry {
+			return nil
+		}
+		return m.editText(msg, field)
 	}
-	m.dispatch(model.EditSetting{Key: field.Path, Value: m.input.Value()})
-	return nil
 }
 
 func (m *Model) finishEdit(field model.FieldView) {
@@ -187,7 +204,6 @@ func (m *Model) finishEdit(field model.FieldView) {
 	switch {
 	case save.Enabled:
 		m.dispatch(save.Intent)
-		m.stopEdit()
 	case !revert.Enabled:
 		// Nothing changed: leave the editor.
 		m.stopEdit()
@@ -217,16 +233,16 @@ func echoMode(sensitive bool) textinput.EchoMode {
 	return textinput.EchoNormal
 }
 
-func cycle(choices []string, current string, forward bool) string {
-	i := slices.Index(choices, current)
-	switch {
-	case i < 0:
-		return choices[0]
-	case forward:
-		return choices[(i+1)%len(choices)]
-	default:
-		return choices[(i+len(choices)-1)%len(choices)]
+// syncInput focuses custom input only when the model offers it.
+func (m *Model) syncInput() tea.Cmd {
+	field := m.field()
+	if !field.TextEntry {
+		m.input.Blur()
+		return nil
 	}
+	m.input.SetValue(field.Draft)
+	m.input.CursorEnd()
+	return m.input.Focus()
 }
 
 func (m *Model) logKey(name string) {
@@ -272,4 +288,17 @@ func (m *Model) settle() {
 		m.logTop = max(m.logTop-(dropped-m.dropped), 0)
 	}
 	m.dropped = dropped
+}
+
+func (m *Model) editText(msg tea.KeyMsg, field model.FieldView) tea.Cmd {
+	var cmd tea.Cmd
+	m.input, cmd = m.input.Update(msg)
+	if m.input.Value() != field.Draft {
+		m.dispatch(model.EditSetting{Key: field.Path, Value: m.input.Value()})
+	}
+	return cmd
+}
+
+func pickerKey(field model.FieldView, name string) bool {
+	return len(field.Options) > 0 && (name == keyLeft || name == keyRight || (name == keySpace && !field.TextEntry))
 }

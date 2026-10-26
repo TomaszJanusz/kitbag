@@ -28,7 +28,7 @@ A canceled subscription (renderer shutdown) is not retried.
 | --- | --- |
 | `Status` | Loading, ready, failed. Shows Git state, last sync, drift counts, warnings, tool-too-old, update available, daemon/live connection and the result of a sync started here. Only one sync runs from here; sync is disabled while another sync runs or a newer tool is required. |
 | `Drift` | Targets other than in sync with their planned actions; the selection follows its path across reloads. |
-| `Settings` | One field per `internal/settingskey` registry entry with description, allowed values, default, effective value and source. Every edit is validated with the registry's rules; invalid or unchanged drafts are never saved. Sensitive values are redacted and never prefilled. Unset is offered only for values stored in `config.toml`; environment or flag overrides are shown. |
+| `Settings` | A curated projection of the registry with common fields and collapsed Advanced fields. `SettingEditor`, labelled options, custom-input state, hints and visibility belong to this shared model. Every edit uses the registry validation; invalid or unchanged drafts are never saved. Sensitive values are redacted and never prefilled. Unset is offered only for stored values; environment/flag overrides remain visible. |
 | `Log` | A bounded ring buffer (`DefaultLogCapacity` 256) of hints, sync phases and setting writes; the oldest entry is dropped and counted. |
 
 Every load carries a sequence number. A result older than the last applied one,
@@ -37,14 +37,40 @@ overwrite newer state. Hints are not a journal: a connection, `sync.finished` or
 `drift.detected` reloads the snapshots. A `sync.started` hint from elsewhere is
 cleared by its finish hint or by any successful load issued after it.
 
+## Settings presentation
+
+`ToggleAdvancedSettings` controls the shared view's expanded state.
+`BeginSetting`, `StepSetting` and `ChooseSetting` select an editor/option;
+`EditSetting` validates text drafts, and `SaveSetting` requests persistence.
+Renderers translate keys and mouse coordinates into those intents. Presets,
+boolean labels, custom host/duration options and visibility are shared policy,
+not renderer logic. The renderer owns focus and geometry; it keeps the editor
+open until `SettingWritten` succeeds so full-file validation failures can be
+corrected without losing the draft.
+
+The normal and Advanced field lists, duration limits and hidden-key decisions
+are documented in [the terminal settings guide](tui.md#settings-controls).
+`migration.legacy_roots` is conditional and read-only in the form, with a CLI
+editing hint for its TOML array. Hidden settings remain in the registry and
+CLI. Changes to this presentation do not change config or API contracts.
+
+`SettingValue` can carry optional host names, a Git config identity hint and a
+legacy-detection flag. The API adapter enriches snapshots on the same local
+host using injected platform and Git contracts. It reads the effective working
+copy selected by the newly loaded settings, for both daemon and local fallback
+responses. Missing files, unavailable Git or unsupported Git config leave the
+hints unavailable without blocking the form. Host files are regular
+`hosts/*.md` files; identity reads only user.name/email through the optional
+`vcs.IdentityReader` capability. No signing keys or credentials are returned.
+
 ## Texts
 
 All user-visible text is in `internal/ui/model/text`: typed `Key` constants and
 the English catalog `text.English()`. Views contain `text.Message` values;
 arguments are messages too, so nested phrases stay translatable, and
-`text.Plain` carries data such as paths, numbers and core warnings. Setting
-descriptions come from the registry, the same source as
-[machine settings](config.md). Tests require every key to have an English
+`text.Plain` carries data such as paths, numbers and core warnings. Plain-language setting
+descriptions live in the text catalog. Types, defaults, constraints and
+validation still come from the registry behind [machine settings](config.md). Tests require every key to have an English
 template using only `%s`, and every message a model emits to match its
 template's argument count.
 

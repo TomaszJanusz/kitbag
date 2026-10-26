@@ -5,8 +5,6 @@ package text
 
 import (
 	"fmt"
-
-	"github.com/TomaszJanusz/kitbag/internal/settingskey"
 )
 
 // Key identifies one translatable template.
@@ -52,7 +50,7 @@ type entry struct {
 	template string
 }
 
-// settingPrefix namespaces the descriptions taken from the settings registry.
+// settingPrefix namespaces the plain-language setting descriptions.
 const settingPrefix = "setting.description."
 
 // SettingDescription is the key of a registry setting's description.
@@ -60,11 +58,22 @@ func SettingDescription(path string) Key { return Key(settingPrefix + path) }
 
 // Static keys.
 const (
-	ActionSyncNow Key = "action.sync_now"
-	ActionRefresh Key = "action.refresh"
-	ActionSave    Key = "action.save"
-	ActionUnset   Key = "action.unset"
-	ActionRevert  Key = "action.revert"
+	SettingsAdvancedClosed Key = "settings.advanced_closed"
+	SettingsAdvancedOpen   Key = "settings.advanced_open"
+	SettingOn              Key = "setting.on"
+	SettingOff             Key = "setting.off"
+	SettingCustom          Key = "setting.custom"
+	SettingOther           Key = "setting.other"
+	SettingGitValue        Key = "setting.git_value"
+	SettingGitUnavailable  Key = "setting.git_unavailable"
+	SettingLegacyCLI       Key = "setting.legacy_cli"
+	SettingPickerHint      Key = "setting.picker_hint"
+	HelpAdvanced           Key = "help.advanced"
+	ActionSyncNow          Key = "action.sync_now"
+	ActionRefresh          Key = "action.refresh"
+	ActionSave             Key = "action.save"
+	ActionUnset            Key = "action.unset"
+	ActionRevert           Key = "action.revert"
 
 	StatusTitle         Key = "status.title"
 	StatusLoading       Key = "status.loading"
@@ -217,17 +226,13 @@ const (
 	HelpQuit         Key = "help.quit"
 )
 
-// English returns the default catalog, including every registry setting
-// description, so the settings registry stays the single source of that text.
+// English returns the default catalog, including plain-language setting descriptions.
 func English() Catalog {
 	catalog := make(Catalog)
-	for _, section := range [][]entry{statusText(), outcomeText(), driftText(), formText(), terminalText()} {
+	for _, section := range [][]entry{statusText(), outcomeText(), driftText(), formText(), terminalText(), settingDescriptions()} {
 		for _, e := range section {
 			catalog[e.key] = e.template
 		}
-	}
-	for _, key := range settingskey.Registry() {
-		catalog[SettingDescription(key.Path)] = key.Description
 	}
 	return catalog
 }
@@ -339,6 +344,16 @@ func driftText() []entry {
 func formText() []entry {
 	return []entry{
 		{SettingsTitle, "Settings"},
+		{SettingsAdvancedClosed, "Advanced [+]"},
+		{SettingsAdvancedOpen, "Advanced [-]"},
+		{SettingOn, "On"},
+		{SettingOff, "Off"},
+		{SettingCustom, "Custom…"},
+		{SettingOther, "Other…"},
+		{SettingGitValue, "From Git config: %s"},
+		{SettingGitUnavailable, "Git config identity unavailable or not set"},
+		{SettingLegacyCLI, "Edit old paths with kitbag config set migration.legacy_roots '<TOML array>'"},
+		{SettingPickerHint, "←/→/Space or click: choose · Enter saves · Esc cancels"},
 		{SettingsLoading, "Loading settings…"},
 		{SettingsReady, "Precedence: %s"},
 		{SettingInvalid, "Allowed: %s"},
@@ -380,7 +395,7 @@ func formText() []entry {
 func terminalText() []entry {
 	return []entry{
 		{TerminalTooSmall, "Enlarge the terminal to at least %s×%s (now %s×%s)"},
-		{TerminalFooter, "? help · q quit · mouse: click, wheel"},
+		{TerminalFooter, "? help · a advanced · q quit · mouse: click, wheel"},
 		{TerminalWarnings, "Warnings"},
 		{ControlHint, "[%s] %s"},
 		{ControlDisabled, "%s (unavailable)"},
@@ -400,7 +415,8 @@ func terminalText() []entry {
 		{HelpDetail, "Enter: open drift details; Esc: close them"},
 		{HelpEdit, "Enter: edit a setting, Enter again saves; Esc cancels"},
 		{HelpSave, "w: save a kept draft; u: remove the value from config.toml"},
-		{HelpChoices, "←/→ while editing: cycle allowed values"},
+		{HelpChoices, "←/→/Space or click while editing: choose; Custom/Other: type"},
+		{HelpAdvanced, "a on Settings: expand or collapse Advanced"},
 		{HelpFollow, "f: follow new activity; ↑/↓, PgUp/PgDn: scroll"},
 		{HelpMouse, "Mouse: click a tab or row, click a target again for details; wheel: scroll"},
 		{HelpToggle, "?: show or hide this help"},

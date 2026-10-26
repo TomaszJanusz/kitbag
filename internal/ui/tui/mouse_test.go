@@ -193,7 +193,7 @@ func TestMouseIsIgnoredWhileEditingAndInHelp(t *testing.T) {
 	s.press("3")
 	s.waitFor("Precedence:")
 	s.press(keyEnter)
-	s.waitFor("Editing: Enter saves")
+	s.waitFor("←/→/Space or click: choose")
 	s.click(driftTabX, 0)
 	s.click(5, 6)
 	s.press(keyEscape, keyHelp)
@@ -208,7 +208,7 @@ func TestMouseIsIgnoredWhileEditingAndInHelp(t *testing.T) {
 func TestHelpAndFooterMentionTheMouse(t *testing.T) {
 	t.Parallel()
 	s := start(t, newFake())
-	s.waitFor("? help · q quit · mouse: click, wheel")
+	s.waitFor("? help", "a advanced", "mouse: click, wheel")
 	s.press(keyHelp)
 	s.waitFor("Mouse: click a tab or row", "wheel: scroll")
 }

@@ -54,3 +54,13 @@ func ProbeVersion(ctx context.Context, env platform.Env, runner Runner, name str
 	}
 	return strings.Join(strings.Fields(string(res.Stdout)), " "), nil
 }
+
+// ReadIdentity returns the effective user.name and user.email from Git config.
+func (b *Backend) ReadIdentity(ctx context.Context, dir string) (vcs.Identity, error) {
+	name, err := b.optional(ctx, dir, "config", "--get", "user.name")
+	if err != nil {
+		return vcs.Identity{}, err
+	}
+	email, err := b.optional(ctx, dir, "config", "--get", "user.email")
+	return vcs.Identity{Name: name, Email: email}, err
+}

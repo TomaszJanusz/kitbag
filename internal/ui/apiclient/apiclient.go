@@ -19,6 +19,7 @@ import (
 	"github.com/TomaszJanusz/kitbag/internal/core/workflow"
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 	"github.com/TomaszJanusz/kitbag/internal/ui/model"
+	"github.com/TomaszJanusz/kitbag/internal/vcs"
 )
 
 // Transport is the subset of internal/api/client.Client used here.
@@ -40,10 +41,13 @@ type Local struct {
 // explicit selections the CLI forwards to the daemon.
 type Client struct {
 	Transport Transport
-	Env       platform.Env
-	Flags     map[string]string
-	Local     Local
-	Options   api.Options
+	// Host and OpenGit optionally enrich settings with local read-only context.
+	Host    platform.Host
+	OpenGit func(context.Context, string) (vcs.Backend, error)
+	Env     platform.Env
+	Flags   map[string]string
+	Local   Local
+	Options api.Options
 }
 
 var _ model.Client = Client{}
@@ -147,7 +151,9 @@ func (c Client) Settings(ctx context.Context) ([]model.SettingValue, error) {
 	if err != nil {
 		return nil, classify(err)
 	}
-	return settingValues(entries), nil
+	values := settingValues(entries)
+	c.settingsContext(ctx, values)
+	return values, nil
 }
 
 func (c Client) localSettings() ([]settings.Entry, error) {
