@@ -3,9 +3,7 @@
 package initialize
 
 import (
-	"errors"
-	"io/fs"
-
+	"github.com/TomaszJanusz/kitbag/internal/core/discover"
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 )
 
@@ -13,28 +11,27 @@ import (
 // executable. Environment overrides take precedence over documented defaults.
 type Agent struct{ Kind, Directory string }
 
-// Detect conservatively checks only supported adapters' known configuration
-// directories. It does not enumerate HOME, follow directory symlinks or inspect
-// agent settings, credentials, sessions or instance-list files.
-func Detect(host platform.Host) ([]Agent, error) {
+// Detect conservatively checks only the default directories of the kinds init
+// can scaffold, resolved by homes. It does not enumerate HOME, follow directory
+// symlinks or inspect agent settings, credentials, sessions or instance-list
+// files.
+func Detect(host platform.Host, homes discover.Table) ([]Agent, error) {
+	candidates, err := homes.Only(scaffoldAgents()...).Defaults(host)
+	if err != nil {
+		return nil, err
+	}
 	result := []Agent{}
-	for _, candidate := range []struct{ kind, variable, relative string }{
-		{"claude", "CLAUDE_CONFIG_DIR", ".claude"},
-		{"codex", "CODEX_HOME", ".codex"},
-	} {
-		dir, err := host.AgentHome(candidate.variable, candidate.relative)
-		if err != nil {
-			return nil, err
-		}
-		info, err := host.Lstat(dir)
-		switch {
-		case errors.Is(err, fs.ErrNotExist):
-			continue
-		case err != nil:
-			return nil, err
-		case info.IsDir():
-			result = append(result, Agent{Kind: candidate.kind, Directory: dir})
+	for _, candidate := range candidates {
+		switch candidate.Presence {
+		case discover.Unreadable:
+			return nil, candidate.Err
+		case discover.Present:
+			result = append(result, Agent{Kind: candidate.Agent, Directory: candidate.Directory})
+		case discover.Missing, discover.NotDirectory, discover.Symlink:
 		}
 	}
 	return result, nil
 }
+
+// scaffoldAgents lists the kinds a new manifest can target, in display order.
+func scaffoldAgents() []string { return []string{"claude", "codex"} }

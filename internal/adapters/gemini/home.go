@@ -6,10 +6,11 @@ import (
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 )
 
-// geminiHome composes GEMINI_CLI_HOME's documented parent semantics with
-// AgentHome's rejection of relative overrides. Listed instances name the
-// configuration directory itself and never use this relocation rule.
-func geminiHome(env platform.Env) (string, error) {
+// Home resolves the default Gemini configuration directory. It composes
+// GEMINI_CLI_HOME's documented parent semantics with AgentHome's rejection of
+// relative overrides. Listed instances name the configuration directory itself
+// and never use this relocation rule.
+func Home(env platform.Env) (string, error) {
 	if value, _ := env.LookupEnv(HomeVariable); value != "" {
 		parent, err := env.AgentHome(HomeVariable, DefaultHome)
 		if err != nil {

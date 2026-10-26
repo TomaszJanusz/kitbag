@@ -57,7 +57,7 @@ func New(env platform.Env) (Adapter, error) {
 	if err != nil {
 		return Adapter{}, fmt.Errorf("codex: %w", err)
 	}
-	codexHome, err := env.AgentHome(HomeVariable, DefaultHome)
+	codexHome, err := Home(env)
 	if err != nil {
 		return Adapter{}, fmt.Errorf("codex: %w", err)
 	}

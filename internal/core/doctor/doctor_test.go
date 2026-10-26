@@ -10,7 +10,9 @@ import (
 	"testing"
 
 	"github.com/TomaszJanusz/kitbag/internal/core/apply"
+	"github.com/TomaszJanusz/kitbag/internal/core/discover"
 	"github.com/TomaszJanusz/kitbag/internal/core/state"
+	"github.com/TomaszJanusz/kitbag/internal/platform"
 	"github.com/TomaszJanusz/kitbag/internal/platform/fake"
 	"github.com/TomaszJanusz/kitbag/internal/vcs"
 )
@@ -33,9 +35,26 @@ func subjectWith(t *testing.T, env map[string]string, manifest string) (Service,
 	store, err := state.New(host, host, state.Options{})
 	must(t, err)
 	backend := &diagnosticBackend{cfg: vcs.CommitConfig{Identity: true}}
-	return Service{Host: host, Store: store, Repository: repo, Version: "1.0.0", Open: func(context.Context) (vcs.Backend, vcs.Resolution, error) {
+	return Service{Host: host, Store: store, Repository: repo, Version: "1.0.0", Homes: homes(), Open: func(context.Context) (vcs.Backend, vcs.Resolution, error) {
 		return backend, vcs.Resolution{Selection: vcs.Selection{Kind: vcs.Auto, Source: vcs.SourceDefault}, Active: vcs.System, Version: "git 2.50.0"}, nil
 	}, VersionProbe: func(context.Context, string) (string, error) { return "1.0.0", nil }}, host
+}
+
+// homes mirrors the resolvers cmd/kitbag injects from the adapters.
+func homes() discover.Table {
+	agentHome := func(variable, rel string) func(platform.Env) (string, error) {
+		return func(env platform.Env) (string, error) { return env.AgentHome(variable, rel) }
+	}
+	return discover.Table{
+		{Agent: "claude", Variable: "CLAUDE_CONFIG_DIR", Home: agentHome("CLAUDE_CONFIG_DIR", ".claude")},
+		{Agent: "codex", Variable: "CODEX_HOME", Home: agentHome("CODEX_HOME", ".codex")},
+		{Agent: "gemini", Variable: "GEMINI_CLI_HOME", Home: agentHome("", ".gemini")},
+		{Agent: "opencode", Variable: "XDG_CONFIG_HOME", Home: func(env platform.Env) (string, error) {
+			dirs, err := env.Dirs()
+			return filepath.Join(filepath.Dir(dirs.Config), "opencode"), err
+		}},
+		{Agent: "generic"},
+	}
 }
 
 func must(t *testing.T, err error) {

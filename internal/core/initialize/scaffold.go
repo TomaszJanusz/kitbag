@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/TomaszJanusz/kitbag/internal/platform"
@@ -33,7 +34,7 @@ func (t Template) Manifest() ([]byte, error) {
 	text := []string{"schema = 1\n\n[instructions]\nsource = \"AGENTS.md\"\n"}
 	seen := map[string]bool{}
 	for _, agent := range t.Agents {
-		if (agent != "claude" && agent != "codex") || seen[agent] {
+		if !slices.Contains(scaffoldAgents(), agent) || seen[agent] {
 			return nil, fmt.Errorf("unsupported or duplicate scaffold agent %q: %w", agent, fs.ErrInvalid)
 		}
 		seen[agent] = true

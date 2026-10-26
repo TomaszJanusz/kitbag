@@ -14,7 +14,7 @@ import (
 )
 
 // Adapter uses caller-resolved paths, never the process environment. Construct
-// it with New after resolving CLAUDE_CONFIG_DIR through platform.Env.AgentHome.
+// it with New after resolving the default directory with Home.
 type Adapter struct{ home, directory string }
 
 // Result contains declarations and nonblocking instruction-renderer warnings.

@@ -56,7 +56,7 @@ func New(env platform.Env) (Adapter, error) {
 	if err != nil {
 		return Adapter{}, fmt.Errorf("gemini: %w", err)
 	}
-	geminiHome, err := geminiHome(env)
+	geminiHome, err := Home(env)
 	if err != nil {
 		return Adapter{}, fmt.Errorf("gemini: %w", err)
 	}

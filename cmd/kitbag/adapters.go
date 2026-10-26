@@ -11,9 +11,22 @@ import (
 	"github.com/TomaszJanusz/kitbag/internal/adapters/gemini"
 	"github.com/TomaszJanusz/kitbag/internal/adapters/generic"
 	"github.com/TomaszJanusz/kitbag/internal/adapters/opencode"
+	"github.com/TomaszJanusz/kitbag/internal/core/discover"
 	"github.com/TomaszJanusz/kitbag/internal/target"
 	"github.com/TomaszJanusz/kitbag/pkg/manifest"
 )
+
+// agentHomes is the default-directory table of every agent with an adapter, in
+// presentation order; core receives it so it imports no adapter.
+func agentHomes() discover.Table {
+	return discover.Table{
+		{Agent: claude.Agent, Variable: claude.HomeVariable, Home: claude.Home},
+		{Agent: codex.Agent, Variable: codex.HomeVariable, Home: codex.Home},
+		{Agent: gemini.Agent, Variable: gemini.HomeVariable, Home: gemini.Home},
+		{Agent: opencode.Agent, Variable: opencode.HomeVariable, Home: opencode.Home},
+		{Agent: generic.Agent},
+	}
+}
 
 type adapterFunc func(manifest.FileSystem, string, *manifest.Manifest) ([]target.Target, error)
 
@@ -90,7 +103,7 @@ func (c *commandLine) agentAdapter(agent, home string, warnings *[]string) (targ
 }
 
 func (c *commandLine) claudeAdapter(home string, warnings *[]string) (target.Adapter, error) {
-	dir, err := c.host.AgentHome("CLAUDE_CONFIG_DIR", ".claude")
+	dir, err := claude.Home(c.host)
 	if err != nil {
 		return nil, err
 	}

@@ -56,7 +56,7 @@ func New(env platform.Env) (Adapter, error) {
 	if err != nil {
 		return Adapter{}, fmt.Errorf("opencode: %w", err)
 	}
-	opencodeHome, err := opencodeHome(env)
+	opencodeHome, err := Home(env)
 	if err != nil {
 		return Adapter{}, fmt.Errorf("opencode: %w", err)
 	}
