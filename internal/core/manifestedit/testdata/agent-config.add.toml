@@ -1,0 +1,77 @@
+# kitbag.toml reproducing today's TomaszJanusz/agent-config layout without
+# moving a file. Everything bin/agent-config-sync does is declared here; the
+# script's self-link into ~/.local/bin is the script's own concern and has no
+# counterpart.
+schema = 1
+min_tool_version = "0.1.0"
+
+[instructions]
+# global/AGENTS.md is loaded into every session of every agent.
+source = "global/AGENTS.md"
+# hosts/mac.md and hosts/runner02.md are appended for that host only.
+hosts = "hosts/{host}.md"
+
+[skills]
+# Every child directory with a SKILL.md is one skill; names must be unique
+# across both directories. ~/.agents/skills and <claude dir>/skills receive one
+# link per skill (the adapters' documented default roots).
+dirs = ["skills", ".agents/skills"]
+# The skills CLI lock stays readable and exportable as a bounded subset.
+interchange = "skills-lock.json"
+
+# Import intent for vendored skills with a documented upstream directory
+# (skills/SOURCES.md). Skills without one (caveman*, copywriting,
+# frontend-design, linear-cli, release-manager) are plain local skills.
+[skills.imports.agent-browser]
+source = "vercel-labs/agent-browser"
+path = "skills/agent-browser"
+dir = ".agents/skills"
+
+[skills.imports.gh-stack]
+source = "github/gh-stack"
+path = "skills/gh-stack"
+
+[skills.imports.notion-cli]
+source = "makenotion/skills"
+path = "skills/notion-cli"
+
+[[files]]
+src = "agent-browser/config.json"
+dest = "~/.agent-browser/config.json"
+
+[git]
+# Added as include.path to the global Git configuration if missing.
+include = ["git/agent.gitconfig"]
+
+[targets.claude]
+agent = "claude"
+# Merged into <dir>/settings.json of each instance, never linked.
+settings = "claude/settings.json"
+
+[targets.claude.instances.main]
+dir = "~/.claude"
+
+[targets.claude.instances.second]
+dir = "~/.claude_2"
+
+[targets.claude.instances.third]
+dir = "~/.claude_3"
+settings = false
+
+[targets.codex]
+agent = "codex"
+# Codex gets AGENTS.md (concatenated) and the shared ~/.agents/skills root;
+# Codex settings are not synchronized today.
+
+[targets.codex.instances.main]
+dir = "~/.codex"
+
+[publish]
+mode = "direct"
+
+[hosts.mac]
+publish = { mode = "direct" }
+
+[hosts.runner02]
+# Agents on runner02 propose changes as pull requests.
+publish = { mode = "pr" }
