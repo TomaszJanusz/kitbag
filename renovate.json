@@ -14,11 +14,23 @@
   "platformAutomerge": false,
   "ignoreTests": false,
   "separateMinorPatch": true,
+  "postUpdateOptions": ["gomodTidy"],
   "packageRules": [
     {
       "matchManagers": ["github-actions"],
       "matchDepNames": ["jdx/mise"],
       "pinDigests": false
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchDepNames": ["slsa-framework/slsa-github-generator"],
+      "pinDigests": false
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchDepNames": ["slsa-framework/slsa-github-generator"],
+      "matchUpdateTypes": ["pin", "pinDigest", "digest"],
+      "enabled": false
     },
     {
       "matchManagers": ["gomod"],
