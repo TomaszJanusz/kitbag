@@ -14,7 +14,7 @@ func TestServiceHealth(t *testing.T) {
 	t.Parallel()
 	s, host := subject(t)
 	check := find(t, s.Run(t.Context()), "service")
-	if check.Status != OK {
+	if check.Status != Warn {
 		t.Fatal(check)
 	}
 	supervisor := service.Service{Host: host}
@@ -42,6 +42,17 @@ func TestServiceHealth(t *testing.T) {
 	must(t, err)
 	must(t, host.WriteAtomic(filepath.Join(layout.Directory, platform.ServiceLabel+".service"), []byte("stale"), 0o644))
 	if check = find(t, s.Run(t.Context()), "service"); check.Status != Warn {
+		t.Fatal(check)
+	}
+}
+
+// KitBag is the CLI, the TUI and the background service: a machine without
+// the service warns and names the fix.
+func TestMissingServiceWarns(t *testing.T) {
+	t.Parallel()
+	s, _ := subject(t)
+	check := find(t, s.Run(t.Context()), "service")
+	if check.Status != Warn || check.Fix != "run kitbag service install" || !strings.Contains(check.Message, "not installed") {
 		t.Fatal(check)
 	}
 }

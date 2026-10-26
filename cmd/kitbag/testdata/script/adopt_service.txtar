@@ -1,0 +1,106 @@
+# adopt offers the background service after adoption. The service definition
+# and its saved inputs are KitBag's own files: managed destinations are still
+# neither rewritten nor retargeted. Stand-in supervisors as in init_service.
+[!linux] [!darwin] skip 'user services exist on Linux and macOS'
+env KITBAG_CONFIG=$WORK/machine.toml
+env KITBAG_HOST=fixture
+env XDG_CONFIG_HOME=$HOME/.config
+env XDG_STATE_HOME=$HOME/.local/state
+env XDG_DATA_HOME=$HOME/.local/share
+env USER=testing
+env PATH=$WORK/bin:$PATH
+exec chmod +x bin/systemctl bin/loginctl bin/launchctl
+gitremote $WORK/config.git seed
+exec git clone --quiet $WORK/config.git $HOME/checkout
+symlink $HOME/linked -> $HOME/checkout/linked
+cp $HOME/checkout/output $HOME/output
+
+# Flags never combine with a dry run, which offers nothing.
+! exec kitbag adopt --dry-run --service
+stderr 'cannot be combined with --dry-run'
+exec kitbag adopt --dry-run
+! stdout 'Background service|Service (installed|already)'
+
+# JSON keeps stdout for the report; the hint goes to stderr.
+treesnap $HOME $WORK/before.snap .local/state checkout
+exec kitbag adopt --json --no-service
+adoptschema stdout
+! stdout 'Background service|Service (installed|already)'
+stderr 'Background service not installed \(--no-service\)'
+! exists $HOME/commands
+# Forget that adoption again (no file changes) so --service adopts afresh.
+exec kitbag revert
+
+# --service adopts, then installs the daemon; no managed file changes.
+exec kitbag adopt --service
+stdout '^adopt .*/output \[copy\]$'
+stdout '^adopt .*/linked \[link\]$'
+stdout 'Service installed/updated \(daemon mode\):'
+stdout '^  .*/\.local/state/kitbag/service\.json$'
+[linux] stdout '^  .*/\.config/systemd/user/dev\.kitbag\.agent\.service$'
+[linux] grep 'systemctl --user start dev.kitbag.agent.service' $HOME/commands
+[darwin] stdout '^  .*/Library/LaunchAgents/dev\.kitbag\.agent\.plist$'
+[darwin] grep 'launchctl bootstrap gui/[0-9]+ ' $HOME/commands
+treesnap $HOME $WORK/after.snap .local/state checkout .config Library commands .active .enabled .loaded
+cmp $WORK/before.snap $WORK/after.snap
+linktarget $HOME/linked $HOME/checkout/linked
+
+# Once installed, a repeat adoption neither asks nor hints.
+exec kitbag adopt
+! stdout .
+
+-- seed/kitbag.toml --
+schema=1
+[[files]]
+src='output'
+dest='~/output'
+mode='copy'
+[[files]]
+src='linked'
+dest='~/linked'
+-- seed/output --
+hello
+-- seed/linked --
+linked
+-- machine.toml --
+schema = 1
+[repo]
+url = "local-config"
+path = "~/checkout"
+[migration]
+legacy_roots = ["~/checkout"]
+-- bin/loginctl --
+#!/bin/sh
+printf 'Linger=no\n'
+-- bin/systemctl --
+#!/bin/sh
+printf 'systemctl %s\n' "$*" >> "$HOME/commands"
+case "$2" in
+show)
+  if [ ! -f "$HOME/.config/systemd/user/$3" ]; then printf 'LoadState=not-found\n'; exit 1; fi
+  printf 'LoadState=loaded\n'
+  if [ -f "$HOME/.active" ]; then printf 'ActiveState=active\n'; else printf 'ActiveState=inactive\n'; fi
+  if [ -f "$HOME/.enabled" ]; then printf 'UnitFileState=enabled\n'; else printf 'UnitFileState=disabled\n'; fi
+  printf 'ExecMainStartTimestamp=Sun 2026-10-25 12:00:00 UTC\nExecMainStatus=0\n';;
+enable) touch "$HOME/.enabled";;
+disable) rm -f "$HOME/.enabled";;
+start) touch "$HOME/.active";;
+stop) rm -f "$HOME/.active";;
+esac
+-- bin/launchctl --
+#!/bin/sh
+printf 'launchctl %s\n' "$*" >> "$HOME/commands"
+case "$1" in
+print)
+  if [ ! -f "$HOME/.loaded" ]; then exit 113; fi
+  if [ -f "$HOME/.never" ]; then printf 'state = running\n\tlast exit code = (never exited)\n'; exit 0; fi
+  printf 'state = running\n\tlast exit code = 0\n';;
+print-disabled)
+  if [ -f "$HOME/.disabled" ]; then printf '\t"dev.kitbag.agent" => true\n'; fi;;
+enable) rm -f "$HOME/.disabled";;
+disable) touch "$HOME/.disabled";;
+bootstrap) touch "$HOME/.loaded";;
+kickstart) ;;
+bootout) rm -f "$HOME/.loaded";;
+*) exit 64;;
+esac

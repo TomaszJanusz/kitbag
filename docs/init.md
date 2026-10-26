@@ -1,10 +1,12 @@
 # First-run setup
 
-`kitbag init <git-url>` prepares a machine without applying agent files. It
-clones through the selected Git backend into `<data>/repos/<name>`, detects
+`kitbag init <git-url>` prepares a machine without applying agent files itself.
+It clones through the selected Git backend into `<data>/repos/<name>`, detects
 existing supported agent directories, builds the ordinary dry plan, asks for
 confirmation, and atomically creates `<config>/config.toml` with mode 0600.
-Run the printed `kitbag --config '<file>' sync` command to apply the plan.
+It then offers the [background service](#service-installation), whose first
+sync applies the plan; without it, run the printed
+`kitbag --config '<file>' sync` command.
 `--config` and `KITBAG_CONFIG` select another configuration file.
 
 ```sh
@@ -29,6 +31,7 @@ Keyboard model tests drive the actual huh forms without starting a TTY.
 | Commit name, only when Git lacks an identity | `--identity-name` | Headless consumers may leave unset |
 | Commit email, only when Git lacks an identity | `--identity-email` | Headless consumers may leave unset |
 | Confirm writing machine configuration | `--yes` | Decline |
+| Install the background service | `--service` or `--no-service` | Wizard: yes; `--yes` alone: not installed, hint printed |
 | Scaffold agents | `--agents=claude,codex` | Detected kinds, else Claude Code |
 | Scaffold named instances | repeat `--instance=claude.main=~/.claude` | Adapter defaults |
 | Confirm creating scaffold files and Git metadata | `--yes` | Decline |
@@ -118,7 +121,26 @@ scripts also check the generated files with the ordinary plan command.
 
 ## Service installation
 
-Init prints the manual sync command and `kitbag --config <path> service install`
-for optional background synchronization. Run that command after reviewing the
-dry plan; init itself does not start a background process. See
-[service management](service.md) for daemon/timer modes and headless Linux setup.
+After writing the machine configuration, init offers the background service
+(KitBag is the CLI, the terminal UI and that service):
+
+- The wizard asks, with **yes** as the default answer.
+- `--service` installs it without asking; `--no-service` skips it.
+- `--yes` without either flag never installs silently: it prints how to install
+  it with `--service` or later with `kitbag --config <path> service install`.
+
+Installation is exactly `kitbag service install` without flags: daemon mode,
+enabled and started, through the same code. Init prints every file it wrote (the
+systemd unit or LaunchAgent and the saved inputs `<state>/service.json`) and, on
+Linux, the linger hint. **The daemon's first sync applies the dry plan shown
+above right away.** Answer no (or pass `--no-service`) to run `kitbag sync`
+yourself first, or when migrating from agent-config-sync, which must adopt
+before anything syncs ([migration guide](guide-migrate-agent-config-sync.md)).
+
+A failed installation leaves the written configuration in place, exits 1 and
+names the command to retry. Nothing is offered when setup is cancelled, for
+`--scaffold` (which rejects both flags) or when a service is already installed.
+Repeating init on a configured machine changes nothing, except that `--service`
+installs or updates the service, so provisioning scripts converge. See
+[service management](service.md) for timer mode and headless Linux setup.
+`init_service.txtar` covers the flags with stand-in `systemctl`/`launchctl`.

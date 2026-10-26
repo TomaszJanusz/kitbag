@@ -48,18 +48,21 @@ checked in CI against snapshot builds, not against a published release.
    kitbag init https://example.com/you/agent-config.git
    ```
 
-   `init` shows a dry plan and asks before writing machine configuration; it
-   applies nothing yet. Add `--yes` to skip the questions.
-3. **Sync.** Apply the plan:
+   `init` shows a dry plan and asks before writing machine configuration. It
+   then offers the background service (default yes): a per-user daemon whose
+   first sync applies that plan and which keeps the machine in sync from then on
+   ([background synchronization](docs/service.md)). Add `--yes` to skip the
+   questions, with `--service` to install the service or `--no-service` to skip
+   it; `--yes` alone installs nothing and prints how to install it later.
+3. **Sync.** Without the service, apply the plan yourself:
 
    ```sh
    kitbag sync
    ```
 
-   Run it again: a second run prints nothing when everything is in sync. Optionally
-   keep the machine in sync in the background with `kitbag service install` (see
-   [background synchronization](docs/service.md)), and diagnose problems with
-   `kitbag doctor`.
+   Run it again: a second run prints nothing when everything is in sync. Install
+   the service any time with `kitbag service install`, and diagnose problems with
+   `kitbag doctor`, which warns while the service is not installed.
 
    For an interactive view, run `kitbag tui`: Status, Drift, Settings and
    Activity tabs (press `?` for keys). It uses the daemon when one runs and reads

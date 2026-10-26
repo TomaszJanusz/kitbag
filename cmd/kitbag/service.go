@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -39,14 +42,11 @@ func (c *commandLine) serviceInstallCommand() *cobra.Command {
 		if err != nil {
 			return classified(err)
 		}
-		message := "Service already installed and up to date."
-		if changed {
-			message = "Service installed/updated."
-		}
-		if _, err = fmt.Fprintln(c.stdout, message); err != nil {
+		paths, err := supervisor.Paths(options)
+		if err != nil {
 			return classified(err)
 		}
-		return classified(c.printLinger(cmd))
+		return classified(c.printInstallation(cmd.Context(), c.stdout, service.Installation{Mode: options.Mode, Paths: paths, Changed: changed}))
 	}}
 	cmd.Flags().StringVar(&mode, "mode", "daemon", "Service mode: daemon or timer")
 	cmd.Flags().DurationVar(&interval, "interval", service.DefaultInterval, "Timer cadence (1m to 24h)")
@@ -56,12 +56,30 @@ func (c *commandLine) serviceInstallCommand() *cobra.Command {
 	return cmd
 }
 
-func (c *commandLine) printLinger(cmd *cobra.Command) error {
+// printInstallation names every file an installation wrote (or found up to
+// date), then the systemd linger hint.
+func (c *commandLine) printInstallation(ctx context.Context, out io.Writer, installation service.Installation) error {
+	message := "Service already installed and up to date"
+	if installation.Changed {
+		message = "Service installed/updated"
+	}
+	lines := make([]string, 0, len(installation.Paths)+1)
+	lines = append(lines, message+" ("+installation.Mode+" mode):")
+	for _, path := range installation.Paths {
+		lines = append(lines, "  "+path)
+	}
+	if _, err := fmt.Fprintln(out, strings.Join(lines, "\n")); err != nil {
+		return err
+	}
+	return c.printLinger(ctx)
+}
+
+func (c *commandLine) printLinger(ctx context.Context) error {
 	layout, err := c.host.ServiceLayout()
 	if err != nil || layout.Manager != "systemd" {
 		return err
 	}
-	enabled, err := c.host.ServiceLinger(cmd.Context())
+	enabled, err := c.host.ServiceLinger(ctx)
 	if err != nil {
 		_, writeErr := fmt.Fprintf(c.stderr, "Could not check linger: %v. For headless operation, check loginctl show-user %s -p Linger.\n", err, layout.User)
 		return writeErr

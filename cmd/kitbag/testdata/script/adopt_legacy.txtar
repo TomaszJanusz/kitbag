@@ -45,6 +45,9 @@ stdout '^adopt .*/\.claude/settings\.json \[merged\] \(agent-config-sync marker'
 stdout '^adopt .*/\.codex/AGENTS\.md \[generated\]'
 stdout '^adopt .*/\.agent-browser/config\.json \[link\]$'
 ! stdout 'next sync'
+# Noninteractive adoption only explains how to install the service.
+stdout '^Background service not installed: .*Pass --service'
+! exists $HOME/.config/systemd/user/dev.kitbag.agent.service
 
 # Zero file changes: no entry created, removed, rewritten or retargeted.
 treesnap $HOME $WORK/after.snap .local/state checkout
@@ -63,9 +66,11 @@ treesnap $HOME $WORK/synced.snap .local/state checkout
 cmp $WORK/before.snap $WORK/synced.snap
 grep 'Managed by agent-config-sync' $HOME/.claude/CLAUDE.md
 
-# Re-running adoption is a no-op; status shows everything in sync.
+# Re-running adoption is a no-op (its only output is the service hint);
+# status shows everything in sync.
 exec kitbag adopt
-! stdout .
+stdout -count=1 '^.+$'
+stdout '^Background service not installed'
 exec kitbag status --json
 stdout '"in sync": 8'
 

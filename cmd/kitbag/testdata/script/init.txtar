@@ -16,7 +16,10 @@ stdout 'Detected codex:'
 stdout 'materialize .*init-output'
 stdout 'Wrote .*config.toml'
 stdout 'Run manually: kitbag --config .* sync'
-stdout 'Background sync: kitbag --config .* service install'
+# Without --service or --no-service, --yes never installs the service silently.
+stdout 'Background service not installed: .*Pass --service to install it, or run later: kitbag --config .* service install'
+! exists $HOME/.config/systemd/user/dev.kitbag.agent.service
+! exists $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
 ! exists $HOME/init-output
 exists $HOME/.local/share/kitbag/repos/config/.git
 configschema $HOME/.config/kitbag/config.toml

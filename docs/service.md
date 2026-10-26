@@ -1,6 +1,9 @@
 # Background synchronization
 
-After `kitbag init`, install a per-user background service without root:
+KitBag is the CLI, the terminal UI and this per-user background service, which
+needs no root. `kitbag init` and `kitbag adopt` offer to install it (the wizard's
+default answer is yes; `--service` and `--no-service` decide without asking, see
+[init.md](init.md#service-installation)). Install or inspect it at any time:
 
 ```sh
 kitbag service install
@@ -111,8 +114,9 @@ For timers, active means scheduling is active, and run/exit information comes
 from the oneshot service. Launchd does not expose a reliable wall-clock run
 stamp through `print`; use `last_sync` for its synchronization timestamp.
 JSON is versioned with `service_schema: 1`. Sync inspection failure is reported
-separately and does not hide supervisor health. Doctor's `service` check is OK
-when this optional feature is absent, and WARN when installed but inactive,
+separately and does not hide supervisor health. Doctor's `service` check
+WARNs when the service is not installed (this machine then syncs only on
+`kitbag sync`), and when installed but inactive,
 disabled, unloaded, stale, its executable is missing, or the last supervisor
 exit code is nonzero other than the daemon's restart status 75. Neither status nor doctor changes supervisor state.
 

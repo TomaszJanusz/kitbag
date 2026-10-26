@@ -21,6 +21,7 @@ type initFlags struct {
 	repo, branch, name, email, backend, mode string
 	repoPath                                 string
 	agents, instances                        []string
+	service                                  serviceFlags
 	yes, scaffold                            bool
 }
 
@@ -28,7 +29,7 @@ func (c *commandLine) initCommand() *cobra.Command {
 	var flags initFlags
 	cmd := &cobra.Command{
 		Use: "init [git-url]", Short: "Set up a configuration clone or scaffold a new repository",
-		Long: "Clone a configuration repository, detect existing supported agent directories, show a dry plan and save machine configuration after confirmation. Existing configuration is never replaced. Use --yes for headless setup, or --scaffold <dir> for a new repository matching the minimal manifest example.",
+		Long: "Clone a configuration repository, detect existing supported agent directories, show a dry plan and save machine configuration after confirmation. Existing configuration is never replaced. Then offer the background service: the wizard asks (default yes), --service installs it, --no-service skips it, and --yes alone prints how to install it later. Use --yes for headless setup, or --scaffold <dir> for a new repository matching the minimal manifest example.",
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error { return classified(c.runInit(cmd, args, &flags)) },
 	}
@@ -41,12 +42,13 @@ func (c *commandLine) initCommand() *cobra.Command {
 	cmd.Flags().StringVar(&flags.email, "identity-email", "", "Fallback unsigned embedded commit author email")
 	cmd.Flags().StringSliceVar(&flags.agents, "agents", nil, "Scaffold agent kinds: claude,codex (default: detected, else claude)")
 	cmd.Flags().StringArrayVar(&flags.instances, "instance", nil, "Scaffold instance: agent.name=~/directory (repeatable)")
+	flags.service.register(cmd)
 	return cmd
 }
 
 func (c *commandLine) runInit(cmd *cobra.Command, args []string, flags *initFlags) error {
 	if flags.scaffold {
-		return c.initScaffold(cmd, args, flags)
+		return c.initScaffoldOnly(cmd, args, flags)
 	}
 	if len(flags.agents) != 0 || len(flags.instances) != 0 {
 		return fmt.Errorf("--agents and --instance require --scaffold: %w", fs.ErrInvalid)
@@ -64,7 +66,7 @@ func (c *commandLine) runInit(cmd *cobra.Command, args []string, flags *initFlag
 		return err
 	}
 	if exists {
-		return c.initMessage("Already set up: %s exists; configuration and working copies were left unchanged.\n", filename)
+		return c.initExisting(cmd.Context(), filename, flags.service)
 	}
 	if err = c.initInputs(args, flags); err != nil {
 		return err
@@ -73,6 +75,22 @@ func (c *commandLine) runInit(cmd *cobra.Command, args []string, flags *initFlag
 		return err
 	}
 	return c.initClone(cmd.Context(), filename, flags)
+}
+
+func (c *commandLine) initScaffoldOnly(cmd *cobra.Command, args []string, flags *initFlags) error {
+	if flags.service.chosen() {
+		return fmt.Errorf("--service and --no-service need a configuration repository; --scaffold writes no machine configuration: %w", fs.ErrInvalid)
+	}
+	return c.initScaffold(cmd, args, flags)
+}
+
+// initExisting leaves a configured machine alone; only --service installs or
+// updates the service, so repeated provisioning converges.
+func (c *commandLine) initExisting(ctx context.Context, filename string, offer serviceFlags) error {
+	if err := c.initMessage("Already set up: %s exists; configuration and working copies were left unchanged.\n", filename); err != nil || !offer.install {
+		return err
+	}
+	return c.offerService(ctx, c.stdout, filename, offer, false)
 }
 
 func initRepo(args []string, flags *initFlags) error {
@@ -141,36 +159,41 @@ func (c *commandLine) initClone(ctx context.Context, filename string, flags *ini
 		return err
 	}
 	service.Config = flags.configuration(c.flags.host)
-	return c.initSave(ctx, service, repo, flags.yes)
-}
-
-func (c *commandLine) initSave(ctx context.Context, service initialize.Service, repo string, yes bool) error {
-	inspection, err := service.Inspect(repo)
-	if err != nil {
+	saved, err := c.initSave(ctx, service, repo, flags.yes)
+	if err != nil || !saved {
 		return err
 	}
+	return c.offerService(ctx, c.stdout, filename, flags.service, !flags.yes)
+}
+
+// initSave reports whether this run wrote the machine configuration.
+func (c *commandLine) initSave(ctx context.Context, service initialize.Service, repo string, yes bool) (bool, error) {
+	inspection, err := service.Inspect(repo)
+	if err != nil {
+		return false, err
+	}
 	if err = c.printPlan(inspection, false); err != nil {
-		return err
+		return false, err
 	}
 	confirmed, err := c.initConfirm(ctx, yes, "Write machine configuration? Agent files change only when you run sync.")
 	if err != nil {
-		return err
+		return false, err
 	}
 	if !confirmed {
-		return c.initMessage("Cancelled; clone retained for a later init. No machine configuration was written.\n")
+		return false, c.initMessage("Cancelled; clone retained for a later init. No machine configuration was written.\n")
 	}
 	return c.saveInitial(service)
 }
 
-func (c *commandLine) saveInitial(service initialize.Service) error {
+func (c *commandLine) saveInitial(service initialize.Service) (bool, error) {
 	if err := service.Save(); err != nil {
 		exists, checkErr := initialize.Exists(c.host, service.Filename)
 		if errors.Is(err, fs.ErrExist) && exists {
-			return c.initMessage("Already set up: %s exists; it was not replaced.\n", service.Filename)
+			return false, c.initMessage("Already set up: %s exists; it was not replaced.\n", service.Filename)
 		}
-		return errors.Join(err, checkErr)
+		return false, errors.Join(err, checkErr)
 	}
-	return c.initMessage("Wrote %s\nRun manually: kitbag --config %s sync\nBackground sync: kitbag --config %s service install\n", service.Filename, shellQuote(service.Filename), shellQuote(service.Filename))
+	return true, c.initMessage("Wrote %s\nRun manually: kitbag --config %s sync\n", service.Filename, shellQuote(service.Filename))
 }
 
 func (f initFlags) configuration(host string) config.Config {
