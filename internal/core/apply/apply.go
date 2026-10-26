@@ -45,6 +45,8 @@ func validateOptions(p plan.Plan, options Options) error {
 func executeOperations(fsys platform.FS, session *state.Session, db *state.Database, p plan.Plan, options Options) (Result, error) {
 	result := Result{}
 	blocked := map[string]bool{}
+	// Modes of regular files that a backup moved aside, kept by their output.
+	modes := map[string]fs.FileMode{}
 	group := ""
 	for _, op := range p.Operations {
 		if op.Kind == plan.Skip {
@@ -54,7 +56,12 @@ func executeOperations(fsys platform.FS, session *state.Session, db *state.Datab
 		if blocked[op.Path] {
 			continue
 		}
-		err := executeStep(fsys, session, db, op, options, &group)
+		if op.Kind == plan.Backup {
+			if info, err := fsys.Lstat(op.Path); err == nil && info.Mode().IsRegular() {
+				modes[op.Path] = info.Mode().Perm()
+			}
+		}
+		err := executeStep(fsys, session, db, op, options, &group, modes[op.Path])
 		if errors.Is(err, errChanged()) && db.Pending == nil {
 			result.Conflicts = append(result.Conflicts, Diagnostic{op.Path, err.Error()})
 			blocked[op.Path] = true
@@ -99,8 +106,9 @@ func check(fsys platform.FS, path string, expected state.Entry) error {
 }
 
 // executeStep runs one operation. All journal entries of one Execute share the
-// first step's ID as their plan group, which revert undoes as a unit.
-func executeStep(fsys platform.FS, session *state.Session, db *state.Database, op plan.Operation, options Options, group *string) error {
+// first step's ID as their plan group, which revert undoes as a unit. A nonzero
+// kept mode is that of a regular file an earlier backup step moved aside.
+func executeStep(fsys platform.FS, session *state.Session, db *state.Database, op plan.Operation, options Options, group *string, kept fs.FileMode) error {
 	if err := checkOperation(fsys, op); err != nil {
 		return err
 	}
@@ -119,7 +127,7 @@ func executeStep(fsys platform.FS, session *state.Session, db *state.Database, o
 	if err = session.Save(*db); err != nil {
 		return err
 	}
-	if err = mutate(fsys, *step, op); err != nil {
+	if err = mutate(fsys, *step, op, kept); err != nil {
 		if errors.Is(err, errChanged()) {
 			return cancelUnstarted(fsys, session, db, err)
 		}

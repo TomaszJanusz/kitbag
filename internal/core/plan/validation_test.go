@@ -65,6 +65,12 @@ func TestDestinationParentAndCaseObstacles(t *testing.T) {
 			got := build(t, h, request(d))
 			assertKinds(t, got, plan.Skip)
 			assertClass(t, got, plan.UnmanagedObstacle)
+			if scenario == "link parent" {
+				want := "symbolic link in destination parents: " + path("home", "parent") + " -> " + path("outside")
+				if got.Operations[0].Warning != want {
+					t.Fatalf("warning = %q; want %q", got.Operations[0].Warning, want)
+				}
+			}
 		})
 	}
 }

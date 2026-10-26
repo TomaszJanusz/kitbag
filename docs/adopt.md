@@ -92,7 +92,9 @@ the clone path and markers, it equals KitBag's output). Neither keeps a backup:
 a link is journaled by its text, and the rendering is reproducible. A file with
 any other difference is backed up once, as before, and a live link outside the
 legacy roots stays a conflict. After this one sync, a repeat sync is silent
-(`adopt_relocated.txtar`).
+(`adopt_relocated.txtar`). Rewritten instruction and settings files keep the
+mode of the file they replace (the script's renderings are often 0644); only
+files that did not exist are created 0600 ([instructions.md](instructions.md#file-mode)).
 
 **Marker policy.** The legacy markers are accepted, not migrated. A declared
 generated target carries `Target.Legacy` (the script's rendering) and a

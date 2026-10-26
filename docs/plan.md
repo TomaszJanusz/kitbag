@@ -60,7 +60,10 @@ For a recorded link, its resolved lexical target must equal the recorded
 An unchanged link identity establishes ownership even when dangling. Foreign or
 retargeted links are never followed for destination hashing or backed up.
 Destination parent links/non-directories and existing case-only aliases produce
-skips; the planner does not traverse them to write through another name.
+skips; the planner does not traverse them to write through another name. The
+warning for a linked parent names that directory and its target, for example
+`symbolic link in destination parents: /tmp -> private/tmp` when HOME lies under
+`/tmp` on macOS; use the resolved path (`/private/tmp/...`) as HOME instead.
 
 ## Three-way decision table
 

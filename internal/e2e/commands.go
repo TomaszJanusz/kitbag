@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 //	gitremote bare [seed-dir]  create a bare repository on main, seeded with seed-dir
 //	linktarget path [target]   assert path is a symlink (to exactly target)
 //	content file text          assert file holds exactly text and a newline
+//	filemode file perm         assert file's permission bits are octal perm
 //	nooutput                   assert the last command wrote no stdout or stderr
 //	hidecmd program...         drop PATH entries holding an executable program
 //	homefixture dir            install $WORK/dir into $HOME (see cmdHomeFixture)
@@ -32,6 +34,7 @@ func Commands() map[string]func(ts *testscript.TestScript, neg bool, args []stri
 		"gitremote":   cmdGitRemote,
 		"linktarget":  cmdLinkTarget,
 		"content":     cmdContent,
+		"filemode":    cmdFileMode,
 		"nooutput":    cmdNoOutput,
 		"hidecmd":     cmdHideCmd,
 		"homefixture": cmdHomeFixture,
@@ -253,6 +256,28 @@ func cmdContent(ts *testscript.TestScript, neg bool, args []string) {
 		ts.Fatalf("%s unexpectedly holds %q", args[0], got)
 	case !neg && got != want:
 		ts.Fatalf("%s holds %q, want %q", args[0], got, want)
+	}
+}
+
+// cmdFileMode compares permission bits without following a final link. Windows
+// does not have Unix modes; scripts using it skip Windows.
+func cmdFileMode(ts *testscript.TestScript, neg bool, args []string) {
+	const fileAndPerm = 2
+	if len(args) != fileAndPerm {
+		ts.Fatalf("usage: filemode file perm")
+	}
+	want, err := strconv.ParseUint(args[1], 8, 32)
+	if err != nil || want&^uint64(fs.ModePerm) != 0 {
+		ts.Fatalf("filemode: %q is not an octal permission", args[1])
+	}
+	info, err := os.Lstat(ts.MkAbs(args[0]))
+	ts.Check(err)
+	got := info.Mode().Perm()
+	switch {
+	case neg && uint64(got) == want:
+		ts.Fatalf("%s unexpectedly has mode %#o", args[0], got)
+	case !neg && uint64(got) != want:
+		ts.Fatalf("%s has mode %#o, want %#o", args[0], got, want)
 	}
 }
 

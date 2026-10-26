@@ -21,6 +21,11 @@ linktarget $HOME/.codex/AGENTS.md
 content $HOME/.codex/AGENTS.md 'Shared rules.'
 ! content $HOME/.codex/AGENTS.md 'Other rules.'
 
+# filemode checks permission bits; Windows has no Unix modes.
+[!windows] chmod 0640 $HOME/.claude/settings.json
+[!windows] filemode $HOME/.claude/settings.json 0640
+[!windows] ! filemode $HOME/.claude/settings.json 0600
+
 # nooutput checks that the last command wrote nothing to stdout or stderr.
 exec probe
 nooutput

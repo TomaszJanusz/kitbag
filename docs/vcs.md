@@ -252,8 +252,8 @@ compares both backends' exact preview bytes on the same repository.
 ## Global Git includes
 
 `vcs.GlobalConfig` is an optional system-backend capability for reading and
-extending global `include.path` values. `vcs.EnsureIncludes` compares normalized
-paths before checking write safety. [generic.md](generic.md) explains its
+extending global `include.path` values. `vcs.EnsureIncludes` compares normalized,
+link-resolved paths before checking write safety. [generic.md](generic.md) explains its
 separate lifecycle and dotfile protections. Global commands alone honour an
 absolute `GIT_CONFIG_GLOBAL`; repository commands still discard it and every
 other unlisted `GIT_*` variable. The same Runner supplies the explicit clean

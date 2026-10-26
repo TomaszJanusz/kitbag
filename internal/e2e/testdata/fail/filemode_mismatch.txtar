@@ -1,0 +1,5 @@
+[windows] skip 'Windows has no Unix modes'
+chmod 0640 file
+filemode file 0644
+-- file --
+hello

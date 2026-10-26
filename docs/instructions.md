@@ -81,6 +81,14 @@ package does not back up anything itself. Unlike the script, an empty
 unmanaged file is also backed up, and an existing destination link is never
 replaced or followed.
 
+## File mode
+
+Rendered instruction files (and merged settings) are created with mode 0600,
+private by default. When sync rewrites an existing regular file, for example
+the script's 0644 `CLAUDE.md` or a hand-edited file it backed up first, the new
+file keeps that file's permission bits, so a migration changes no mode
+([apply.md](apply.md#preconditions-and-backups)).
+
 ## Golden files
 
 Golden files live in `internal/adapters/instructions/testdata/golden`. After

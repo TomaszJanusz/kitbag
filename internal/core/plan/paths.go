@@ -47,13 +47,23 @@ func inspectParents(fsys platform.FS, path string, removed map[string]bool) (boo
 		return false, "", err
 	}
 	if info.Mode()&fs.ModeSymlink != 0 {
-		return false, "symbolic link in destination parents", nil
+		return false, linkParent(fsys, path), nil
 	}
 	if !info.IsDir() {
 		return false, "non-directory in destination parents", nil
 	}
 	warning, err := caseAlias(fsys, path, removed)
 	return false, warning, err
+}
+
+// linkParent names the linked parent and its target, for example macOS /tmp
+// -> private/tmp under a temporary HOME, so that the user can use the real path.
+func linkParent(fsys platform.FS, path string) string {
+	target, err := fsys.ReadLink(path)
+	if err != nil {
+		return "symbolic link in destination parents: " + path
+	}
+	return fmt.Sprintf("symbolic link in destination parents: %s -> %s", path, target)
 }
 
 func caseAlias(fsys platform.FS, path string, removed map[string]bool) (string, error) {
@@ -79,7 +89,7 @@ func sourceParents(fsys platform.FS, path string) error {
 		return err
 	}
 	if warning != "" {
-		return invalid("source: " + warning)
+		return invalid("source: " + strings.Replace(warning, "destination parents", "source parents", 1))
 	}
 	return nil
 }

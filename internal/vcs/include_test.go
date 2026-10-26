@@ -53,6 +53,58 @@ func TestEnsureIncludesNormalizesAndRepeats(t *testing.T) {
 	}
 }
 
+func TestEnsureIncludesResolvesLinks(t *testing.T) {
+	t.Parallel()
+	home := includePath("home", "user")
+	data := includePath("data", "agent-config")
+	include := filepath.Join(home, "src", "agent-config", "git", "agent.gitconfig")
+	h := fake.New()
+	for _, dir := range []string{filepath.Join(data, "git"), filepath.Join(home, "src"), includePath("links")} {
+		if err := h.MkdirAll(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for name, target := range map[string]string{
+		// ~/src/agent-config -> /data/agent-config through a relative link.
+		filepath.Join(home, "src", "agent-config"): filepath.Join("..", "..", "..", "data", "agent-config"),
+		// /links/clone -> /links/hop -> /data/agent-config: a chain.
+		includePath("links", "clone"): "hop",
+		includePath("links", "hop"):   data,
+		// A loop never resolves and never equals anything else.
+		includePath("links", "loop"): "loop",
+	} {
+		if err := h.Link(target, name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for name, tc := range map[string]struct {
+		existing string
+		added    bool
+	}{
+		"resolved spelling":      {existing: filepath.Join(data, "git", "agent.gitconfig")},
+		"tilde spelling":         {existing: "~/src/agent-config/git/agent.gitconfig"},
+		"link chain":             {existing: includePath("links", "clone", "git", "agent.gitconfig")},
+		"link loop":              {existing: includePath("links", "loop", "git", "agent.gitconfig"), added: true},
+		"other file":             {existing: filepath.Join(data, "git", "other.gitconfig"), added: true},
+		"relative include value": {existing: "git/agent.gitconfig", added: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			cfg := &globalConfig{files: []string{filepath.Join(home, ".gitconfig")}, values: []string{tc.existing}}
+			result, err := vcs.EnsureIncludes(t.Context(), cfg, h, home, []string{include})
+			if err != nil || len(result.Warnings) != 0 {
+				t.Fatalf("result = %+v, err = %v", result, err)
+			}
+			if added := slices.Equal(cfg.added, []string{include}); added != tc.added {
+				t.Fatalf("added = %v; want added %t", cfg.added, tc.added)
+			}
+			if cfg.values[0] != tc.existing {
+				t.Fatalf("existing include changed: %v", cfg.values)
+			}
+		})
+	}
+}
+
 func TestEnsureIncludesManagedConfig(t *testing.T) {
 	t.Parallel()
 	for _, kind := range []string{"symlink", "read-only", "directory"} {

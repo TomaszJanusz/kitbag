@@ -87,8 +87,10 @@ replacing agent-config-sync's rendering (`Operation.Replaces`) discards it too,
 journaled as previously owned output that the repository reproduces; revert of
 that step therefore reports it as discarded instead of restoring the old marker. A forced revert moves a changed destination to a backup. No backup is automatically pruned when history
 rotates. Existing permissions are retained by rename. New directories and files
-use 0700/0600; copies also retain source executable bits. Generated content is
-always a regular private file. Directory copies are staged as complete trees;
+use 0700/0600; copies also retain source executable bits. Generated and merged
+content is always a regular file: it keeps the permission bits of the regular
+file it replaces (also when that file was just backed up), and is private (0600)
+when it is new or replaces a link. Directory copies are staged as complete trees;
 source links/special files and changing source content are refused.
 
 ## Interruption and durability

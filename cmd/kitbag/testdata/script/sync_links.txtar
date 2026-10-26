@@ -1,0 +1,63 @@
+# KIT-79: symbolic links on the way to destinations and Git includes.
+[windows] stop 'Windows refuses commands before 1.x'
+env KITBAG_CONFIG=$WORK/machine.toml
+env KITBAG_HOST=test
+env CODEX_HOME=
+env CLAUDE_CONFIG_DIR=
+gitremote $WORK/config.git seed
+exec git clone --quiet $WORK/config.git $HOME/checkout
+
+# A linked destination parent is named with its target instead of only being
+# called "a symbolic link in destination parents".
+mkdir $WORK/elsewhere
+symlink $HOME/linked -> $WORK/elsewhere
+exec kitbag plan
+stdout 'symbolic link in destination parents: '${HOME@R}'/linked -> '${WORK@R}'/elsewhere'
+rm $HOME/linked
+mkdir $HOME/linked
+
+# agent-config-sync included the same file through another spelling: a link to
+# the clone. KitBag recognizes it, adds no second include and removes none.
+symlink $WORK/alias -> $HOME/checkout
+exec git config --global --add include.path $WORK/alias/git/agent.gitconfig
+exec git config --global --add include.path '~/unrelated.gitconfig'
+exec kitbag sync
+stdout '^materialize .*/linked/output$'
+! stdout '^include '
+exec git config --global --get-all include.path
+stdout -count=1 'agent\.gitconfig'
+stdout '^'${WORK@R}'/alias/git/agent\.gitconfig$'
+stdout '^~/unrelated\.gitconfig$'
+
+# macOS: /var is a link to private/var, the case of a HOME below /tmp. The
+# message names the link, so the user can use the resolved path instead.
+# WORK gets the same spelling so the harness guard still sees HOME inside it.
+[darwin] exec sh -c 'WORK="${WORK#/private}"; HOME="$WORK/home" exec kitbag plan'
+[darwin] stdout 'skip ".*/\.codex/AGENTS\.md" \[unmanaged obstacle\]: symbolic link in destination parents: /var -> private/var$'
+[darwin] stdout 'source: symbolic link in source parents: /var -> private/var: '
+
+
+-- machine.toml --
+schema=1
+[repo]
+url="local-config"
+path="~/checkout"
+branch="main"
+-- seed/kitbag.toml --
+schema=1
+[instructions]
+source="rules.md"
+[targets.codex]
+agent="codex"
+[[files]]
+src="source"
+dest="~/linked/output"
+[git]
+include=["git/agent.gitconfig"]
+-- seed/source --
+source
+-- seed/rules.md --
+Shared instructions.
+-- seed/git/agent.gitconfig --
+[core]
+	autocrlf = false

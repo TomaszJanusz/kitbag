@@ -17,9 +17,9 @@ const (
 	executableBits fs.FileMode = 0o111
 )
 
-func mutate(fsys platform.FS, s state.Step, op plan.Operation) error {
+func mutate(fsys platform.FS, s state.Step, op plan.Operation, kept fs.FileMode) error {
 	if s.Action == "output" {
-		if err := stage(fsys, s, op); err != nil {
+		if err := stage(fsys, s, op, kept); err != nil {
 			return err
 		}
 	}
@@ -62,7 +62,7 @@ func install(fsys platform.FS, s state.Step) error {
 	}
 }
 
-func stage(fsys platform.FS, s state.Step, op plan.Operation) error {
+func stage(fsys platform.FS, s state.Step, op plan.Operation, kept fs.FileMode) error {
 	if err := check(fsys, s.Stage, state.Entry{}); err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func stage(fsys platform.FS, s state.Step, op plan.Operation) error {
 	if s.After.Kind == state.Link {
 		return fsys.Link(s.After.SourcePath, s.Stage)
 	}
-	if err := stageBytes(fsys, s, op); err != nil {
+	if err := stageBytes(fsys, s, op, kept); err != nil {
 		return err
 	}
 	got, err := plan.HashTree(fsys, s.Stage)
@@ -143,11 +143,32 @@ func removeStage(fsys platform.FS, path string) error {
 	return fsys.Remove(path)
 }
 
-func stageBytes(fsys platform.FS, s state.Step, op plan.Operation) error {
+func stageBytes(fsys platform.FS, s state.Step, op plan.Operation, kept fs.FileMode) error {
 	if op.Kind != plan.Materialize {
-		return fsys.WriteAtomic(s.Stage, op.Desired.Content, privateFile)
+		perm, err := outputPerm(fsys, s.Path, kept)
+		if err != nil {
+			return err
+		}
+		return fsys.WriteAtomic(s.Stage, op.Desired.Content, perm)
 	}
 	return copyTree(fsys, s.After.SourcePath, s.Stage)
+}
+
+// outputPerm keeps the mode of an existing regular file that rendered or merged
+// output replaces, for example a 0644 CLAUDE.md, including one just backed up
+// (kept); new output is private.
+func outputPerm(fsys platform.FS, path string, kept fs.FileMode) (fs.FileMode, error) {
+	info, err := fsys.Lstat(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return cmp.Or(kept, privateFile), nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	if !info.Mode().IsRegular() {
+		return privateFile, nil
+	}
+	return info.Mode().Perm(), nil
 }
 
 func moveAside(fsys platform.FS, s state.Step, op plan.Operation) error {
