@@ -17,7 +17,9 @@ func (s Service) serviceChecks(ctx context.Context) []Check {
 		return []Check{result("service", "cannot inspect user service", fix, err, Warn)}
 	}
 	if !report.Installed {
-		return []Check{{ID: "service", Status: OK, Message: "background service is not installed (optional)"}}
+		// KitBag is the CLI, the TUI and the background service; without the
+		// service this machine syncs only when someone runs kitbag sync.
+		return []Check{{ID: "service", Status: Warn, Message: "background service is not installed; this machine syncs only when you run kitbag sync", Fix: "run kitbag service install"}}
 	}
 	message := ""
 	if report.BinaryMissing {

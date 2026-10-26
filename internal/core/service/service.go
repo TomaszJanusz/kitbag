@@ -284,23 +284,33 @@ func (s Service) Status(ctx context.Context) (Report, error) {
 	if err != nil {
 		return result, err
 	}
-	for _, name := range unitNames(layout.Manager) {
-		_, statErr := s.Host.Lstat(filepath.Join(layout.Directory, name))
-		if statErr != nil && !errors.Is(statErr, fs.ErrNotExist) {
-			return result, statErr
-		}
-		result.Installed = result.Installed || statErr == nil
-	}
-	if !result.Installed {
-		result.Installed, err = s.hasMetadata()
-		if err != nil {
-			return result, err
-		}
-	}
-	if !result.Installed {
-		return result, nil
+	if result.Installed, err = s.installed(layout); err != nil || !result.Installed {
+		return result, err
 	}
 	return s.installedStatus(ctx, result, layout)
+}
+
+// Installed reports whether a definition or saved installation inputs exist,
+// without asking the supervisor.
+func (s Service) Installed() (bool, error) {
+	layout, err := s.Host.ServiceLayout()
+	if err != nil {
+		return false, err
+	}
+	return s.installed(layout)
+}
+
+func (s Service) installed(layout platform.ServiceLayout) (bool, error) {
+	for _, name := range unitNames(layout.Manager) {
+		_, err := s.Host.Lstat(filepath.Join(layout.Directory, name))
+		if err == nil {
+			return true, nil
+		}
+		if !errors.Is(err, fs.ErrNotExist) {
+			return false, err
+		}
+	}
+	return s.hasMetadata()
 }
 
 func (s Service) installedStatus(ctx context.Context, result Report, layout platform.ServiceLayout) (Report, error) {

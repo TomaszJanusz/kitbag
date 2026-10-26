@@ -120,3 +120,25 @@ func TestScaffoldFormKeyboard(t *testing.T) {
 		t.Fatalf("scaffold choices=%+v state=%v", flags, form.State)
 	}
 }
+
+// The service question defaults to yes: Enter alone installs, n declines.
+func TestServiceFormDefaultsToYes(t *testing.T) {
+	t.Parallel()
+	for name, keys := range map[string][]tea.KeyMsg{
+		"enter":   {{Type: tea.KeyEnter}},
+		"decline": {{Type: tea.KeyRunes, Runes: []rune{'n'}}, {Type: tea.KeyEnter}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			accepted := false
+			form := serviceForm(&accepted)
+			_ = form.GetFocusedField().Focus()
+			for _, key := range keys {
+				formKey(t, form, key)
+			}
+			if want := name == "enter"; form.State != huh.StateCompleted || accepted != want {
+				t.Fatalf("accepted=%t want %t state=%v", accepted, want, form.State)
+			}
+		})
+	}
+}

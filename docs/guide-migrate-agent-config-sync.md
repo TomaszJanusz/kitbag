@@ -21,8 +21,11 @@ manifest first.
 2. **Connect the repository**, keeping the clone the script ran from:
 
    ```sh
-   kitbag init <git-url> --repo-path ~/src/agent-config
+   kitbag init <git-url> --repo-path ~/src/agent-config --no-service
    ```
+
+   Skip the background service for now (`--no-service`, or answer no in the
+   wizard): it syncs as soon as it starts, and adoption must come first.
 
    The clone's `origin` must be `<git-url>` exactly. Init then uses it as
    `repo.path`, makes no second clone, and adoption leaves every byte alone.
@@ -48,9 +51,13 @@ manifest first.
 
 ```sh
 kitbag adopt --dry-run     # report only; add --json for adopt_schema 1
-kitbag adopt               # record ownership; no file is rewritten
+kitbag adopt --no-service  # record ownership; no file is rewritten
 kitbag plan                # "No changes." if repo.path is the old clone
 ```
+
+Without `--no-service`, adopt offers the background service afterwards (yes by
+default on a terminal); its first sync applies what remains, so install it after
+the parity check below.
 
 The report lists every adopted destination, what the next sync would still change
 (`remaining`) and legacy links that the manifest does not declare (left alone).
@@ -74,12 +81,15 @@ The report lists every adopted destination, what the next sync would still chang
 
 ## Switch the timers
 
-Replace the script's timer with kitbag's own service:
+Replace the script's timer with kitbag's own service (`kitbag adopt --service`
+installs the same daemon):
 
 ```sh
 kitbag service install      # daemon mode; or --mode timer --interval 15m
 kitbag service status
 ```
+
+Until it is installed, `kitbag doctor` warns that the service is missing.
 
 On Linux a headless machine needs `loginctl enable-linger <user>`, which kitbag
 prints but never runs; see [background synchronization](service.md).

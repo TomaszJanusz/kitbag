@@ -69,8 +69,7 @@ class Kitbag < Formula
 
       Create or connect your configuration repository:
         kitbag init
-      Optionally keep this machine in sync in the background:
-        kitbag service install
+      init offers the background service; to install it later: kitbag service install
     EOS
   end
 

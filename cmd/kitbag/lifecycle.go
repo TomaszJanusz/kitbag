@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 
 	"github.com/spf13/cobra"
 
@@ -26,14 +28,20 @@ type adoptReport struct {
 
 func (c *commandLine) adoptCommand() *cobra.Command {
 	var asJSON, dryRun, moveRealDirs bool
+	var offer serviceFlags
 	cmd := &cobra.Command{
 		Use: "adopt", Short: "Take over destinations agent-config-sync already manages",
 		Long: "Record ownership of every declared destination that already holds what sync would write: links to the exact source, " +
 			"identical files and agent-config-sync's marker-only variants. No file is rewritten, backed up or deleted, so the next sync " +
 			"has nothing to do for them; anything else is listed as remaining. Requires migration.legacy_roots in config.toml. " +
-			"--move-real-dirs moves real skill directories aside once, as agent-config-sync --adopt did.",
+			"--move-real-dirs moves real skill directories aside once, as agent-config-sync --adopt did. " +
+			"Then offer KitBag's background service (stop agent-config-sync's timer first): a terminal asks (default yes), " +
+			"--service installs it, --no-service skips it, and other runs print how to install it later.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			if dryRun && offer.chosen() {
+				return classified(fmt.Errorf("--service and --no-service cannot be combined with --dry-run: %w", fs.ErrInvalid))
+			}
 			service, err := c.service(cmd.Context())
 			if err != nil {
 				return classified(err)
@@ -43,13 +51,28 @@ func (c *commandLine) adoptCommand() *cobra.Command {
 				return classified(err)
 			}
 			c.code = result.Report.Moves.Code()
-			return classified(c.printAdopt(result, asJSON))
+			if err = c.printAdopt(result, asJSON); err != nil || dryRun {
+				return classified(err)
+			}
+			return classified(c.offerAdoptService(cmd.Context(), offer, asJSON))
 		},
 	}
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Report what would be adopted without saving state")
 	cmd.Flags().BoolVar(&moveRealDirs, "move-real-dirs", false, "Move real skill directories at declared destinations aside once")
 	cmd.Flags().BoolVar(&asJSON, "json", false, "Print stable adopt_schema=1 JSON")
+	offer.register(cmd)
 	return cmd
+}
+
+// offerAdoptService runs after adoption saved state. The service definition
+// and its saved inputs are KitBag's own files, never a managed destination, so
+// adoption still rewrites no managed file. JSON keeps stdout for the report.
+func (c *commandLine) offerAdoptService(ctx context.Context, offer serviceFlags, asJSON bool) error {
+	out := c.stdout
+	if asJSON {
+		out = c.stderr
+	}
+	return c.offerService(ctx, out, c.configPath, offer, !asJSON && c.host.IsTerminal(0))
 }
 
 func (c *commandLine) printAdopt(result workflow.AdoptResult, asJSON bool) error {

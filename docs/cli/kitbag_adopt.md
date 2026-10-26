@@ -4,7 +4,7 @@ Take over destinations agent-config-sync already manages
 
 ### Synopsis
 
-Record ownership of every declared destination that already holds what sync would write: links to the exact source, identical files and agent-config-sync's marker-only variants. No file is rewritten, backed up or deleted, so the next sync has nothing to do for them; anything else is listed as remaining. Requires migration.legacy_roots in config.toml. --move-real-dirs moves real skill directories aside once, as agent-config-sync --adopt did.
+Record ownership of every declared destination that already holds what sync would write: links to the exact source, identical files and agent-config-sync's marker-only variants. No file is rewritten, backed up or deleted, so the next sync has nothing to do for them; anything else is listed as remaining. Requires migration.legacy_roots in config.toml. --move-real-dirs moves real skill directories aside once, as agent-config-sync --adopt did. Then offer KitBag's background service (stop agent-config-sync's timer first): a terminal asks (default yes), --service installs it, --no-service skips it, and other runs print how to install it later.
 
 ```
 kitbag adopt [flags]
@@ -17,6 +17,8 @@ kitbag adopt [flags]
   -h, --help             help for adopt
       --json             Print stable adopt_schema=1 JSON
       --move-real-dirs   Move real skill directories at declared destinations aside once
+      --no-service       Do not install the background service and do not ask
+      --service          Install and start the background service (daemon mode) without asking
 ```
 
 ### Options inherited from parent commands

@@ -251,6 +251,6 @@ esac
 cat <<'EOF'
 Next steps:
   kitbag init              # create or connect your configuration repository
-  kitbag service install   # optional: keep machines in sync in the background
+  kitbag service install   # background sync; init offers it, or run it later
 KitBag uses Git; install it if it is not already available.
 EOF

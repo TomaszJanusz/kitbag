@@ -14,7 +14,9 @@ reach the host only through `platform.FS`.
    With a separate working copy (the one a plain `kitbag init` creates), adoption cannot keep links or renderings that name the old clone;
    the next sync replaces them in place instead (see below). Either way use a
    `kitbag.toml` that declares the same layout
-   ([example](../schemas/examples/kitbag/valid/agent-config.toml)).
+   ([example](../schemas/examples/kitbag/valid/agent-config.toml)), and pass
+   `--no-service` to init (or answer no): the background service syncs as soon
+   as it starts, which must not happen before adoption.
 2. **Declare the legacy roots.** Adoption refuses to run without explicit
    `migration.legacy_roots`; the real paths are a maintainer decision, never
    guessed:
@@ -43,7 +45,15 @@ reach the host only through `platform.FS`.
    declared destinations that the manifest does not declare (left alone).
 5. **Optionally move real skill directories aside** with `--move-real-dirs`,
    as `agent-config-sync --adopt` did; the next sync links the skills.
-6. Remove the script's own `~/.local/bin/agent-config-sync` link once the
+6. **Install KitBag's service.** After a successful adoption, `adopt` offers it
+   like init does: a terminal asks (default yes), `--service` installs it,
+   `--no-service` skips it, and other runs (including `--json`, where the
+   message goes to stderr) print how to install it later. Its first sync applies
+   `remaining`, so answer no until the parity check if anything remains. The
+   unit or LaunchAgent and `service.json` are KitBag's own files, so adoption
+   still rewrites no managed destination (`adopt_service.txtar`). Dry runs offer
+   nothing and reject both flags; an installed service is not offered again.
+7. Remove the script's own `~/.local/bin/agent-config-sync` link once the
    timer is gone; it has no KitBag counterpart and is never touched.
 
 ## What adoption accepts

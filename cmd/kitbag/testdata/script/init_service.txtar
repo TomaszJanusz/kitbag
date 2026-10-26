@@ -1,0 +1,103 @@
+# init offers the background service; without a terminal the flags decide and
+# nothing is installed silently. Stand-in systemctl/loginctl (Linux) and
+# launchctl (macOS) record every supervisor command.
+[!linux] [!darwin] skip 'user services exist on Linux and macOS'
+env KITBAG_CONFIG=
+env KITBAG_MODE=
+env KITBAG_GIT_BACKEND=
+env XDG_CONFIG_HOME=$HOME/.config
+env XDG_STATE_HOME=$HOME/.local/state
+env XDG_DATA_HOME=$HOME/.local/share
+env USER=testing
+env PATH=$WORK/bin:$PATH
+exec chmod +x bin/systemctl bin/loginctl bin/launchctl
+gitremote $WORK/config.git seed
+
+# --no-service writes the configuration only and says how to install later.
+exec kitbag --config=$WORK/declined.toml init $WORK/config.git --yes --no-service
+stdout 'Wrote .*declined.toml'
+stdout 'Background service not installed \(--no-service\)\. Install it later with: kitbag --config .*declined.toml.? service install'
+! exists $HOME/.config/systemd/user/dev.kitbag.agent.service
+! exists $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
+! exists $HOME/.local/state/kitbag/service.json
+! exists $HOME/commands
+
+# Conflicting flags and scaffold use are usage errors before anything is written.
+! exec kitbag init $WORK/config.git --yes --service --no-service
+stderr 'none of the others can be'
+! exists $HOME/.config/kitbag/config.toml
+! exec kitbag init --scaffold $WORK/new --yes --service
+stderr '--scaffold writes no machine configuration'
+! exists $WORK/new/kitbag.toml
+
+# --service installs and starts daemon mode, like service install, and names
+# every file it wrote.
+exec kitbag init $WORK/config.git --yes --service
+stdout 'Wrote .*config.toml'
+stdout 'Service installed/updated \(daemon mode\):'
+stdout '^  .*/\.local/state/kitbag/service\.json$'
+exists $HOME/.local/state/kitbag/service.json
+[linux] stdout '^  .*/\.config/systemd/user/dev\.kitbag\.agent\.service$'
+[linux] stderr 'Linger is disabled.*loginctl enable-linger testing'
+[linux] grep 'Type=simple' $HOME/.config/systemd/user/dev.kitbag.agent.service
+[linux] grep 'ExecStart=.*"--config" ".*/\.config/kitbag/config\.toml" "daemon"$' $HOME/.config/systemd/user/dev.kitbag.agent.service
+[linux] grep 'systemctl --user enable dev.kitbag.agent.service' $HOME/commands
+[linux] grep 'systemctl --user start dev.kitbag.agent.service' $HOME/commands
+[darwin] stdout '^  .*/Library/LaunchAgents/dev\.kitbag\.agent\.plist$'
+[darwin] grep '<key>KeepAlive</key><true/>' $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
+[darwin] grep '<string>daemon</string>' $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
+[darwin] grep 'launchctl bootstrap gui/[0-9]+ .*/Library/LaunchAgents/dev.kitbag.agent.plist' $HOME/commands
+exec kitbag service status
+stdout 'installed=true loaded=true active=true enabled=true stale=false mode=daemon'
+exec kitbag doctor --json
+stdout '"id": "service"'
+! stdout 'background service is not installed'
+
+# Repeating init with --service keeps the configuration and converges.
+cp $HOME/.config/kitbag/config.toml before.toml
+exec kitbag init --yes --service
+stdout 'Already set up:'
+stdout 'Service already installed and up to date \(daemon mode\):'
+cmp $HOME/.config/kitbag/config.toml before.toml
+# A repeat without --service neither installs nor hints.
+exec kitbag init --yes
+stdout 'Already set up:'
+! stdout 'Background service|Service (installed|already)'
+
+-- seed/kitbag.toml --
+schema=1
+-- bin/loginctl --
+#!/bin/sh
+printf 'Linger=no\n'
+-- bin/systemctl --
+#!/bin/sh
+printf 'systemctl %s\n' "$*" >> "$HOME/commands"
+case "$2" in
+show)
+  if [ ! -f "$HOME/.config/systemd/user/$3" ]; then printf 'LoadState=not-found\n'; exit 1; fi
+  printf 'LoadState=loaded\n'
+  if [ -f "$HOME/.active" ]; then printf 'ActiveState=active\n'; else printf 'ActiveState=inactive\n'; fi
+  if [ -f "$HOME/.enabled" ]; then printf 'UnitFileState=enabled\n'; else printf 'UnitFileState=disabled\n'; fi
+  printf 'ExecMainStartTimestamp=Sun 2026-10-25 12:00:00 UTC\nExecMainStatus=0\n';;
+enable) touch "$HOME/.enabled";;
+disable) rm -f "$HOME/.enabled";;
+start) touch "$HOME/.active";;
+stop) rm -f "$HOME/.active";;
+esac
+-- bin/launchctl --
+#!/bin/sh
+printf 'launchctl %s\n' "$*" >> "$HOME/commands"
+case "$1" in
+print)
+  if [ ! -f "$HOME/.loaded" ]; then exit 113; fi
+  if [ -f "$HOME/.never" ]; then printf 'state = running\n\tlast exit code = (never exited)\n'; exit 0; fi
+  printf 'state = running\n\tlast exit code = 0\n';;
+print-disabled)
+  if [ -f "$HOME/.disabled" ]; then printf '\t"dev.kitbag.agent" => true\n'; fi;;
+enable) rm -f "$HOME/.disabled";;
+disable) touch "$HOME/.disabled";;
+bootstrap) touch "$HOME/.loaded";;
+kickstart) ;;
+bootout) rm -f "$HOME/.loaded";;
+*) exit 64;;
+esac
