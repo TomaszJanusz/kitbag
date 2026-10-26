@@ -128,11 +128,8 @@ func serviceExit(code *int) string {
 
 func (c *commandLine) printLastServiceSync(report serviceReport) error {
 	if report.LastSync != nil {
-		data, err := json.Marshal(report.LastSync)
-		if err != nil {
-			return err
-		}
-		_, err = fmt.Fprintf(c.stdout, "Last sync: %s\n", data)
+		last := report.LastSync
+		_, err := fmt.Fprintf(c.stdout, "Last sync: %s; exit code: %d; %d changed; %s\n", c.clock.Describe(last.At), last.Result, last.Changed, last.Repository)
 		return err
 	}
 	_, err := fmt.Fprintln(c.stdout, "Last sync: unknown. "+report.SyncError)

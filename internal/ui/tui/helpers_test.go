@@ -10,11 +10,13 @@ import (
 	"strings"
 	"testing"
 	"time"
+	_ "time/tzdata"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/exp/teatest"
 	"github.com/muesli/termenv"
 
+	"github.com/TomaszJanusz/kitbag/internal/timefmt"
 	"github.com/TomaszJanusz/kitbag/internal/ui/model"
 )
 
@@ -35,6 +37,17 @@ const (
 
 func clock() time.Time { return time.Date(2026, 10, 25, 12, 0, 0, 0, time.UTC) }
 
+// screenClock renders in Europe/Warsaw (CEST on the fixture dates) so screens
+// prove the zone conversion; the fixed now makes relative hints stable.
+func screenClock(t *testing.T) timefmt.Clock {
+	t.Helper()
+	zone, err := time.LoadLocation("Europe/Warsaw")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return timefmt.Clock{Location: zone, Now: clock}
+}
+
 type session struct {
 	t      *testing.T
 	tm     *teatest.TestModel
@@ -44,7 +57,7 @@ type session struct {
 
 func start(t *testing.T, client *fakeClient, options ...func(*Options)) *session {
 	t.Helper()
-	opts := Options{Runner: model.Runner{Client: client, Now: clock}, Profile: termenv.Ascii}
+	opts := Options{Runner: model.Runner{Client: client, Now: clock}, Profile: termenv.Ascii, Clock: screenClock(t)}
 	for _, option := range options {
 		option(&opts)
 	}

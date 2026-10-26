@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TomaszJanusz/kitbag/internal/timefmt"
 	"github.com/TomaszJanusz/kitbag/internal/ui/model/text"
 )
 
@@ -83,5 +84,22 @@ func TestLogRecordsActivity(t *testing.T) {
 		if got := render(entry.Text); got != want[i].text || entry.Severity != want[i].level {
 			t.Errorf("entry %d=%q/%d want %q/%d", i, got, entry.Severity, want[i].text, want[i].level)
 		}
+	}
+}
+
+func TestLogViewStampsEntriesInTheClockZone(t *testing.T) {
+	t.Parallel()
+	warsaw, err := time.LoadLocation("Europe/Warsaw")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := NewLog(4)
+	m.clock = timefmt.Clock{Location: warsaw}
+	m.Update(EventReceived{At: time.Date(2026, 10, 26, 22, 59, 58, 0, time.UTC), Event: Event{Kind: EventDriftDetected}})
+	if got := m.View().Entries[0].Time; got != "23:59:58" {
+		t.Fatalf("Time=%q want 23:59:58", got)
+	}
+	if got := m.Entries()[0].Time; got != "" {
+		t.Fatalf("Entries must stay raw, Time=%q", got)
 	}
 }

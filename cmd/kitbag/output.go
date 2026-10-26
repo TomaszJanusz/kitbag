@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"time"
 
 	"github.com/TomaszJanusz/kitbag/internal/core/apply"
 	"github.com/TomaszJanusz/kitbag/internal/core/plan"
@@ -160,7 +159,7 @@ func (c *commandLine) printStatus(status workflow.Status, asJSON bool) error {
 	}
 	last := "never"
 	if status.LastSync != nil {
-		last = fmt.Sprintf("%s (exit %d, %d changes)", status.LastSync.At.Format(time.RFC3339Nano), status.LastSync.Result, status.LastSync.Changed)
+		last = fmt.Sprintf("%s; exit %d, %d changes", c.clock.Describe(status.LastSync.At), status.LastSync.Result, status.LastSync.Changed)
 	}
 	text := fmt.Sprintf("Working copy: %s\nBranch: %s -> %s (ahead %d, behind %d, dirty %t)\nLast sync: %s\n", status.Repository, status.Git.Branch, status.Git.Upstream, status.Git.Ahead, status.Git.Behind, status.Git.Dirty, last)
 	var counts []string

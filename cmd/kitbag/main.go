@@ -7,9 +7,11 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"time"
 
 	"github.com/TomaszJanusz/kitbag/internal/core/apply"
 	"github.com/TomaszJanusz/kitbag/internal/platform"
+	"github.com/TomaszJanusz/kitbag/internal/timefmt"
 )
 
 // version is the release version, set at build time with
@@ -29,7 +31,7 @@ func run(goos string, host platform.Host, args []string, stdout, stderr io.Write
 	if err := platform.CheckOS(goos); err != nil {
 		return report(stderr, exitUnsupportedOS, err)
 	}
-	cli := &commandLine{host: host, stdout: stdout, stderr: stderr, process: true}
+	cli := &commandLine{host: host, stdout: stdout, stderr: stderr, process: true, clock: timefmt.Clock{Location: time.Local, Now: time.Now}}
 	root := cli.root()
 	root.SetArgs(args)
 	if err := root.Execute(); err != nil {

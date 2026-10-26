@@ -14,6 +14,7 @@ import (
 	"github.com/TomaszJanusz/kitbag/internal/core/state"
 	"github.com/TomaszJanusz/kitbag/internal/core/workflow"
 	"github.com/TomaszJanusz/kitbag/internal/platform"
+	"github.com/TomaszJanusz/kitbag/internal/timefmt"
 	"github.com/TomaszJanusz/kitbag/internal/vcs"
 )
 
@@ -22,6 +23,8 @@ type globalFlags struct {
 	verbose, quiet                 bool
 }
 type commandLine struct {
+	// clock renders human-facing times; JSON output stays UTC RFC 3339.
+	clock          timefmt.Clock
 	host           platform.Host
 	stdout, stderr io.Writer
 	selection      vcs.Selection

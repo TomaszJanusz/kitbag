@@ -131,7 +131,9 @@ import `os` or a concrete host implementation.
 UTC `at` (attempt completion), absolute `repository`, integer `result` (the
 [apply exit code](apply.md#reports-and-exit-codes)), and nonnegative `changed`
 (completed apply operations plus Git includes added). It contains no file bytes,
-credentials or diagnostic text. Missing means no recorded attempt. Status shows
+credentials or diagnostic text. Text output (`kitbag status`, `service status`,
+`revert --list`, the TUI) shows times in the local zone as
+`2006-01-02 15:04:05 MST`; JSON and the files keep UTC RFC 3339. Missing means no recorded attempt. Status shows
 `last_sync: null` when absent or when the record belongs to another clone.
 
 Every sync that acquires the lock and reads valid record metadata records its

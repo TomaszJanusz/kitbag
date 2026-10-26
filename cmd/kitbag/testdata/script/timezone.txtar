@@ -1,0 +1,50 @@
+# Human-facing times follow the machine's local zone (TZ); JSON stays UTC
+# RFC 3339. Zones need the OS zoneinfo database, which Windows does not use.
+[windows] skip 'TZ is not honoured on Windows'
+env KITBAG_CONFIG=$WORK/machine.toml
+env KITBAG_HOST=test
+env CODEX_HOME=
+gitremote $WORK/config.git config
+exec git clone --quiet $WORK/config.git $HOME/checkout
+agentdirs .codex
+
+env TZ=Europe/Warsaw
+exec kitbag sync --no-pull
+exec kitbag status
+stdout '^Last sync: \d{4}-\d\d-\d\d \d\d:\d\d:\d\d CES?T \((just now|\d+ min ago)\); exit 0, '
+! stdout 'Last sync: \S*T\S*Z'
+exec kitbag revert --list
+stdout '^1  \d{4}-\d\d-\d\d \d\d:\d\d:\d\d CES?T  applied '
+! stdout '^1  \S+Z'
+
+
+env TZ=Asia/Kathmandu
+exec kitbag status
+stdout '^Last sync: \d{4}-\d\d-\d\d \d\d:\d\d:\d\d \+0545 \('
+exec kitbag revert --list
+stdout '^1  \d{4}-\d\d-\d\d \d\d:\d\d:\d\d \+0545  applied '
+
+env TZ=UTC
+exec kitbag status
+stdout '^Last sync: \d{4}-\d\d-\d\d \d\d:\d\d:\d\d UTC \('
+
+# Machine output keeps UTC RFC 3339 whatever the zone.
+env TZ=Europe/Warsaw
+exec kitbag status --json
+stdout '"at": "\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z"'
+exec kitbag revert --list --json
+stdout '"applied_at": "\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z"'
+
+-- machine.toml --
+schema = 1
+[repo]
+url = "local-config"
+path = "~/checkout"
+-- config/kitbag.toml --
+schema = 1
+[instructions]
+source = "global/AGENTS.md"
+[targets.codex]
+agent = "codex"
+-- config/global/AGENTS.md --
+Good rules.

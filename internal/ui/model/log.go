@@ -3,6 +3,7 @@ package model
 import (
 	"time"
 
+	"github.com/TomaszJanusz/kitbag/internal/timefmt"
 	"github.com/TomaszJanusz/kitbag/internal/ui/model/text"
 )
 
@@ -19,9 +20,11 @@ const (
 	Failure
 )
 
-// LogEntry is one line of activity. At is when the renderer received it.
+// LogEntry is one line of activity. At is when the renderer received it;
+// Time is that moment as time of day in the clock's zone, filled by View.
 type LogEntry struct {
 	At       time.Time
+	Time     string
 	Text     text.Message
 	Severity Severity
 }
@@ -29,6 +32,7 @@ type LogEntry struct {
 // Log is a bounded ring buffer of activity: lifecycle hints, this renderer's
 // sync progress and setting writes. The oldest entry is dropped when full.
 type Log struct {
+	clock     timefmt.Clock
 	entries   []LogEntry
 	start     int
 	dropped   int
@@ -131,5 +135,13 @@ type LogView struct {
 
 // View projects the retained entries, oldest first.
 func (m *Log) View() LogView {
-	return LogView{Title: text.New(text.LogTitle), Entries: m.Entries(), Dropped: m.dropped}
+	return LogView{Title: text.New(text.LogTitle), Entries: m.stamped(), Dropped: m.dropped}
+}
+
+func (m *Log) stamped() []LogEntry {
+	entries := m.Entries()
+	for i := range entries {
+		entries[i].Time = m.clock.TimeOfDay(entries[i].At)
+	}
+	return entries
 }

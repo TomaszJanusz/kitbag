@@ -54,7 +54,7 @@ func (c *commandLine) tuiOptions(profile tui.Profile) tui.Options {
 	}
 	return tui.Options{
 		Runner: model.Runner{Client: adapter, Now: time.Now}, Catalog: text.English(),
-		Profile: profile, NoColour: c.colourDisabled(), LogCapacity: model.DefaultLogCapacity,
+		Profile: profile, NoColour: c.colourDisabled(), LogCapacity: model.DefaultLogCapacity, Clock: c.clock,
 	}
 }
 

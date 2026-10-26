@@ -3,7 +3,9 @@ package model
 import (
 	"testing"
 	"time"
+	_ "time/tzdata" // Europe/Warsaw must resolve on hosts without a zoneinfo database.
 
+	"github.com/TomaszJanusz/kitbag/internal/timefmt"
 	"github.com/TomaszJanusz/kitbag/internal/ui/model/text"
 )
 
@@ -182,18 +184,22 @@ func TestStatusForeignSyncSurvivesOlderLoads(t *testing.T) {
 func TestStatusRows(t *testing.T) {
 	t.Parallel()
 	at := time.Date(2026, 10, 24, 8, 30, 0, 0, time.FixedZone("CET", 3600))
+	warsaw, err := time.LoadLocation("Europe/Warsaw")
+	expect(t, err == nil, "load zone: %v", err)
+	now := at.Add(time.Hour + 20*time.Minute)
 	m := readyStatus(t, &fakeClient{status: StatusSnapshot{
 		Repository: "/repo", Daemon: true, Warnings: []string{"a: unsupported"},
 		Git:      GitState{Branch: "main", Upstream: "origin/main", Ahead: 1, Behind: 2, Dirty: true},
 		LastSync: &LastSync{At: at, ExitCode: 0, Changed: 3},
 		Drift:    DriftCounts{InSync: 4, UpdateNeeded: 1},
 	}})
+	m.clock = timefmt.Clock{Location: warsaw, Now: func() time.Time { return now }}
 	view := m.View()
 	want := []string{
 		"Repository: /repo",
 		"Branch: main → origin/main (1 ahead, 2 behind)",
 		"Working copy: Uncommitted changes",
-		"Last sync: 2026-10-24T07:30:00Z: succeeded, 3 changed",
+		"Last sync: 2026-10-24 09:30:00 CEST (1 h ago): succeeded, 3 changed",
 		"Targets: 4 in sync, 1 to update, 0 changed locally, 0 conflicts, 0 obstacles",
 		"Connection: Daemon, live updates unavailable",
 	}
@@ -208,4 +214,12 @@ func TestStatusRows(t *testing.T) {
 	expect(t, render(rows[1].Value) == "main (no upstream)", "branch=%q", render(rows[1].Value))
 	expect(t, render(rows[2].Value) == "Clean", "copy=%q", render(rows[2].Value))
 	expect(t, rows[3].Value.Key == text.StatusNeverSynced, "last=%+v", rows[3])
+}
+
+func TestStatusLastSyncWithoutClockIsUTCWithoutHint(t *testing.T) {
+	t.Parallel()
+	at := time.Date(2026, 10, 24, 8, 30, 0, 0, time.FixedZone("CET", 3600))
+	m := readyStatus(t, &fakeClient{status: StatusSnapshot{LastSync: &LastSync{At: at, Changed: 1}}})
+	got := render(m.View().Rows[3].Value)
+	expect(t, got == "2026-10-24 07:30:00 UTC: succeeded, 1 changed", "last=%q", got)
 }

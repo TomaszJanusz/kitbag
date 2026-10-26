@@ -26,6 +26,14 @@ Global flags apply as for other commands (`--config`, `--host`, `--mode`,
 `--git-backend`). `--verbose` diagnostics are not written: stderr output would
 corrupt the screen.
 
+## Times
+
+Times are shown in the machine's local zone as `2006-01-02 15:04:05 MST`; the
+Status tab's last sync adds a relative hint such as `(3 min ago)` and the
+Activity tab shows `15:04:05` local time of day. The view models format them
+(`internal/timefmt` with a clock injected by `cmd/kitbag`), so renderers never
+touch zones. The API, state files and JSON keep UTC RFC 3339.
+
 ## Tabs
 
 | Tab | Shows | Keys |
