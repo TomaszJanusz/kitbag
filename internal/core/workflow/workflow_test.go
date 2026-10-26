@@ -12,6 +12,7 @@ import (
 
 	"github.com/TomaszJanusz/kitbag/internal/config"
 	"github.com/TomaszJanusz/kitbag/internal/core/apply"
+	"github.com/TomaszJanusz/kitbag/internal/core/compatibility"
 	"github.com/TomaszJanusz/kitbag/internal/core/plan"
 	"github.com/TomaszJanusz/kitbag/internal/core/state"
 	"github.com/TomaszJanusz/kitbag/internal/core/workflow"
@@ -347,4 +348,29 @@ func TestHostMismatchWarning(t *testing.T) {
 	}
 	f.s.Config.Host = "mac"
 	syncOK(t, f, true)
+}
+
+// TestPulledManifestForNewerTool: after a pull, intent is the only guard, so it
+// must also read compatibility before validating the fetched manifest.
+func TestPulledManifestForNewerTool(t *testing.T) {
+	t.Parallel()
+	for name, body := range map[string]string{
+		"minimum before validation": "schema=1\nmin_tool_version='9.0.0'\nfuture=true",
+		"newer schema":              "schema=2\n[future]\nkey=true",
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			f := setup(t)
+			var events []compatibility.Event
+			f.s.Emit = func(event compatibility.Event) { events = append(events, event) }
+			f.git.fetch = func() error {
+				f.write(t, "kitbag.toml", body)
+				return nil
+			}
+			_, err := f.s.Sync(context.Background(), false, false)
+			if apply.ErrorCode(err) != apply.ToolTooOld || len(events) != 1 || events[0].Current != f.s.Version || f.calls != 0 {
+				t.Fatalf("error %v, events %+v, adapter calls %d", err, events, f.calls)
+			}
+		})
+	}
 }
