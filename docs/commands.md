@@ -114,8 +114,9 @@ replacement. Package-managed installs print their update command. See
 provisioning and failure recovery. `kitbag version --bare` prints the version
 without machine configuration or Git checks for replacement confirmation.
 
-A local manifest with an unmet `min_tool_version` blocks every manifest consumer
-before state locks or other writes, including revert and doctor reports. Status
+A local manifest with an unmet `min_tool_version`, or a `schema` newer than the
+tool reads, blocks every manifest consumer before state locks or other writes,
+including revert and doctor reports; both are read before full validation. Status
 prints red `tool too old` when colour is enabled and returns exit 4; JSON includes
 a typed `tool_too_old` event. A minimum first discovered by pulling still records
 the failed sync but applies no targets. See the complete guard contract in

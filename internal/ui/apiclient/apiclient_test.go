@@ -129,6 +129,13 @@ func TestStatusFallsBackOnlyWithoutDaemon(t *testing.T) {
 	if kindOf(t, err) != model.ErrToolTooOld || snapshot.Daemon || *snapshot.ToolTooOld != (model.ToolTooOld{Required: "9.0.0", Current: "1.0.0"}) {
 		t.Fatalf("fallback=%+v err=%v", snapshot, err)
 	}
+	newer := Local{Workflow: func(context.Context) (workflow.Service, error) {
+		return workflow.Service{}, &manifest.SchemaError{Found: 2, Supported: 1}
+	}}
+	snapshot, err = Client{Transport: noDaemonTransport(), Local: newer}.Status(t.Context())
+	if kindOf(t, err) != model.ErrToolTooOld || *snapshot.ToolTooOld != (model.ToolTooOld{Schema: 2, SupportedSchema: 1}) {
+		t.Fatalf("schema fallback=%+v err=%v", snapshot, err)
+	}
 	if _, err = (Client{Transport: noDaemonTransport()}).Status(t.Context()); kindOf(t, err) != model.ErrUnavailable {
 		t.Fatalf("no fallback=%v", err)
 	}
@@ -244,6 +251,7 @@ func TestClassification(t *testing.T) {
 		{platform.ErrLocked, model.ErrBusy, 1},
 		{fs.ErrInvalid, model.ErrInvalid, 2},
 		{&manifest.VersionError{}, model.ErrToolTooOld, 4},
+		{&manifest.SchemaError{Found: 2, Supported: 1}, model.ErrToolTooOld, 4},
 		{&platform.UnsupportedOSError{}, model.ErrUnsupportedOS, 5},
 		{errors.New("other"), model.ErrOperation, 1},
 		{remote(api.Busy, 1), model.ErrBusy, 1},

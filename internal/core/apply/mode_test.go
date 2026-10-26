@@ -69,6 +69,7 @@ func TestExitCodes(t *testing.T) {
 		{errors.New("I/O"), apply.Warnings},
 		{fs.ErrInvalid, apply.Usage},
 		{&manifest.VersionError{Required: "1.0.0", Current: "0.1.0"}, apply.ToolTooOld},
+		{&manifest.Error{Message: "newer schema", Cause: &manifest.SchemaError{Found: 2, Supported: 1}}, apply.ToolTooOld},
 		{&platform.UnsupportedOSError{Message: "unsupported"}, apply.UnsupportedOS},
 	} {
 		if got := apply.ErrorCode(tc.err); got != tc.want {

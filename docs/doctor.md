@@ -15,6 +15,7 @@ checks; it does not assert that they passed.
 | --- | --- |
 | Manifest/host | Load the local `kitbag.toml` and resolve the selected host; correct the working-copy path, manifest or host. The `host` check shows the host and its source; it WARNs when the host is the unconfigured system hostname, has no instructions addition and other hosts have one, naming their files: set the host with `kitbag config set host <name>` (never guessed). |
 | Tool version | Compare the running semantic version with `min_tool_version`; upgrade kitbag. Development builds use `0.0.0-dev`. |
+| Manifest schema | `manifest-schema`, after Manifest/host: reports the manifest `schema` in use, OK as `schema 1 (supported)`. A schema newer than this kitbag reads is the only reported check and FAILs: upgrade kitbag. An older or malformed schema is a manifest validation failure. |
 | Git backend | Requested/active backend, version and selection source from `vcs.Open`; install suitable Git or select an available backend. An automatic fallback warns with its reason. |
 | Remote | Read origin refs through the backend's optional `vcs.RemoteProber`; check URL, connectivity and authentication. No fetch, ref update, or commit. Embedded SSH reports the successful credential source (agent or identity filename only); unsupported backends warn. |
 | SSH agent | `SSH_AUTH_SOCK` must name an existing socket; start an agent/export its socket. Missing is WARN, including for non-SSH remotes where it may be irrelevant. No key listing. |
@@ -50,8 +51,9 @@ Git helpers remain trusted executables; their behavior is outside this policy.
 
 The [shared exit table](apply.md#reports-and-exit-codes) applies: all OK or only
 ordinary WARN results exit **0**; any FAIL exits **1**; `--strict` also maps WARN
-to **1**. A failed `min_tool_version` check exits **4** before further probes,
-state/cache locks or `--report` writes.
+to **1**. A failed `min_tool_version` or `manifest-schema` check (the manifest
+needs a newer tool) exits **4** before further probes, state/cache locks or
+`--report` writes.
 Invalid flags/configuration exit **2** where classified as usage; operational
 setup/output/report-write failures exit **1**. Windows still exits **5** before
 running checks. Doctor never uses conflict exit 3.

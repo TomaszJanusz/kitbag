@@ -147,11 +147,8 @@ func (s Service) includes(ctx context.Context, m *manifest.Manifest) (vcs.Includ
 // intent loads and host-resolves the manifest; warnings receives a host taken
 // from the system hostname that misses its instructions addition.
 func (s Service) intent(warnings *[]string) (*manifest.Manifest, string, error) {
-	m, err := manifest.Load(s.Host, filepath.Join(s.Repository, "kitbag.toml"))
+	m, err := compatibility.Load(s.Host, s.Repository, s.Version)
 	if err != nil {
-		return nil, "", err
-	}
-	if err = m.CheckVersion(s.Version); err != nil {
 		if event := compatibility.FromError(err, s.Repository); event != nil && s.Emit != nil {
 			s.Emit(*event)
 		}

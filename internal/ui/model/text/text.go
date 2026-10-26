@@ -75,6 +75,7 @@ const (
 	StatusSyncing       Key = "status.syncing"
 	StatusOtherSync     Key = "status.other_sync"
 	StatusToolTooOld    Key = "status.tool_too_old"
+	StatusSchemaTooNew  Key = "status.schema_too_new"
 	StatusUpdate        Key = "status.update_available"
 	StatusStale         Key = "status.stale"
 	StatusRepository    Key = "status.repository"
@@ -248,6 +249,7 @@ func statusText() []entry {
 		{StatusSyncing, "Syncing: %s"},
 		{StatusOtherSync, "Another sync is running"},
 		{StatusToolTooOld, "This repository requires kitbag %s or newer; running %s"},
+		{StatusSchemaTooNew, "This repository uses manifest schema %s; running kitbag %s, which reads schema %s"},
 		{StatusUpdate, "A newer kitbag release is available"},
 		{StatusStale, "Showing the last known status: %s"},
 		{StatusRepository, "Repository"},

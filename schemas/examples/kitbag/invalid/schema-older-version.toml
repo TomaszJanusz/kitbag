@@ -1,0 +1,5 @@
+# expect: value must be 1
+schema = 0
+
+[instructions]
+source = "AGENTS.md"

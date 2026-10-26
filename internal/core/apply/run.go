@@ -55,11 +55,12 @@ func ErrorCode(err error) Code {
 		return OK
 	}
 	var versionError *manifest.VersionError
+	var schemaError *manifest.SchemaError
 	var osError *platform.UnsupportedOSError
 	switch {
 	case errors.As(err, &osError):
 		return UnsupportedOS
-	case errors.As(err, &versionError):
+	case errors.As(err, &versionError), errors.As(err, &schemaError):
 		return ToolTooOld
 	case errors.Is(err, errChanged()):
 		return Conflict

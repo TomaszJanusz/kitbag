@@ -145,7 +145,7 @@ and do not rewrite state. An error stops execution and requires recovery/replan.
 | 1 | Warnings (missing instance, local copy drift), or operational failure |
 | 2 | Usage/invalid apply options |
 | 3 | Conflict or changed precondition |
-| 4 | Manifest requires a newer tool (`manifest.VersionError`) |
+| 4 | Manifest requires a newer tool (`manifest.VersionError`, or `manifest.SchemaError` for a newer `schema`) |
 | 5 | Unsupported OS; existing Windows refusal before 1.x |
 
 The single code definition is `apply.Code`; cmd reuses it for its existing

@@ -41,6 +41,16 @@ destructive rewrite (ADR 9, condition 3).
   explicit migration", which preserves the original file.
 - `min_tool_version` lets a repository require a newer tool than the schema
   alone implies. A tool older than it stops without applying anything.
+- Before validating a `kitbag.toml`, the tool reads only `schema` and
+  `min_tool_version` (preflight), so a manifest written for a newer tool is
+  reported as such rather than as unknown keys or values. An unmet
+  `min_tool_version` stops with `manifest requires kitbag <required>; running
+  <current>`; otherwise a `schema` newer than this tool reads stops with
+  `manifest schema <n> is newer than this kitbag reads (schema <supported>);
+  update kitbag`. Both exit 4 and report `tool-too-old`
+  ([self-update.md](self-update.md#minimum-versions-and-verified-updates)).
+  An older `schema` stays a validation error (exit 2) that asks for the
+  explicit migration. This release reads schema 1 only.
 - Unknown keys are errors everywhere (`additionalProperties: false`), including
   misspelled optional keys. A new key arrives only with a new schema version;
   the N/N−1 window gives repositories a release in which every machine can

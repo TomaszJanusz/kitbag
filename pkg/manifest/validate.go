@@ -202,7 +202,7 @@ func (d *document) validateSchema(value any, key string) error {
 		return d.wrongType(key, value, "integer")
 	}
 	if n != 1 {
-		return d.fail(key, "value must be 1 (unsupported schema; update kitbag or run an explicit migration)", nil)
+		return d.fail(key, "value must be 1 (unsupported older schema; run an explicit migration)", nil)
 	}
 	return nil
 }

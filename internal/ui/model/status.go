@@ -1,6 +1,7 @@
 package model
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/TomaszJanusz/kitbag/internal/ui/model/text"
@@ -163,6 +164,9 @@ func (m *Status) headline() text.Message {
 	switch {
 	case m.syncing:
 		return text.New(text.StatusSyncing, PhaseText(m.syncPhase))
+	case m.snapshot.ToolTooOld != nil && m.snapshot.ToolTooOld.Schema != 0:
+		tooOld := m.snapshot.ToolTooOld
+		return text.New(text.StatusSchemaTooNew, text.Plain(strconv.FormatInt(tooOld.Schema, 10)), text.Plain(tooOld.Current), text.Plain(strconv.FormatInt(tooOld.SupportedSchema, 10)))
 	case m.snapshot.ToolTooOld != nil:
 		return text.New(text.StatusToolTooOld, text.Plain(m.snapshot.ToolTooOld.Required), text.Plain(m.snapshot.ToolTooOld.Current))
 	case !m.known && m.phase == Failed:

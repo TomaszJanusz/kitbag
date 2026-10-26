@@ -3,6 +3,7 @@ package doctor
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -65,7 +66,7 @@ func (s Service) Run(ctx context.Context) Report {
 	r := Report{DoctorSchema: 1, Checks: []Check{}}
 	if err := compatibility.Check(s.Host, s.Repository, s.Version, s.Emit); err != nil {
 		r.ToolTooOld = compatibility.FromError(err, s.Repository)
-		r.Checks = []Check{result("tool-version", "kitbag "+s.Version+"; min_tool_version "+r.ToolTooOld.Required, "upgrade kitbag to the manifest's min_tool_version", err, Fail)}
+		r.Checks = []Check{tooOld(r.ToolTooOld, s.Version, err)}
 		return r
 	}
 	for _, check := range []func(context.Context) []Check{s.manifestChecks, s.gitChecks, s.sshChecks, s.agentChecks, s.stateChecks, s.serviceChecks, s.legacyChecks} {
@@ -77,15 +78,24 @@ func (s Service) Run(ctx context.Context) Report {
 	return r
 }
 
-// Code follows the shared CLI table: minimum-version failure is 4, other FAIL
-// results (or WARN under strict) are 1. Ordinary warnings exit successfully.
+// tooOld is the only check reported for a manifest written for a newer tool.
+func tooOld(event *compatibility.Event, version string, err error) Check {
+	if event.Schema != 0 {
+		return result("manifest-schema", fmt.Sprintf("manifest schema %d; kitbag %s reads schema %d", event.Schema, version, event.SupportedSchema), "upgrade kitbag to a release that reads this manifest schema", err, Fail)
+	}
+	return result("tool-version", "kitbag "+version+"; min_tool_version "+event.Required, "upgrade kitbag to the manifest's min_tool_version", err, Fail)
+}
+
+// Code follows the shared CLI table: a manifest needing a newer tool
+// (min_tool_version or schema) is 4, other FAIL results (or WARN under strict)
+// are 1. Ordinary warnings exit successfully.
 func (r Report) Code(strict bool) apply.Code {
 	code := apply.OK
 	for _, check := range r.Checks {
 		if check.Status == Fail || strict && check.Status == Warn {
 			code = max(code, apply.Warnings)
 		}
-		if check.ID == "tool-version" && check.Status == Fail {
+		if (check.ID == "tool-version" || check.ID == "manifest-schema") && check.Status == Fail {
 			code = apply.ToolTooOld
 		}
 	}

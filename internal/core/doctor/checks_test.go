@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/TomaszJanusz/kitbag/internal/core/apply"
+	"github.com/TomaszJanusz/kitbag/internal/core/compatibility"
 	"github.com/TomaszJanusz/kitbag/internal/core/state"
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 	"github.com/TomaszJanusz/kitbag/internal/platform/fake"
@@ -73,7 +74,7 @@ func TestRegistryOrder(t *testing.T) {
 	s.Config.Migration.LegacyRoots = []string{"~/old"}
 	r := s.Run(t.Context())
 	assertChecks(t, r, []string{
-		"tool-version", "host", "instance-codex/default",
+		"tool-version", "host", "manifest-schema", "instance-codex/default",
 		"git-backend", "remote", "commit-identity", "commit-signing",
 		"ssh-agent", "agent-claude", "agent-codex",
 		"state-lock", "state-health", "materialization-mode", "copy", "link", "service",
@@ -126,6 +127,10 @@ func manifestVersionCases() []manifestCase {
 			name: "tool new enough", manifest: "schema=1\nmin_tool_version=\"0.5.0\"\n", version: "1.0.0",
 			expects: []expect{{"tool-version", "kitbag 1.0.0; min_tool_version 0.5.0", "", OK}},
 		},
+		{
+			name: "schema in use", manifest: "schema=1\n", order: []string{"tool-version", "host", "manifest-schema"},
+			expects: []expect{{"manifest-schema", "schema 1 (supported)", "", OK}},
+		},
 	}
 }
 
@@ -153,7 +158,7 @@ func manifestInstanceCases() []manifestCase {
 			manifest: "schema=1\n[targets.gemini]\nagent=\"gemini\"\n[targets.opencode]\nagent=\"opencode\"\n",
 			env:      map[string]string{"XDG_CONFIG_HOME": filepath.Join(testHome(), "xdg")},
 			dirs:     []string{filepath.Join(testHome(), ".gemini")},
-			order:    []string{"tool-version", "host", "instance-gemini/default", "instance-opencode/default"},
+			order:    []string{"tool-version", "host", "manifest-schema", "instance-gemini/default", "instance-opencode/default"},
 			expects: []expect{
 				{"instance-gemini/default", filepath.Join(testHome(), ".gemini"), "", OK},
 				{"instance-opencode/default", filepath.Join(testHome(), "xdg", "opencode"), "create or correct", Warn},
@@ -177,7 +182,7 @@ func manifestInstanceCases() []manifestCase {
 				"[targets.plain]\nagent=\"generic\"\n" +
 				"[targets.plain.instances.main]\ndir=\"~/plain\"\nroots={skills=\"~/plain/skills\"}\n",
 			dirs:  []string{filepath.Join(testHome(), "first")},
-			order: []string{"tool-version", "host", "instance-codex/first", "instance-codex/second", "instance-plain/main"},
+			order: []string{"tool-version", "host", "manifest-schema", "instance-codex/first", "instance-codex/second", "instance-plain/main"},
 			expects: []expect{
 				{"instance-codex/first", filepath.Join(testHome(), "first"), "", OK},
 				{"instance-codex/second", filepath.Join(testHome(), "second"), "create or correct", Warn},
@@ -186,7 +191,7 @@ func manifestInstanceCases() []manifestCase {
 		{
 			name:     "host flag selects override",
 			manifest: codexManifest + "[hosts.laptop.targets.codex]\nenabled=false\n",
-			flag:     "laptop", order: []string{"tool-version", "host"},
+			flag:     "laptop", order: []string{"tool-version", "host", "manifest-schema"},
 			expects: []expect{{"host", "host laptop (--host)", "", OK}},
 		},
 	}
@@ -547,6 +552,7 @@ func TestExitCodeCombinations(t *testing.T) {
 		{"tool-version warning is ordinary", []Check{{ID: "tool-version", Status: Warn}}, apply.OK, apply.Warnings},
 		{"old tool wins after failure", []Check{{ID: "remote", Status: Fail}, {ID: "tool-version", Status: Fail}}, apply.ToolTooOld, apply.ToolTooOld},
 		{"old tool wins before failure", []Check{{ID: "tool-version", Status: Fail}, {ID: "remote", Status: Fail}, {ID: "ssh-agent", Status: Warn}}, apply.ToolTooOld, apply.ToolTooOld},
+		{"newer schema wins after failure", []Check{{ID: "remote", Status: Fail}, {ID: "manifest-schema", Status: Fail}}, apply.ToolTooOld, apply.ToolTooOld},
 		{"warnings and ok", []Check{{ID: "remote", Status: OK}, {ID: "ssh-agent", Status: Warn}}, apply.OK, apply.Warnings},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -681,6 +687,30 @@ func TestHostMismatch(t *testing.T) {
 				must(t, host.WriteAtomic(path, []byte("host\n"), probeFilePerm))
 			}
 			assertChecks(t, Report{Checks: s.manifestChecks(t.Context())}, nil, []expect{tc.want})
+		})
+	}
+}
+
+func TestNewerManifestStopsBeforeProbes(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, manifest string
+		want           expect
+	}{
+		{"next schema", "schema=2\n[targets.claude.instances.second]\ndir=\"~/.claude_2\"\nhosts=[\"mac\"]\n", expect{"manifest-schema", "manifest schema 2; kitbag 1.0.0 reads schema 1", "upgrade kitbag", Fail}},
+		{"far future schema", "schema=9223372036854775807\n", expect{"manifest-schema", "manifest schema 9223372036854775807; kitbag 1.0.0 reads schema 1", "upgrade kitbag", Fail}},
+		{"minimum before validation", "schema=1\nmin_tool_version=\"99.0.0\"\nfuture_key=true\n", expect{"tool-version", "min_tool_version 99.0.0", "upgrade kitbag", Fail}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			s, _ := subjectWith(t, nil, tc.manifest)
+			var events []compatibility.Event
+			s.Emit = func(event compatibility.Event) { events = append(events, event) }
+			r := s.Run(t.Context())
+			assertChecks(t, r, []string{tc.want.id}, []expect{tc.want})
+			if r.Code(false) != apply.ToolTooOld || r.ToolTooOld == nil || len(events) != 1 || events[0].Current != "1.0.0" {
+				t.Fatalf("code %d, event %+v, emitted %+v", r.Code(false), r.ToolTooOld, events)
+			}
 		})
 	}
 }

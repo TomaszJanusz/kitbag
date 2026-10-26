@@ -149,6 +149,9 @@ func (c *commandLine) printStatus(status workflow.Status, asJSON bool) error {
 	}
 	if status.ToolTooOld != nil {
 		line := "tool too old: requires kitbag " + status.ToolTooOld.Required + "; running " + status.ToolTooOld.Current
+		if status.ToolTooOld.Schema != 0 {
+			line = fmt.Sprintf("tool too old: manifest schema %d needs a newer kitbag; running %s, which reads schema %d", status.ToolTooOld.Schema, status.ToolTooOld.Current, status.ToolTooOld.SupportedSchema)
+		}
 		if c.colour() {
 			line = "\x1b[31m" + line + "\x1b[0m"
 		}

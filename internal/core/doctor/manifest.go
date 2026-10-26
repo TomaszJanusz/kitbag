@@ -3,6 +3,7 @@ package doctor
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"path/filepath"
 	"slices"
@@ -62,7 +63,10 @@ func (s Service) manifestChecks(context.Context) []Check {
 	if err != nil {
 		return []Check{result("manifest", "cannot load manifest/host", "configure repo.path and repair kitbag.toml or host selection", err, Fail)}
 	}
-	checks := []Check{result("tool-version", "kitbag "+s.Version+"; min_tool_version "+m.MinToolVersion, "upgrade kitbag to the manifest's min_tool_version", m.CheckVersion(s.Version), Fail), host}
+	checks := []Check{
+		result("tool-version", "kitbag "+s.Version+"; min_tool_version "+m.MinToolVersion, "upgrade kitbag to the manifest's min_tool_version", m.CheckVersion(s.Version), Fail), host,
+		{ID: "manifest-schema", Status: OK, Message: fmt.Sprintf("schema %d (supported)", m.Schema)},
+	}
 	dirs, err := s.instances(m)
 	if err != nil {
 		return append(checks, result("instances", "cannot resolve instance directories", "use absolute CODEX_HOME/CLAUDE_CONFIG_DIR or explicit instance dirs", err, Fail))

@@ -215,7 +215,10 @@ func statusSnapshot(s workflow.Status, daemon bool) model.StatusSnapshot {
 		},
 	}
 	if s.ToolTooOld != nil {
-		snapshot.ToolTooOld = &model.ToolTooOld{Required: s.ToolTooOld.Required, Current: s.ToolTooOld.Current}
+		snapshot.ToolTooOld = &model.ToolTooOld{
+			Required: s.ToolTooOld.Required, Current: s.ToolTooOld.Current,
+			Schema: s.ToolTooOld.Schema, SupportedSchema: s.ToolTooOld.SupportedSchema,
+		}
 	}
 	return snapshot
 }
