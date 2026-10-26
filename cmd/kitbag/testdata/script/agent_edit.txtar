@@ -1,0 +1,257 @@
+# agent add/edit/remove against a local bare remote in the throwaway HOME.
+[windows] stop 'Windows refuses commands before 1.x'
+env KITBAG_CONFIG=$WORK/machine.toml
+env KITBAG_HOST=test
+env CLAUDE_CONFIG_DIR=
+env CODEX_HOME=
+env GEMINI_CLI_HOME=
+env XDG_CONFIG_HOME=
+env XDG_DATA_HOME=
+env XDG_STATE_HOME=
+env XDG_CACHE_HOME=
+gitremote $WORK/config.git seed
+exec git clone --quiet $WORK/config.git $HOME/checkout
+agentdirs .claude .claude_2
+cp user-file $HOME/.claude_2/notes.md
+cp user-settings.json $HOME/.claude_2/settings.json
+exec kitbag sync
+exists $HOME/.claude/CLAUDE.md
+
+# A preview writes nothing, also declares the implicit default and is exit 0.
+exec kitbag agent add --agent claude --name second --dir '~/.claude_2' --dry-run
+stdout '^Change: add claude instance second at ~/\.claude_2$'
+stdout '^\+\[targets\.claude\.instances\.main\]$'
+stdout '^\+dir = "~/\.claude"$'
+stdout '^\+\[targets\.claude\.instances\.second\]$'
+stdout '^publish: direct push to main$'
+stderr 'default directory ~/\.claude is declared as instance main'
+cmp $HOME/checkout/kitbag.toml seed/kitbag.toml
+exec git -C $HOME/checkout status --porcelain
+! stdout .
+exec kitbag agent add --agent claude --name second --dir '~/.claude_2' --dry-run --json
+agentchangeschema stdout
+stdout '"state": "dry_run"'
+stdout '"released": null'
+execstatus 2 kitbag agent add --agent claude --name second --dir '~/.claude_2' --json
+stderr '--json needs --yes or --dry-run'
+
+# Safety rules: no terminal without --yes, no host scope, validation, refusal.
+! exec kitbag agent add --agent claude --name second --dir '~/.claude_2'
+stderr 'needs a terminal; pass --yes or --dry-run'
+execstatus 2 kitbag agent add --agent claude --name second --dir '~/.claude_2'
+execstatus 2 kitbag --host other agent add --agent claude --name second --dir '~/.claude_2' --yes
+stderr 'manifest schema 2'
+execstatus 2 kitbag agent add --agent claude --name Second --dir '~/.claude_2' --yes
+stderr 'instance name'
+execstatus 2 kitbag agent add --agent cursor --name second --dir '~/.claude_2' --yes
+stderr 'unknown agent kind "cursor"'
+execstatus 2 kitbag agent add --agent claude --name second --dir $WORK/outside --yes
+stderr 'outside the home directory'
+cp user-file $HOME/checkout/untracked
+execstatus 2 kitbag agent add --agent claude --name second --dir '~/.claude_2' --yes
+stderr 'has local changes'
+rm $HOME/checkout/untracked
+cmp $HOME/checkout/kitbag.toml seed/kitbag.toml
+
+# A failed commit (here: no Git identity) restores kitbag.toml; nothing stays dirty.
+execstatus 1 kitbag agent add --agent claude --name second --dir '~/.claude_2' --yes
+stderr 'commit kitbag.toml: .*identity unknown'
+cmp $HOME/checkout/kitbag.toml seed/kitbag.toml
+exec git -C $HOME/checkout status --porcelain
+! stdout .
+exec git -C $HOME/checkout config user.name 'Agent Owner'
+exec git -C $HOME/checkout config user.email owner@example.com
+
+# Add: one generated commit on the remote, comments kept, then synchronized.
+exec kitbag agent add --agent claude --name second --dir $HOME/.claude_2 --yes
+stdout '^published add claude instance second at ~/\.claude_2 to main as [0-9a-f]{12}$'
+stdout '\.claude_2/CLAUDE\.md'
+cmp $HOME/checkout/kitbag.toml want/added.toml
+exec git -C $WORK/config.git log -1 --format=%B main
+cmp stdout want/add-message
+exec git -C $HOME/checkout status --porcelain --branch
+stdout '^## main\.\.\.origin/main$'
+! stdout '^\?\?|^ M'
+exists $HOME/.claude_2/CLAUDE.md
+exists $HOME/.claude/CLAUDE.md
+grep '"theme": "dark"' $HOME/.claude_2/settings.json
+grep '"mine": true' $HOME/.claude_2/settings.json
+exec kitbag sync
+nooutput
+execstatus 2 kitbag agent add --agent claude --name dup --dir '~/.CLAUDE_2' --dry-run
+stderr '~/\.CLAUDE_2 is already declared as claude/second'
+
+# Edit through JSON: the settings switch only.
+exec kitbag agent edit claude/second --settings off --yes --json
+agentchangeschema stdout
+stdout '"agent_change_schema": 1'
+stdout '"state": "published"'
+stdout '"title": "chore\(kitbag\): edit claude instance second \(settings off\)"'
+stdout '"exit_code": 0'
+exec git -C $WORK/config.git log -1 --format=%s main
+stdout '^chore\(kitbag\): edit claude instance second \(settings off\)$'
+grep '^settings = false$' $HOME/checkout/kitbag.toml
+
+# Remove hands the directory back by the unmanage rules: KitBag's unchanged
+# output is discarded, the user's original settings are restored from the
+# one-time backup, other files and the directory stay; a repeat sync is silent.
+exec kitbag agent remove claude/second --yes --json
+agentchangeschema stdout
+stdout '"dir": "~/\.claude_2"'
+stdout '"discard .*\.claude_2/CLAUDE\.md"'
+stdout '"restore .*\.claude_2/settings\.json"'
+exec git -C $WORK/config.git log -1 --format=%s main
+stdout '^chore\(kitbag\): remove claude instance second$'
+! grep 'instances\.second' $HOME/checkout/kitbag.toml
+! exists $HOME/.claude_2/CLAUDE.md
+cmp $HOME/.claude_2/notes.md user-file
+cmp $HOME/.claude_2/settings.json user-settings.json
+exists $HOME/.claude/CLAUDE.md
+exec kitbag sync
+nooutput
+execstatus 2 kitbag agent remove claude/main --yes
+stderr 'last instance of target claude'
+
+# Moving an instance releases the old directory too; a file the user changed
+# there is left in place, reported and no longer managed.
+exec kitbag agent add --agent claude --name second --dir '~/.claude_2' --yes
+cp user-file $HOME/.claude_2/CLAUDE.md
+exec git -C $WORK/config.git config core.hooksPath $WORK/hooks
+chmod 755 hooks/pre-receive
+cp once hooks/mode
+execstatus 1 kitbag agent edit claude/second --dir '~/.claude-work' --yes
+stdout '^published edit claude instance second \(dir ~/\.claude-work\) to main'
+stderr 'claude-work does not exist'
+stderr '\.claude_2/CLAUDE\.md: changed since KitBag wrote it; left in place and no longer managed'
+stdout '^restore .*\.claude_2/settings\.json$'
+stdout '^release .*\.claude_2/CLAUDE\.md$'
+exec git -C $WORK/config.git log --format=%s -2 main
+stdout '^chore\(kitbag\): edit claude instance second \(dir ~/\.claude-work\)\nconcurrent edit$'
+grep '^# edited concurrently$' $HOME/checkout/kitbag.toml
+exec git -C $HOME/checkout status --porcelain --branch
+stdout '^## main\.\.\.origin/main$'
+cmp $HOME/.claude_2/CLAUDE.md user-file
+cmp $HOME/.claude_2/settings.json user-settings.json
+exec kitbag plan
+! stdout 'claude_2'
+
+# A second rejection gives up: the commit stays local and is reported.
+cp always hooks/mode
+execstatus 1 kitbag agent edit claude/second --dir '~/.claude_2' --yes
+stdout '^committed [0-9a-f]{12} locally but not published: '
+stdout 'pull --rebase'
+exec git -C $HOME/checkout status --porcelain --branch
+stdout 'ahead 1'
+cp off hooks/mode
+exec git -C $HOME/checkout fetch --quiet
+exec git -C $HOME/checkout reset --quiet --hard origin/main
+
+# Publish mode pr writes nothing and prints how to propose the change.
+exec git clone --quiet $WORK/config.git $WORK/upstream
+exec sh -c 'cat $WORK/pr.toml >> $WORK/upstream/kitbag.toml'
+exec git -C $WORK/upstream commit --quiet -am 'Propose changes from test'
+exec git -C $WORK/upstream push --quiet
+execstatus 1 kitbag sync
+stderr 'claude-work/CLAUDE\.md: instance directory is missing; skipped'
+exec git -C $WORK/config.git rev-parse main
+cp stdout $WORK/before-pr
+exec kitbag agent remove claude/second --yes
+stdout '^not written: publish mode is pr'
+stdout 'switch -c kitbag/claude-second'
+exec git -C $WORK/config.git rev-parse main
+cmp stdout $WORK/before-pr
+exec git -C $HOME/checkout status --porcelain
+! stdout .
+
+-- machine.toml --
+schema=1
+[repo]
+url="local-config"
+path="~/checkout"
+branch="main"
+-- seed/kitbag.toml --
+# Shared agent configuration.
+schema = 1
+
+[instructions]
+# Loaded by every agent.
+source = "rules.md"
+
+[targets.claude]
+agent = "claude"
+# Merged into settings.json.
+settings = "claude/settings.json"
+
+# Publish straight to main.
+[publish]
+mode = "direct"
+-- seed/rules.md --
+Shared rules.
+-- seed/claude/settings.json --
+{"theme": "dark"}
+-- user-file --
+mine
+-- user-settings.json --
+{"mine": true}
+-- want/added.toml --
+# Shared agent configuration.
+schema = 1
+
+[instructions]
+# Loaded by every agent.
+source = "rules.md"
+
+[targets.claude]
+agent = "claude"
+# Merged into settings.json.
+settings = "claude/settings.json"
+
+[targets.claude.instances.main]
+dir = "~/.claude"
+
+[targets.claude.instances.second]
+dir = "~/.claude_2"
+
+# Publish straight to main.
+[publish]
+mode = "direct"
+-- want/add-message --
+chore(kitbag): add claude instance second at ~/.claude_2
+
+- add claude instance second at ~/.claude_2
+- declare the default directory ~/.claude as instance main so it stays managed
+
+Kitbag-Host: test
+Kitbag-Op: agent.add
+
+-- pr.toml --
+
+[hosts.test]
+publish = { mode = "pr" }
+-- once --
+once
+-- always --
+always
+-- off --
+off
+-- hooks/pre-receive --
+#!/bin/sh
+# Move main and reject the push: "once" only the first time, "always" each time.
+dir=$(dirname "$0")
+mode=$(cat "$dir/mode" 2>/dev/null)
+case "$mode" in
+once) [ -e "$dir/rejected" ] && exit 0 ;;
+always) ;;
+*) exit 0 ;;
+esac
+touch "$dir/rejected"
+unset GIT_QUARANTINE_PATH GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
+export GIT_AUTHOR_NAME=Other GIT_AUTHOR_EMAIL=other@example.com GIT_COMMITTER_NAME=Other GIT_COMMITTER_EMAIL=other@example.com
+git show main:kitbag.toml > "$dir/concurrent.toml"
+echo "# edited concurrently" >> "$dir/concurrent.toml"
+blob=$(git hash-object -w "$dir/concurrent.toml")
+tree=$( (git ls-tree main | grep -v '	kitbag.toml$'; printf '100644 blob %s\tkitbag.toml\n' "$blob") | git mktree)
+commit=$(echo "concurrent edit" | git commit-tree "$tree" -p main)
+git update-ref refs/heads/main "$commit"
+echo "main moved concurrently" >&2
+exit 1

@@ -69,6 +69,15 @@ checked in CI against snapshot builds, not against a published release.
    this machine directly otherwise, honours `NO_COLOR`, and exits 2 when stdin or
    stdout is not a terminal. See the [terminal UI](docs/tui.md).
 
+To use a second account or another agent, declare its directory without
+editing `kitbag.toml` by hand; KitBag previews the change, commits it with a
+generated message, publishes it and syncs ([agent edits](docs/agents.md#add-edit-and-remove-instances)):
+
+```sh
+kitbag agent list
+kitbag agent add --agent claude --name second --dir ~/.claude_2
+```
+
 Coming from the `agent-config-sync` script? Follow the
 [migration guide](docs/guide-migrate-agent-config-sync.md). Every command and flag
 is in the [generated command reference](docs/cli/kitbag.md).

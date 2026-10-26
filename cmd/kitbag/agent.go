@@ -20,7 +20,7 @@ import (
 const probeHelp = "Detection never lists HOME on its own. Only an explicit request (kitbag agent list --probe or Look for more directories in the terminal interface) reads the names of HOME's direct entries, once, without descending into or following any of them. Names that do not match a known agent directory are discarded without being shown or stored. Detection never reads agent settings, credentials, sessions or instance files, and never runs an agent executable."
 
 func (c *commandLine) agentCommand() *cobra.Command {
-	group := &cobra.Command{Use: "agent", Short: "Inspect agent kinds and instances"}
+	group := &cobra.Command{Use: "agent", Short: "Inspect and change agent kinds and instances"}
 	var asJSON, probe bool
 	list := &cobra.Command{Use: "list", Short: "List agent directories and declared instances", Long: "Show known native agent kinds, declared instances and undeclared directory candidates using the caller's relocation variables. Read-only: no Git, daemon, state lock or writes. An absent configuration or manifest is reported without preventing discovery.", Args: cobra.NoArgs, RunE: func(*cobra.Command, []string) error {
 		result, err := c.listAgents(probe)
@@ -36,6 +36,7 @@ func (c *commandLine) agentCommand() *cobra.Command {
 	list.Flags().BoolVar(&asJSON, "json", false, "Print stable agents_schema=1 JSON")
 	list.Flags().BoolVar(&probe, "probe", false, probeHelp)
 	group.AddCommand(list)
+	group.AddCommand(c.agentEditCommands()...)
 	return group
 }
 

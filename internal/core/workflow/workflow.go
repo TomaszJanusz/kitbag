@@ -13,6 +13,7 @@ import (
 	"github.com/TomaszJanusz/kitbag/internal/config"
 	"github.com/TomaszJanusz/kitbag/internal/core/apply"
 	"github.com/TomaszJanusz/kitbag/internal/core/compatibility"
+	"github.com/TomaszJanusz/kitbag/internal/core/discover"
 	"github.com/TomaszJanusz/kitbag/internal/core/plan"
 	"github.com/TomaszJanusz/kitbag/internal/core/state"
 	"github.com/TomaszJanusz/kitbag/internal/platform"
@@ -28,11 +29,13 @@ type AdapterFactory func(*manifest.Manifest, *[]string) ([]target.Adapter, error
 // Service supplies command dependencies. Now is required for Sync only.
 type Service struct {
 	// Emit receives transient compatibility failures; it must not mutate the host.
-	Emit       func(compatibility.Event)
-	Host       platform.Host
-	Backend    vcs.Backend
-	Store      *state.Store
-	Adapters   AdapterFactory
+	Emit     func(compatibility.Event)
+	Host     platform.Host
+	Backend  vcs.Backend
+	Store    *state.Store
+	Adapters AdapterFactory
+	// Kinds resolves native agent kinds for agent changes.
+	Kinds      discover.Table
 	Repository string
 	Version    string
 	HostFlag   string
@@ -74,15 +77,20 @@ func (s Service) Sync(ctx context.Context, noPull, force bool) (SyncResult, erro
 		return result, fmt.Errorf("sync clock: %w", invalidInput())
 	}
 	err := s.Store.WithLock(func(session *state.Session) error {
-		if _, _, err := session.LoadSync(); err != nil {
-			return err
-		}
-		runErr := s.syncLocked(ctx, session, noPull, force, &result)
-		code := max(result.Code(), apply.ErrorCode(runErr))
-		record := state.SyncRecord{SchemaVersion: 1, At: s.Now(), Repository: s.Repository, Result: int(code), Changed: len(result.Apply.Changed) + len(result.Includes.Added)}
-		return errors.Join(runErr, session.SaveSync(record))
+		return s.syncSession(ctx, session, noPull, force, &result)
 	})
 	return result, err
+}
+
+// syncSession runs one sync inside an acquired lock and records its outcome.
+func (s Service) syncSession(ctx context.Context, session *state.Session, noPull, force bool, result *SyncResult) error {
+	if _, _, err := session.LoadSync(); err != nil {
+		return err
+	}
+	runErr := s.syncLocked(ctx, session, noPull, force, result)
+	code := max(result.Code(), apply.ErrorCode(runErr))
+	record := state.SyncRecord{SchemaVersion: 1, At: s.Now(), Repository: s.Repository, Result: int(code), Changed: len(result.Apply.Changed) + len(result.Includes.Added)}
+	return errors.Join(runErr, session.SaveSync(record))
 }
 
 func (s Service) syncLocked(ctx context.Context, session *state.Session, noPull, force bool, result *SyncResult) error {

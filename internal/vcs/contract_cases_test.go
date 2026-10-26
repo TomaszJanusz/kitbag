@@ -1,6 +1,7 @@
 package vcs_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -226,4 +227,36 @@ func (s suite) testPushRejectsNonFastForward(t *testing.T) {
 	if h := w.head(t, w.cloneAt(t, "check")); h.Commit != upstream {
 		t.Errorf("remote main = %s, want unchanged %s", h.Commit, upstream)
 	}
+}
+
+// testDropCommit removes only an unpublished HEAD commit of a clean working
+// copy, so a rejected push can be rebuilt on the new upstream.
+func (s suite) testDropCommit(t *testing.T) {
+	t.Parallel()
+	w := s.newWorld(t)
+	base := w.head(t, w.clone).Commit
+	upstream := w.upstreamCommit(t, "up.txt", "up\n")
+	writeFile(t, w.clone, "local.txt", "local\n")
+	local := w.commit(t, w.clone, "Local")
+	mustIs(t, "push", w.backend.Push(t.Context(), w.clone, vcs.PushOptions{}), vcs.ErrPushRejected)
+	mustNil(t, "fetch", w.backend.Fetch(t.Context(), w.clone))
+
+	mustIs(t, "drop other commit", w.backend.DropCommit(t.Context(), w.clone, base), vcs.ErrInvalidArgument)
+	writeFile(t, w.clone, "dirty.txt", "dirty\n")
+	mustIs(t, "drop dirty", w.backend.DropCommit(t.Context(), w.clone, local), vcs.ErrDirty)
+	mustNil(t, "remove dirty", os.Remove(filepath.Join(w.clone, "dirty.txt")))
+
+	mustNil(t, "drop", w.backend.DropCommit(t.Context(), w.clone, local))
+	st := w.status(t, w.clone)
+	if st.Commit != base || !st.Clean() || st.Ahead != 0 || st.Behind != 1 {
+		t.Fatalf("after drop: %+v, want clean at %s and behind 1", st, base)
+	}
+	if _, err := os.Stat(filepath.Join(w.clone, "local.txt")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("dropped file still present: %v", err)
+	}
+	mustNil(t, "fast-forward", w.backend.FastForward(t.Context(), w.clone))
+	if h := w.head(t, w.clone); h.Commit != upstream {
+		t.Fatalf("head %s, want upstream %s", h.Commit, upstream)
+	}
+	mustIs(t, "drop published", w.backend.DropCommit(t.Context(), w.clone, upstream), vcs.ErrPublished)
 }

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/TomaszJanusz/kitbag/internal/platform/fake"
+	"github.com/TomaszJanusz/kitbag/internal/vcs"
 	"github.com/TomaszJanusz/kitbag/internal/vcs/system"
 )
 
@@ -53,5 +54,23 @@ func newSystemSubject(t *testing.T) subject {
 				t.Fatalf("git %q: %v\n%s", args, err, out)
 			}
 		},
+	}
+}
+
+// TestSystemCommitRefusedUnstages proves that a commit refused by a hook
+// leaves nothing staged, so the working copy shows only the edit itself.
+func TestSystemCommitRefusedUnstages(t *testing.T) {
+	t.Parallel()
+	w := suite{newSubject: newSystemSubject}.newWorld(t)
+	hooks := filepath.Join(w.clone, ".git", "hooks")
+	mustNil(t, "hooks", os.MkdirAll(hooks, 0o700))
+	mustNil(t, "hook", os.WriteFile(filepath.Join(hooks, "pre-commit"), []byte("#!/bin/sh\nexit 1\n"), 0o700)) //nolint:gosec // G306: a Git hook must be executable.
+	writeFile(t, w.clone, "seed.txt", "changed\n")
+	if _, err := w.backend.Commit(t.Context(), w.clone, vcs.CommitOptions{Message: "Refused"}); err == nil {
+		t.Fatal("commit succeeded despite the refusing hook")
+	}
+	w.git(t, w.clone, "diff", "--cached", "--quiet")
+	if st := w.status(t, w.clone); len(st.Changes) != 1 || st.Changes[0].Path != "seed.txt" {
+		t.Fatalf("status after refused commit: %+v", st)
 	}
 }

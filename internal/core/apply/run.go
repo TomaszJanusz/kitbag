@@ -48,6 +48,10 @@ func runLocked(fsys platform.FS, session *state.Session, req plan.Request, optio
 	return Execute(fsys, session, p, options)
 }
 
+// ErrConflict classifies a failure caused by a concurrent change, such as a
+// manifest edited since its preview; ErrorCode maps it to Conflict.
+var ErrConflict = errors.New("changed concurrently")
+
 // ErrorCode classifies failures; combine with Result.Code by taking the larger
 // code. Operational errors and unavailable host operations use Warnings.
 func ErrorCode(err error) Code {
@@ -62,7 +66,7 @@ func ErrorCode(err error) Code {
 		return UnsupportedOS
 	case errors.As(err, &versionError), errors.As(err, &schemaError):
 		return ToolTooOld
-	case errors.Is(err, errChanged()):
+	case errors.Is(err, errChanged()), errors.Is(err, ErrConflict):
 		return Conflict
 	case errors.Is(err, fs.ErrInvalid):
 		return Usage

@@ -34,6 +34,12 @@ require a repository URL. An explicit missing config is an error.
   presence, even before configuration exists. `--json` emits `agents_schema: 1`;
   `--probe` explicitly lists HOME names once, keeping only known agent patterns.
   See [agent discovery](agents.md#discover-agent-directories-and-instances) for the privacy and output contracts.
+- `agent add`, `agent edit`, `agent remove`: change the instances declared in
+  the shared `kitbag.toml` for all hosts, preview first, then commit with a
+  generated Conventional Commit message and publish by the host's publish mode
+  (direct push, or printed instructions for `pr`), release a dropped directory
+  by the unmanage rules and sync. `--json` emits `agent_change_schema: 1`. See
+  [agent edits](agents.md#add-edit-and-remove-instances).
 - `sync`: hold the state lock, fetch and fast-forward a clean clone, read the new
   manifest, check `min_tool_version`, resolve host/mode, recover pending work,
   build **one** plan, execute **once**, then ensure Git includes and record the

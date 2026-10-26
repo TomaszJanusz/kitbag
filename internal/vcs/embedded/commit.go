@@ -33,16 +33,26 @@ func (b *Backend) Commit(ctx context.Context, dir string, opts vcs.CommitOptions
 		return "", err
 	}
 	if err = ctx.Err(); err != nil {
-		return "", err
+		return "", errors.Join(err, unstage(r, wt))
 	}
 	hash, err := wt.Commit(opts.Message, &git.CommitOptions{Author: author})
 	if errors.Is(err, git.ErrEmptyCommit) {
-		return "", vcs.ErrNothingToCommit
+		return "", errors.Join(vcs.ErrNothingToCommit, unstage(r, wt))
 	}
 	if err != nil {
-		return "", fmt.Errorf("commit: %w", err)
+		return "", errors.Join(fmt.Errorf("commit: %w", err), unstage(r, wt))
 	}
 	return hash.String(), nil
+}
+
+// unstage resets the index to HEAD after a failed commit, keeping the
+// working tree; an unborn branch keeps its index.
+func unstage(r *git.Repository, wt *git.Worktree) error {
+	h, err := head(r)
+	if err != nil || h.Unborn() {
+		return err
+	}
+	return wt.Reset(&git.ResetOptions{Mode: git.MixedReset})
 }
 
 func (b *Backend) prepareCommit(ctx context.Context, dir string) (*git.Repository, *git.Worktree, *object.Signature, error) {

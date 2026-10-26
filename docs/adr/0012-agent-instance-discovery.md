@@ -5,6 +5,8 @@
 - Revised: 2026-10-26, after the maintainer decided storage (manifest schema 2
   with a per-instance `hosts` filter), publication (fully automatic, no manual
   commits or messages) and discovery breadth (`--probe` on explicit request).
+- V1 slice implemented: 2026-10-26, ahead of the rollout; see
+  [V1 slice](#v1-slice-shipped-first).
 
 ## Context and Problem Statement
 
@@ -691,6 +693,29 @@ both publish automatically. Before R2, the `~/.claude_2` warning remains on
 hosts without that directory; no interim copy is written. runner02, whose
 policy is `pr`, publishes through pull requests only once PR 17 lands; until
 then its KitBag changes are applied locally and held, visible as such.
+
+## V1 slice (shipped first)
+
+The maintainer asked for editing agent instances before the full rollout above.
+The v1 slice ships [`kitbag agent add/edit/remove`](../agents.md#add-edit-and-remove-instances)
+on **manifest schema 1** with these deliberate simplifications; everything else
+in this record stays the plan.
+
+| Topic | Full design | V1 slice |
+| --- | --- | --- |
+| CLI | `add <kind> [<dir>] [--name]`, scope flags, `--keep-local`, `--revision` | `add --agent <kind> --name <n> --dir <path> [--target] [--settings on\|off]`, `edit <target-or-kind>/<name> [--dir] [--settings]`, `remove <target-or-kind>/<name>`; all with `--dry-run`, `--json`, `--yes`. An interactive confirmation compares the previewed revision and shows a new preview when it changed. |
+| Scope | Schema 2 `hosts` filter, host patches | All hosts only. A global `--host` is refused (exit 2) pointing here; a target with a schema-1 `[hosts.<h>.targets.<t>.instances]` replacement set is refused because an all-hosts edit would not reach that host. |
+| Storage | Publication queue and effective-manifest overlay | Direct write of the shared `kitbag.toml` in the working copy with `internal/core/manifestedit` (PR 5 of the plan: position-preserving, reparse-verified, fuzzed). |
+| Publication | Queue, debounce, plumbing commit without touching the working copy | Under the state lock, on a clean working copy on its branch with an upstream and no unpublished commits: fast-forward, write, commit `kitbag.toml` with the machine's Git identity, push without force when the host's mode is `direct`. A non-fast-forward rejection is fetched, the local commit dropped (`vcs.Backend.DropCommit`, only an unpublished HEAD of a clean copy) and the same structured change prepared again on the new upstream, once; a second rejection leaves the local commit and reports `not_published` with recovery commands. A failed commit restores the file and the index. |
+| `pr` mode | Branch, pull request, supersede | Nothing is written (`manual`): the diff, title and commands to propose it are printed, so the clone never diverges or stays dirty. |
+| Message | `publish.message`, `Kitbag-Change`, `Kitbag-Version` trailers | Fixed `chore(kitbag): <op> <kind> instance <name>[ at <dir>]` (at most 72 characters), a body for extra edits, trailers `Kitbag-Host` and `Kitbag-Op: agent.<op>`. |
+| Defaults | Scope this host when present | Adding the first listed instance declares the documented default as `main`, so it stays managed. Removing the last listed instance is refused, since the target would start managing its default directory. |
+| Removal (open question 6) | Drop the declaration, let the planner remove owned outputs | After publishing, the dropped directory (remove, or an edit that moves the instance) is handed back by `kitbag unmanage`'s rules limited to it: unchanged outputs removed, displaced originals restored from their one-time backups, merged settings unmerged, changed outputs released with a warning. The planner alone would delete a merged `settings.json` whose original sits only in a backup, which the slice must not do. |
+| Exit codes | As section 4 | 0 published and synchronized, previewed or `manual`; 1 `not_published` or a sync warning; 2 validation, refused layout or scope, dirty or ahead working copy; 3 stale preview or change no longer applying upstream. |
+
+Not in the slice: schema 2, `--probe` in the wizard, the queue, held changes,
+`kitbag push`, `kitbag manifest upgrade` and pull requests. The local API and
+view models for the slice are described in [ui.md](../ui.md).
 
 ## Consequences
 

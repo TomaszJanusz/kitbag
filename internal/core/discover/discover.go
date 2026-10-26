@@ -69,6 +69,11 @@ type Resolver struct {
 	// Variable names the relocation variable, if any; it only labels the
 	// source, as Home applies it.
 	Variable string
+	// DefaultDir is the documented default as a manifest home path
+	// ("~/.claude"), independent of relocation variables; empty without a
+	// default. Agent edits declare it when a target's implicit default
+	// would otherwise stop being managed.
+	DefaultDir string
 }
 
 // Table holds the resolvers in presentation order.

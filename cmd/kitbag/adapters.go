@@ -20,10 +20,10 @@ import (
 // presentation order; core receives it so it imports no adapter.
 func agentHomes() discover.Table {
 	return discover.Table{
-		{Agent: claude.Agent, ProbePrefix: ".claude", Variable: claude.HomeVariable, Home: claude.Home},
-		{Agent: codex.Agent, ProbePrefix: ".codex", Variable: codex.HomeVariable, Home: codex.Home},
-		{Agent: gemini.Agent, ProbePrefix: ".gemini", Variable: gemini.HomeVariable, Home: gemini.Home},
-		{Agent: opencode.Agent, Variable: opencode.HomeVariable, Home: opencode.Home},
+		{Agent: claude.Agent, ProbePrefix: ".claude", Variable: claude.HomeVariable, Home: claude.Home, DefaultDir: "~/" + claude.DefaultHome},
+		{Agent: codex.Agent, ProbePrefix: ".codex", Variable: codex.HomeVariable, Home: codex.Home, DefaultDir: "~/" + codex.DefaultHome},
+		{Agent: gemini.Agent, ProbePrefix: ".gemini", Variable: gemini.HomeVariable, Home: gemini.Home, DefaultDir: "~/" + gemini.DefaultHome},
+		{Agent: opencode.Agent, Variable: opencode.HomeVariable, Home: opencode.Home, DefaultDir: "~/" + opencode.DefaultHome},
 		{Agent: generic.Agent},
 	}
 }

@@ -7,6 +7,7 @@ they encode is written out in [docs/manifest.md](../docs/manifest.md).
 | --- | --- | --- |
 | `kitbag.schema.json` | `https://kitbag.sh/schemas/kitbag.schema.json` | `kitbag.toml`, committed in a configuration repository |
 | `agents.schema.json` | `https://kitbag.sh/schemas/agents.schema.json` | `kitbag agent list --json`; see [agent discovery](../docs/agents.md#discover-agent-directories-and-instances) |
+| `agent-change.schema.json` | `https://kitbag.sh/schemas/agent-change.schema.json` | `kitbag agent add/edit/remove --json`; see [agent edits](../docs/agents.md#add-edit-and-remove-instances) |
 | `config.schema.json` | `https://kitbag.sh/schemas/config.schema.json` | `config.toml`, machine-local tool configuration |
 
 The `$id` values are stable identifiers; nothing is fetched from them.
