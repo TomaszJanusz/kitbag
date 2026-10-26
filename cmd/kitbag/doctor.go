@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/TomaszJanusz/kitbag/internal/api/client"
 	"github.com/TomaszJanusz/kitbag/internal/core/doctor"
 	"github.com/TomaszJanusz/kitbag/internal/core/state"
 	"github.com/TomaszJanusz/kitbag/internal/vcs"
@@ -51,7 +52,7 @@ func (c *commandLine) doctorService(offline bool) (doctor.Service, error) {
 		return doctor.Service{}, err
 	}
 	return doctor.Service{
-		Now: time.Now, ServiceConfig: c.configPath, Host: c.host, Store: store, Repository: repo, Config: c.config, Homes: agentHomes(), Version: toolVersion(), HostFlag: c.flags.host, ModeFlag: c.flags.mode, Offline: offline,
+		DaemonVersion: (client.Client{Host: c.host}).DaemonVersion, Now: time.Now, ServiceConfig: c.configPath, Host: c.host, Store: store, Repository: repo, Config: c.config, Homes: agentHomes(), Version: toolVersion(), HostFlag: c.flags.host, ModeFlag: c.flags.mode, Offline: offline,
 		Open: func(ctx context.Context) (vcs.Backend, vcs.Resolution, error) {
 			return vcs.Open(ctx, c.selection, gitFactories(c.host, c.config.Git.Identity))
 		},

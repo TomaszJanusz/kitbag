@@ -19,6 +19,9 @@ func (h *Host) ServiceLayout() (platform.ServiceLayout, error) {
 		return platform.ServiceLayout{}, err
 	}
 	binary, err := h.executable()
+	if err == nil {
+		binary = stableExecutable(binary)
+	}
 	user, _ := h.LookupEnv("USER")
 	return platform.ServiceLayout{Manager: "systemd", Directory: filepath.Join(filepath.Dir(dirs.Config), "systemd", "user"), Binary: binary, User: user}, err
 }
@@ -36,7 +39,7 @@ func (h *Host) ServiceControl(ctx context.Context, operation string, timer bool)
 		return h.serviceChecked(ctx, "--user", "daemon-reload")
 	}
 	switch operation {
-	case "enable", "start", "stop", "disable":
+	case "enable", "start", "stop", "disable", "restart":
 		return h.serviceChecked(ctx, "--user", operation, serviceUnit(timer))
 	default:
 		return fmt.Errorf("service operation: %w", fs.ErrInvalid)

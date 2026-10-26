@@ -80,9 +80,10 @@ func (h Handlers) workflow(ctx context.Context, method string, p Params, id json
 	switch method {
 	case "status.get":
 		result, err := service.Status(ctx)
+		result.DaemonVersion = h.ToolVersion
+		result.DaemonRunning = true
 		if h.Check != nil {
 			result.LastCheck = h.Check(service.Repository)
-			result.DaemonRunning = true
 		}
 		return result, operationError(err)
 	case "plan.get", "drift.list":
@@ -112,15 +113,17 @@ func drift(p plan.Plan) []plan.Observation {
 }
 
 func (h Handlers) sync(ctx context.Context, service workflow.Service, p Params, id json.RawMessage, notify func(Event)) (any, *Error) {
-	started := Event{Kind: "sync.started", RequestID: id}
+	started := Event{DaemonVersion: h.ToolVersion, Kind: "sync.started", RequestID: id}
 	h.Events.Publish(started)
-	notify(Event{Kind: "sync.progress", Phase: "started", RequestID: id})
-	service.Progress = func(phase string) { notify(Event{Kind: "sync.progress", Phase: phase, RequestID: id}) }
+	notify(Event{DaemonVersion: h.ToolVersion, Kind: "sync.progress", Phase: "started", RequestID: id})
+	service.Progress = func(phase string) {
+		notify(Event{DaemonVersion: h.ToolVersion, Kind: "sync.progress", Phase: phase, RequestID: id})
+	}
 	result, err := service.Sync(ctx, p.NoPull, p.Force)
 	code := max(result.Code(), apply.ErrorCode(err))
 	changed := len(result.Apply.Changed) + len(result.Includes.Added)
-	h.Events.Publish(Event{Kind: "sync.finished", RequestID: id, ExitCode: int(code), Changed: changed})
-	notify(Event{Kind: "sync.progress", Phase: "finished", RequestID: id, ExitCode: int(code), Changed: changed})
+	h.Events.Publish(Event{DaemonVersion: h.ToolVersion, Kind: "sync.finished", RequestID: id, ExitCode: int(code), Changed: changed})
+	notify(Event{DaemonVersion: h.ToolVersion, Kind: "sync.progress", Phase: "finished", RequestID: id, ExitCode: int(code), Changed: changed})
 	if err != nil {
 		problem := operationError(err)
 		problem.Data.ExitCode = code

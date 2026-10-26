@@ -45,7 +45,7 @@ func (h *Host) ServiceControl(ctx context.Context, operation string, timer bool)
 		status.Loaded = true
 	case "disable":
 		status.Enabled = false
-	case "start":
+	case "start", "restart":
 		status.Active = true
 		status.Loaded = true
 	case "stop":

@@ -17,7 +17,7 @@ import (
 
 func (c *commandLine) serviceCommand() *cobra.Command {
 	cmd := &cobra.Command{Use: "service", Short: "Manage background synchronization for this user", Long: "Install, uninstall or inspect a systemd user service or macOS LaunchAgent. Configuration, working copies and sync state are kept on uninstall."}
-	cmd.AddCommand(c.serviceInstallCommand(), c.serviceUninstallCommand(), c.serviceStatusCommand())
+	cmd.AddCommand(c.serviceInstallCommand(), c.serviceUninstallCommand(), c.serviceStatusCommand(), c.serviceRefreshCommand())
 	return cmd
 }
 
@@ -29,7 +29,7 @@ func (c *commandLine) serviceInstallCommand() *cobra.Command {
 	var mode string
 	var interval time.Duration
 	var noStart, now bool
-	cmd := &cobra.Command{Use: "install", Short: "Enable background sync with a daemon or timer", Long: "Write service definitions atomically and enable/start them. Repeating the same installation keeps the running job. --no-start only enables future starts; --now explicitly requests the default immediate start. Timer intervals range from 1m to 24h.", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+	cmd := &cobra.Command{Use: "install", Short: "Enable background sync with a daemon or timer", Long: "Write service definitions atomically and enable/start them. Repeating the same installation keeps a daemon only when its running version matches this binary. Older or unversioned daemons are restarted. --no-start only enables future starts; --now explicitly requests the default immediate start. Timer intervals range from 1m to 24h.", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		if _, err := c.config.WorkingCopy(c.host); err != nil {
 			return classified(err)
 		}
@@ -38,15 +38,15 @@ func (c *commandLine) serviceInstallCommand() *cobra.Command {
 		if err != nil {
 			return classified(err)
 		}
-		changed, err := supervisor.Install(cmd.Context(), options, noStart)
+		request, err := c.serviceVersion(cmd.Context(), false)
 		if err != nil {
 			return classified(err)
 		}
-		paths, err := supervisor.Paths(options)
+		installation, err := supervisor.InstallObserved(cmd.Context(), options, noStart, request)
 		if err != nil {
 			return classified(err)
 		}
-		return classified(c.printInstallation(cmd.Context(), c.stdout, service.Installation{Mode: options.Mode, Paths: paths, Changed: changed}))
+		return classified(c.printInstallation(cmd.Context(), c.stdout, installation))
 	}}
 	cmd.Flags().StringVar(&mode, "mode", "daemon", "Service mode: daemon or timer")
 	cmd.Flags().DurationVar(&interval, "interval", service.DefaultInterval, "Timer cadence (1m to 24h)")
@@ -62,6 +62,20 @@ func (c *commandLine) printInstallation(ctx context.Context, out io.Writer, inst
 	message := "Service already installed and up to date"
 	if installation.Changed {
 		message = "Service installed/updated"
+	}
+	if installation.Started && !installation.Changed {
+		message = "Service enabled/started"
+	}
+	if installation.Deferred {
+		message = "Service enabled; restart deferred by --no-start"
+	}
+	if installation.Restarted {
+		transition := fmt.Sprintf("Restarted the running daemon (%s -> %s)", installation.DaemonVersion, installation.BinaryVersion)
+		if installation.Changed {
+			message += "\n" + transition
+		} else {
+			message = transition
+		}
 	}
 	lines := make([]string, 0, len(installation.Paths)+1)
 	lines = append(lines, message+" ("+installation.Mode+" mode):")
@@ -127,7 +141,7 @@ func (c *commandLine) serviceStatusCommand() *cobra.Command {
 			return classified(err)
 		}
 		if report.BinaryMissing {
-			if _, err = fmt.Fprintf(c.stdout, "Service executable %s no longer exists (removed by a package upgrade or uninstall?); run kitbag service install with the installed kitbag to point the service at it.\n", report.Binary); err != nil {
+			if _, err = fmt.Fprintf(c.stdout, "Service executable %s no longer exists (removed by a package upgrade or uninstall?); run kitbag service refresh with the installed kitbag to point the service at it.\n", report.Binary); err != nil {
 				return classified(err)
 			}
 		}

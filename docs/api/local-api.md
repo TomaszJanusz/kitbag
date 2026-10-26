@@ -161,3 +161,17 @@ The existing bounded, lossy delivery contract still applies. No-change checks
 do not emit a sync event or alter the last sync. A failed check or a running
 daemon's check older than three `interval_seconds` is a presentation warning.
 The machine status stays successful when only these warnings occur.
+
+## Daemon version extensions
+
+API v1 `status.get` and lifecycle/progress event payloads include optional
+`daemon_version`, the version of the serving process. The API envelope remains
+`1.0`; this additive field does not change negotiation or require older clients
+to send anything new. Older v1 daemons can omit it; clients use the existing
+`version.get` result's `tool_version` instead. Absent version fields, a missing
+version method, EOF or handshake timeout are treated as an older daemon;
+authentication/protocol errors remain failures. The local status CLI additionally
+includes `binary_version` and, when stale, `service_stale`. Clients must compare
+the daemon version with their own binary version, not with `api_version`.
+Refresh is a local service operation, not a daemon RPC: restarting the process
+that is serving the request could cut the operation off midway.

@@ -28,6 +28,8 @@ func (r Runner) Run(ctx context.Context, cmd Cmd, emit func(Msg)) {
 		emit(SettingsLoaded{Seq: c.Seq, Values: values, Err: err})
 	case WriteSetting:
 		emit(SettingWritten{At: r.now(), Key: c.Key, Err: r.write(ctx, c)})
+	case RunServiceRefresh:
+		emit(ServiceRefreshed{Err: r.Client.RefreshService(ctx)})
 	case RunSync:
 		outcome, err := r.Client.Sync(ctx, func(phase string) { emit(SyncProgressed{At: r.now(), Phase: phase}) })
 		emit(SyncFinished{At: r.now(), Outcome: outcome, Err: err})

@@ -1,0 +1,70 @@
+[!linux] skip 'systemd stub; launchd refresh is covered by service_launchd'
+env KITBAG_CONFIG=
+env KITBAG_MODE=
+env KITBAG_GIT_BACKEND=
+env XDG_CONFIG_HOME=$HOME/.config
+env XDG_STATE_HOME=$HOME/.local/state
+env XDG_DATA_HOME=$HOME/.local/share
+env PATH=$WORK/bin:$PATH
+exec chmod +x bin/systemctl bin/loginctl
+gitremote $WORK/config.git seed
+exec kitbag init $WORK/config.git --yes
+localapi start-old
+exec kitbag service install
+exec kitbag status
+stdout 'Versions: daemon 0.1.1, binary 0.0.0-dev'
+stderr 'Version mismatch: daemon 0.1.1, binary 0.0.0-dev; run kitbag service refresh'
+exec kitbag status --json
+stdout '"daemon_version": "0.1.1"'
+stdout '"binary_version": "0.0.0-dev"'
+exec kitbag doctor --json --report $WORK/doctor.json
+doctorschema stdout
+stdout '"id": "daemon-version",\n\s*"status": "WARN"'
+stdout 'daemon 0.1.1, binary 0.0.0-dev; version mismatch'
+exec kitbag plan
+exec kitbag sync
+! grep 'restart' $HOME/commands
+execstatus 0 kitbag service refresh --dry-run --json
+stdout '"definition_changed":false'
+stdout '"restart_needed":true'
+! grep 'restart' $HOME/commands
+cp $HOME/.config/systemd/user/dev.kitbag.agent.service $WORK/original.service
+exec kitbag service install
+stdout 'Restarted the running daemon \(0.1.1 -> 0.0.0-dev\)'
+cmp $HOME/.config/systemd/user/dev.kitbag.agent.service $WORK/original.service
+execstatus 0 kitbag service refresh --json
+stdout '"restart_needed":true'
+grep 'systemctl --user restart dev.kitbag.agent.service' $HOME/commands
+localapi stop
+localapi start-unversioned
+rm $HOME/commands
+exec kitbag service install
+stdout 'Restarted the running daemon \(older -> 0.0.0-dev\)'
+grep 'systemctl --user restart dev.kitbag.agent.service' $HOME/commands
+cmp $HOME/.config/systemd/user/dev.kitbag.agent.service $WORK/original.service
+exec kitbag service refresh
+stdout 'Restarted the running daemon \(older -> 0.0.0-dev\)'
+localapi stop
+localapi start
+# A matching handshake preserves the running process on repeated install/refresh.
+rm $HOME/commands
+exec kitbag service install
+stdout 'already installed and up to date'
+exec kitbag service install
+stdout 'already installed and up to date'
+execstatus 0 kitbag service refresh --json
+stdout '"changed":false'
+! grep 'restart' $HOME/commands
+localapi stop
+
+-- seed/kitbag.toml --
+schema=1
+-- bin/loginctl --
+#!/bin/sh
+printf 'Linger=yes\n'
+-- bin/systemctl --
+#!/bin/sh
+printf 'systemctl %s\n' "$*" >> "$HOME/commands"
+case "$2" in
+show) printf 'LoadState=loaded\nActiveState=active\nUnitFileState=enabled\n';;
+esac

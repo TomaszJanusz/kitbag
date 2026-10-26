@@ -45,7 +45,7 @@ stdout '"last_sync":\{"at":'
 cp $HOME/.local/state/kitbag/service.json $WORK/service.json.bak
 cp missing-binary.json $HOME/.local/state/kitbag/service.json
 exec kitbag service status
-stdout 'Service executable /kitbag-removed/Cellar/kitbag/0.0.1/bin/kitbag no longer exists.*run kitbag service install'
+stdout 'Service executable /kitbag-removed/Cellar/kitbag/0.0.1/bin/kitbag no longer exists.*run kitbag service refresh'
 exec kitbag service status --json
 stdout '"binary":"/kitbag-removed/Cellar/kitbag/0.0.1/bin/kitbag"'
 stdout '"binary_missing":true'
@@ -73,6 +73,20 @@ stdout 'Last check: .*ok \(stale; daemon not running\)'
 exec kitbag status --json
 stdout '"daemon_running": false'
 stdout '"last_check": \{'
+localapi start
+# Refresh is an explicit, idempotent repair; dry runs never replace files.
+cp old-unit $HOME/.config/systemd/user/dev.kitbag.agent.service
+execstatus 0 kitbag service refresh --json --dry-run
+stdout '"definition_changed":true'
+stdout '"dry_run":true'
+grep 'old service' $HOME/.config/systemd/user/dev.kitbag.agent.service
+execstatus 0 kitbag service refresh --json
+stdout '"changed":true'
+grep 'Restart=on-failure' $HOME/.config/systemd/user/dev.kitbag.agent.service
+grep 'systemctl --user restart dev.kitbag.agent.service' $HOME/commands
+execstatus 0 kitbag service refresh --json
+stdout '"changed":false'
+localapi stop
 exec kitbag service uninstall
 stdout 'Configuration, working copies and sync state were kept'
 ! exists $HOME/.config/systemd/user/dev.kitbag.agent.service
@@ -88,6 +102,9 @@ exec kitbag service uninstall
 exec kitbag service status
 stdout 'installed=false loaded=false active=false enabled=false stale=false mode=$'
 stdout 'exit code: unknown'
+execstatus 0 kitbag service refresh --json
+stdout '"installed":false'
+stdout '"changed":false'
 ! exec kitbag service install --mode=bad
 stderr 'service mode must be daemon or timer'
 ! exec kitbag service install --interval=0s
@@ -114,8 +131,12 @@ show)
   printf 'ExecMainStartTimestamp=Sun 2026-10-25 12:00:00 UTC\nExecMainStatus=0\n';;
 enable) touch "$HOME/.enabled";;
 disable) rm -f "$HOME/.enabled";;
+restart) touch "$HOME/.active";;
 start) touch "$HOME/.active";;
 stop) rm -f "$HOME/.active";;
 esac
 -- poll/.local/state/kitbag/last-check.json --
 {"schema_version":1,"repository":"@HOME@/.local/share/kitbag/repos/config","at":"2020-01-01T00:00:00Z","next_at":"2020-01-01T00:01:00Z","interval_seconds":60,"outcome":"ok","head":"abc123"}
+
+-- old-unit --
+# old service

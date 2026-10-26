@@ -143,7 +143,7 @@ func checkUpgradeDoctor(t *testing.T, h *Host, legacy bool) {
 		if check.Status != want || strings.Contains(check.Message, "no longer exists") != legacy || !strings.Contains(check.Message, map[bool]string{true: "stale=true", false: "stale=false"}[legacy]) {
 			t.Fatalf("doctor service: %+v", check)
 		}
-		if legacy && !strings.Contains(check.Fix, "kitbag service install") {
+		if legacy && !strings.Contains(check.Fix, "kitbag service refresh") {
 			t.Fatal("missing repair guidance", check)
 		}
 		return

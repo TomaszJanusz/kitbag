@@ -19,10 +19,18 @@ cmp stdout local-plan.txt
 cmp stderr local-plan.err
 exec kitbag plan --json
 cmp stdout local-plan.json
+# The daemon path adds only the responding daemon's version.
 exec kitbag status
-cmp stdout local-status.txt
+stdout '^Versions: daemon 0.0.0-dev, binary 0.0.0-dev$'
 cmp stderr local-status.err
+cp stdout daemon-status.txt
+exec sh -c 'grep -v "^Versions: " daemon-status.txt'
+cmp stdout local-status.txt
 exec kitbag status --json
+stdout '"daemon_version": "0.0.0-dev"'
+stdout '"daemon_running": true'
+cp stdout daemon-status.json
+exec sh -c 'grep -v "\"daemon_version\"" daemon-status.json | sed "s/\"daemon_running\": true/\"daemon_running\": false/"'
 cmp stdout local-status.json
 
 # Token failure cannot silently fall back. Restore it and prove recovery.
@@ -33,7 +41,7 @@ stderr 'unauthorized'
 ! stdout .
 cp saved-token $HOME/.local/state/kitbag/api-token
 exec kitbag status --json
-cmp stdout local-status.json
+cmp stdout daemon-status.json
 exec kitbag sync --no-pull
 stdout '^materialize '
 cmp $HOME/output $HOME/repo/source

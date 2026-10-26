@@ -1,7 +1,6 @@
 package service
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -147,7 +146,13 @@ func (s Service) Install(ctx context.Context, options Options, noStart bool) (ch
 			return false, err
 		}
 	}
-	return changed, s.activate(ctx, options.Mode == "timer", noStart)
+	if err = s.activate(ctx, options.Mode == "timer", noStart); err != nil {
+		return changed, err
+	}
+	if changed {
+		return changed, s.clearPending()
+	}
+	return changed, nil
 }
 
 func (s Service) activate(ctx context.Context, timer, noStart bool) error {
@@ -207,7 +212,7 @@ func (s Service) different(layout platform.ServiceLayout, files map[string]strin
 			return false, err
 		}
 		want, exists := files[name]
-		changed = changed || exists && (err != nil || !bytes.Equal(data, []byte(want))) || !exists && err == nil
+		changed = changed || exists && (err != nil || !equivalent(layout.Manager, data, []byte(want))) || !exists && err == nil
 	}
 	return changed, nil
 }
@@ -273,6 +278,9 @@ func (s Service) Uninstall(ctx context.Context) error {
 	if err = s.Host.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
+	if err = s.clearPending(); err != nil {
+		return err
+	}
 	return s.Host.ServiceControl(ctx, "reload", false)
 }
 
@@ -319,7 +327,7 @@ func (s Service) installedStatus(ctx context.Context, result Report, layout plat
 		result.Stale = true
 		return result, errUnlessMissing(err)
 	}
-	current, err := s.Current(saved.Mode, saved.Interval)
+	current, err := s.desired(layout, saved)
 	if err != nil {
 		return result, err
 	}
@@ -337,7 +345,10 @@ func (s Service) installedStatus(ctx context.Context, result Report, layout plat
 		return result, err
 	}
 	result.ServiceStatus, err = s.Host.ServiceInspect(ctx, result.Mode == "timer")
-	return result, err
+	if err != nil {
+		return result, err
+	}
+	return s.pendingStatus(result)
 }
 
 // missing reports whether path, following links, no longer exists. A dangling

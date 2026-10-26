@@ -27,6 +27,7 @@ Install, uninstall or inspect a systemd user service or macOS LaunchAgent. Confi
 
 * [kitbag](kitbag.md)	 - Synchronize coding-agent configuration
 * [kitbag service install](kitbag_service_install.md)	 - Enable background sync with a daemon or timer
+* [kitbag service refresh](kitbag_service_refresh.md)	 - Repair an installed service after an upgrade
 * [kitbag service status](kitbag_service_status.md)	 - Show supervisor health and the last synchronization
 * [kitbag service uninstall](kitbag_service_uninstall.md)	 - Stop background sync and remove service definitions
 

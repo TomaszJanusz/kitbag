@@ -4,7 +4,7 @@ Enable background sync with a daemon or timer
 
 ### Synopsis
 
-Write service definitions atomically and enable/start them. Repeating the same installation keeps the running job. --no-start only enables future starts; --now explicitly requests the default immediate start. Timer intervals range from 1m to 24h.
+Write service definitions atomically and enable/start them. Repeating the same installation keeps a daemon only when its running version matches this binary. Older or unversioned daemons are restarted. --no-start only enables future starts; --now explicitly requests the default immediate start. Timer intervals range from 1m to 24h.
 
 ```
 kitbag service install [flags]

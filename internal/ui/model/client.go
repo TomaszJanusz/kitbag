@@ -10,6 +10,7 @@ import (
 // live outside this package (see internal/ui/apiclient) so models stay pure.
 type Client interface {
 	Status(ctx context.Context) (StatusSnapshot, error)
+	RefreshService(ctx context.Context) error
 	Drift(ctx context.Context) (DriftSnapshot, error)
 	// Sync calls progress synchronously with coarse phase names.
 	Sync(ctx context.Context, progress func(phase string)) (SyncOutcome, error)
@@ -69,14 +70,16 @@ type GitState struct {
 
 // StatusSnapshot is one status.get result; Daemon reports who answered.
 type StatusSnapshot struct {
-	LastCheck  *LastCheck
-	LastSync   *LastSync
-	ToolTooOld *ToolTooOld
-	Repository string
-	Warnings   []string
-	Git        GitState
-	Drift      DriftCounts
-	Daemon     bool
+	DaemonVersion, BinaryVersion   string
+	LastCheck                      *LastCheck
+	LastSync                       *LastSync
+	ToolTooOld                     *ToolTooOld
+	Repository                     string
+	Warnings                       []string
+	Git                            GitState
+	Drift                          DriftCounts
+	ServiceStale, ServiceInstalled bool
+	Daemon                         bool
 }
 
 // ActionKind mirrors the planner's logical operation kinds.

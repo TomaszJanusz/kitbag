@@ -45,6 +45,7 @@ type Report struct {
 // accept contexts and must respect cancellation. Offline disables remote probes.
 // Homes resolves the default directory of a target that lists no instances.
 type Service struct {
+	DaemonVersion                           func(context.Context) (string, bool, error)
 	Now                                     func() time.Time
 	Emit                                    func(compatibility.Event)
 	Host                                    platform.Host

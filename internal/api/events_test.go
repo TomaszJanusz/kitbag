@@ -127,3 +127,17 @@ func assertDroppedOverflow(t *testing.T, queue chan Event) {
 	case <-time.After(overflowWindow):
 	}
 }
+
+func TestEventsCarryDaemonVersion(t *testing.T) {
+	t.Parallel()
+	broker := NewEvents("0.1.3")
+	queue, unsubscribe := broker.subscribe()
+	defer unsubscribe()
+	for _, kind := range []string{"sync.started", "sync.finished", "drift.detected", "update.available", "poll.finished"} {
+		broker.Publish(Event{Kind: kind})
+		event := <-queue
+		if event.DaemonVersion != "0.1.3" || event.APIVersion != Version {
+			t.Fatal(event)
+		}
+	}
+}

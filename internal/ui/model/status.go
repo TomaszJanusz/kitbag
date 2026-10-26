@@ -10,23 +10,25 @@ import (
 // Status tracks the status snapshot, this renderer's sync and live hints.
 // Results carry sequence numbers: an older load never overwrites a newer one.
 type Status struct {
-	clock       timefmt.Clock
-	problem     *Error
-	syncProblem *Error
-	outcome     *SyncOutcome
-	syncPhase   string
-	snapshot    StatusSnapshot
-	issued      uint64
-	applied     uint64
+	refreshProblem *Error
+	clock          timefmt.Clock
+	problem        *Error
+	syncProblem    *Error
+	outcome        *SyncOutcome
+	syncPhase      string
+	snapshot       StatusSnapshot
+	issued         uint64
+	applied        uint64
 	// otherSince is the last load issued before a foreign sync started; a
 	// later successful load proves the state lock was free again.
-	otherSince uint64
-	phase      Phase
-	syncing    bool
-	otherSync  bool
-	update     bool
-	live       bool
-	known      bool
+	otherSince                                   uint64
+	phase                                        Phase
+	syncing                                      bool
+	otherSync                                    bool
+	update                                       bool
+	live                                         bool
+	confirmRefresh, refreshingService, refreshed bool
+	known                                        bool
 }
 
 // NewStatus returns a loading model; run Init's commands to load it.
@@ -43,6 +45,8 @@ func (m *Status) load() []Cmd {
 // Update applies msg and returns follow-up commands.
 func (m *Status) Update(msg Msg) []Cmd {
 	switch msg := msg.(type) {
+	case RequestServiceRefresh, ConfirmServiceRefresh, ServiceRefreshed:
+		return m.serviceRefresh(msg)
 	case Refresh:
 		return m.load()
 	case StatusLoaded:
@@ -86,7 +90,7 @@ func (m *Status) loaded(msg StatusLoaded) {
 
 // canSync is false while any sync runs or the repository needs a newer tool.
 func (m *Status) canSync() bool {
-	return !m.syncing && !m.otherSync && m.snapshot.ToolTooOld == nil
+	return !m.refreshingService && !m.syncing && !m.otherSync && m.snapshot.ToolTooOld == nil
 }
 
 func (m *Status) startSync() []Cmd {
@@ -129,15 +133,16 @@ func (m *Status) event(e Event) []Cmd {
 
 // StatusView is everything a renderer shows for status.
 type StatusView struct {
-	Title    text.Message
-	Headline text.Message
-	Problem  *text.Message
-	Notices  []text.Message
-	Warnings []text.Message
-	Rows     []Row
-	Actions  []Control
-	Phase    Phase
-	Syncing  bool
+	Title          text.Message
+	Headline       text.Message
+	Problem        *text.Message
+	Notices        []text.Message
+	Warnings       []text.Message
+	Rows           []Row
+	Actions        []Control
+	Phase          Phase
+	Syncing        bool
+	ConfirmRefresh bool
 }
 
 // View projects the current state.
@@ -152,12 +157,16 @@ func (m *Status) View() StatusView {
 	}
 	view.Warnings = append(view.Warnings, m.checkWarnings()...)
 	view.Notices = m.notices()
+	m.serviceRefreshView(&view)
 	if m.known {
 		view.Rows = m.rows()
 	}
 	view.Actions = []Control{
 		{Intent: SyncNow{}, Label: text.New(text.ActionSyncNow), Enabled: m.canSync()},
 		{Intent: Refresh{}, Label: text.New(text.ActionRefresh), Enabled: true},
+	}
+	if m.needsServiceRefresh() {
+		view.Actions = append(view.Actions, Control{Intent: RequestServiceRefresh{}, Label: text.New(text.ActionServiceRefresh), Enabled: m.canRefreshService()})
 	}
 	return view
 }
