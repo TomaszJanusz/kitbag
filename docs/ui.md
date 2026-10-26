@@ -87,14 +87,22 @@ kind and the shared exit code.
 Not implemented. [ADR 12](adr/0012-agent-instance-discovery.md) (Proposed)
 recommends the following models; names may change during review.
 
-`Client` gains three methods, backed by local API v1.1 `agents.list`,
-`agents.preview` and `agents.apply`, with the usual in-process fallback:
+`Client` gains these methods, backed by local API v1.1 `agents.list`,
+`agents.preview`, `agents.apply`, `publish.status`, `publish.flush` and
+`publish.drop`, with the usual in-process fallback:
 
 ```go
 Agents(ctx context.Context, probe bool) (AgentsSnapshot, error)
 PreviewAgentChange(ctx context.Context, change AgentChange) (AgentPreview, error)
-ApplyAgentChange(ctx context.Context, change AgentChange, revision string, commit bool) (AgentApplied, error)
+ApplyAgentChange(ctx context.Context, change AgentChange, revision string, keepLocal bool) (AgentApplied, error)
+Publication(ctx context.Context) (Publication, error)
+FlushPublication(ctx context.Context, ids []string) (Publication, error)
+DropPublication(ctx context.Context, ids []string) (Publication, error)
 ```
+
+Changes never ask for a commit message: KitBag queues them, applies them here
+at once and publishes them per the manifest's `[publish]` policy
+([ADR 12, section 3](adr/0012-agent-instance-discovery.md#3-automatic-publication)).
 
 The adapter sends only the relocation variables of known adapters from this
 process's environment, as settings resolution does.
@@ -104,21 +112,24 @@ process's environment, as settings resolution does.
 | `AgentKind` | `Kind`, `Variable` (relocation variable or empty), `DefaultDir` (`~/` form), `Settings` (adapter merges a settings fragment), `Wizard` (offered by the wizard; false for `generic`) |
 | `Presence` | `present`, `missing`, `not_directory`, `symlink`, `outside_home`, `unreadable` |
 | `CandidateSource` | `default`, `environment`, `declared`, `probe` |
-| `Instance` | `Kind`, `Target`, `Name`, `Dir`, `Hosts` (empty means all), `Implicit` (adapter default, not listed), `Enabled`, `Settings`, `ActiveHere`, `Presence` |
+| `Instance` | `Kind`, `Target`, `Name`, `Dir`, `Hosts` (empty means all), `DisabledOn` (hosts with an `enabled = false` patch), `Implicit` (adapter default, not listed), `Enabled`, `Settings`, `ActiveHere`, `Presence`, `Pending` (queue entry ID or empty) |
 | `Candidate` | `Kind`, `Dir`, `Source`, `Variable`, `Presence`; undeclared only |
-| `AgentsSnapshot` | `Host`, `Kinds`, `Instances`, `Candidates`, `DivergentOverrides` (host and target pairs whose set differs from the target's), `Revision`, `Dirty`, `Warnings`, `Daemon` |
-| `AgentChange` | `Op` (`add`, `remove`, `disable`), `Kind`, `Target`, `Name`, `Dir`, `Scope` (`host`, `all`), `AlsoOverrides` (hosts whose existing override also receives it), `Settings` |
-| `AgentPreview` | `Change`, `Diff` (added and removed manifest lines), `Items` (the `DriftItem` shape for affected destinations), `Copied` (instances copied into a new host override), `MaterializedDefault`, `Warnings`, `Revision` |
-| `AgentApplied` | `Revision`, `Commit` (empty when none), `PushHint`, `Warnings` |
+| `AgentsSnapshot` | `Host`, `KnownHosts` (declared host names), `Schema` (manifest schema), `Kinds`, `Instances`, `Candidates`, `Revision`, `Publication`, `Warnings`, `Daemon` |
+| `AgentChange` | `Op` (`add`, `edit`, `remove`), `Kind`, `Target`, `Name`, `Dir`, `Hosts` (empty means all hosts), `Here` (`enable`, `disable` or unset: a host patch for this host), `Settings` |
+| `AgentPreview` | `Change`, `Diff` (added and removed manifest lines), `Items` (the `DriftItem` shape for affected destinations), `MaterializedDefault`, `NeedsSchema2`, `Route` (`direct`, `pull_request`, `held`, with branch), `Title` (generated commit title), `Warnings`, `Revision` |
+| `AgentApplied` | `Revision`, `Publication`, `Warnings` |
+| `PublishEntry` | `ID`, `Summary`, `Created`, `State` (`pending`, `held`, `published`, `pull_request`, `conflict`, `blocked`, `rejected`), `Reason`, `Commit`, `URL` |
+| `Publication` | `Entries`, `Held` (machine-wide hold), `Mode` (this host's policy) |
 
 | Model | States and rules |
 | --- | --- |
 | `Agents` | Loading, ready, failed. Declared instances grouped by kind, then undeclared candidates. Selection follows (kind, dir) across reloads. `ProbeAgents` reloads with the name probe; `sync.finished` reloads. |
-| `AgentWizard` | Closed, then steps kind, directory, name and target, scope, settings, preview, confirm, result. Every draft change is validated; **Next** is disabled while the draft is invalid. Entering preview issues `PreviewAgentChange` with a sequence number; a draft change discards the preview. Confirm sends the preview's revision; a conflict returns to preview with the stale message. Esc goes back; Esc on the first step with a draft asks before closing. |
+| `AgentWizard` | Closed, then steps kind, directory, name and target, hosts, settings, preview, confirm, result. On a schema-1 manifest the hosts step offers only all hosts, plus a manifest-upgrade preview action. Every draft change is validated; **Next** is disabled while the draft is invalid. Entering preview issues `PreviewAgentChange` with a sequence number; a draft change discards the preview. Confirm sends the preview's revision; a conflict returns to preview with the stale message. Esc goes back; Esc on the first step with a draft asks before closing. |
 
 Validation in the model, repeated by the server: instance name with
 `manifest.CheckName`, directory with `manifest.CheckHomePath` (`~/` only),
-duplicate (kind, dir), name already used in the target, `outside_home`, and
+host names with `manifest.CheckHostName`, duplicate (kind, dir), name already
+used in the target, `outside_home`, a host filter on a schema-1 manifest, and
 settings only where the target declares a fragment and the adapter merges it.
 
 New text keys, English templates:
@@ -139,11 +150,17 @@ New text keys, English templates:
 | `agents.presence.unreadable` | `cannot be inspected` |
 | `agents.scope.all` | `all hosts` |
 | `agents.scope.hosts` | `only on %s` |
-| `agents.divergent` | `%s replaces the %s instances; instances added for all hosts do not reach it.` |
+| `agents.no_instance_here` | `Target %s has no instance on this host.` |
+| `agents.pending` | `waiting to be published` |
 | `wizard.step.kind` | `Agent` |
 | `wizard.step.dir` | `Configuration directory` |
 | `wizard.step.name` | `Instance name` |
 | `wizard.step.scope` | `Where to use it` |
+| `wizard.scope.here` | `This machine (%s)` |
+| `wizard.scope.all` | `All machines` |
+| `wizard.scope.choose` | `Choose machines…` |
+| `wizard.apply` | `Apply` |
+| `wizard.apply_local` | `Apply here only` |
 | `wizard.step.settings` | `Merge shared settings` |
 | `wizard.step.preview` | `What will change` |
 | `wizard.step.confirm` | `Confirm` |
@@ -155,13 +172,20 @@ New text keys, English templates:
 | `agent.invalid.no_settings` | `Target %s has no settings fragment to merge.` |
 | `agent.warn.missing_dir` | `%s does not exist. Sync warns and skips it until the agent creates it.` |
 | `agent.warn.default_declared` | `The default directory %s is declared as instance %s so it stays managed.` |
-| `agent.warn.copied_set` | `This host gets its own %s instance list; instances added later for all hosts will not reach it.` |
-| `agent.warn.dirty` | `The working copy has other changes; the manifest is written but not committed.` |
-| `agent.warn.unpushed` | `Push this commit soon: sync stops when the remote branch moves past an unpushed commit.` |
+| `agent.invalid.host` | `Use up to 64 letters, digits, dots, underscores or hyphens for a host name.` |
+| `agent.invalid.needs_schema2` | `Choosing machines needs manifest schema 2. Preview the upgrade first.` |
+| `agent.warn.unknown_host` | `%s is not this machine and not declared under [hosts]; check the spelling.` |
+| `publish.route.direct` | `Published directly to %s.` |
+| `publish.route.pull_request` | `Proposed as a pull request against %s.` |
+| `publish.route.held` | `Applied on this machine only; not published yet.` |
+| `publish.state.pending` | `Waiting to publish; it is already applied here.` |
+| `publish.state.conflict` | `The repository changed in a way that contradicts this change. Drop it, edit it or keep it here only.` |
+| `publish.state.blocked` | `Not published: %s` |
+| `publish.state.rejected` | `The pull request was closed without merging.` |
 | `agent.error.stale` | `kitbag.toml changed since the preview. Review the new preview.` |
 | `agent.error.layout` | `kitbag.toml defines %s in a form KitBag cannot edit safely. Edit it by hand.` |
 
-`agent.error.stale` is a `conflict` (exit 3); validation and
-`agent.error.layout` are `invalid` (exit 2). Renderer behavior for the Agents
+`agent.error.stale` and `publish.state.conflict` are `conflict` (exit 3);
+validation and `agent.error.layout` are `invalid` (exit 2). Renderer behavior for the Agents
 tab and wizard is in ADR 12, section 5; [tui.md](tui.md) changes when it is
 implemented.
