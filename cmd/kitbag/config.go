@@ -49,10 +49,17 @@ func (c *commandLine) configCommand() *cobra.Command {
 
 func (c *commandLine) runConfig(cmd *cobra.Command, s settings.Service, args []string) error {
 	switch cmd.Name() {
-	case "set":
-		return s.Change(args[0], args[1], false)
-	case "unset":
-		return s.Change(args[0], "", true)
+	case "set", "unset":
+		value := ""
+		if cmd.Name() == "set" {
+			value = args[1]
+		}
+		unused, err := s.ChangeWorkingCopy(args[0], value, cmd.Name() == "unset")
+		if err != nil || unused == "" {
+			return err
+		}
+		_, err = fmt.Fprintf(c.stderr, "note: working copy %s is no longer used; kitbag never deletes it. Remove it yourself once it holds nothing you need (check git status and unpushed commits).\n", unused)
+		return err
 	case "edit":
 		return c.editConfig(cmd, s)
 	case "list":

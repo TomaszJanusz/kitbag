@@ -27,7 +27,7 @@ func Registry() []Key {
 		{Path: "host", Type: "string", Env: "KITBAG_HOST", Flag: "host", Description: "Manifest host selector; default is the machine's short hostname.", Pattern: `^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$`},
 		{Path: "repo.url", Type: "string", Env: "KITBAG_REPO_URL", Flag: "repo", Description: "Configuration repository URL; required in a saved file. Never include credentials.", Pattern: `^[^\s]+$`, Sensitive: true},
 		{Path: "repo.branch", Type: "string", Env: "KITBAG_REPO_BRANCH", Flag: "branch", Description: "Branch to follow; unset follows the remote default.", Pattern: `^[A-Za-z0-9][A-Za-z0-9/_.-]{0,254}$`},
-		{Path: "repo.path", Type: "string", Env: "KITBAG_REPO_PATH", Description: "Working copy below HOME; unset uses the platform data directory.", Pattern: "home path, at most 4096 bytes"},
+		{Path: "repo.path", Type: "string", Env: "KITBAG_REPO_PATH", Flag: "repo-path", Description: "Working copy below HOME; unset uses the platform data directory.", Pattern: "home path, at most 4096 bytes"},
 		{Path: "git.backend", Type: "string", Default: "auto", Env: "KITBAG_GIT_BACKEND", Flag: "git-backend", Description: "Prefer system Git automatically, or force one backend.", Allowed: []string{"auto", "system", "embedded"}},
 		{Path: "git.identity.name", Type: "string", Env: "KITBAG_GIT_IDENTITY_NAME", Flag: "identity-name", Description: "Fallback embedded commit author; name and email must be configured together.", Pattern: `^[^<>\r\n\x00]+$`, Sensitive: true},
 		{Path: "git.identity.email", Type: "string", Env: "KITBAG_GIT_IDENTITY_EMAIL", Flag: "identity-email", Description: "Fallback embedded commit email; name and email must be configured together.", Pattern: `^[^<>\s\x00]+@[^<>\s\x00]+$`, Sensitive: true},

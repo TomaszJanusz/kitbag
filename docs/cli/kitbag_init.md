@@ -20,6 +20,7 @@ kitbag init [git-url] [flags]
       --identity-name string    Fallback unsigned embedded commit author name
       --instance stringArray    Scaffold instance: agent.name=~/directory (repeatable)
       --repo string             Repository URL (alternative to the positional URL)
+      --repo-path string        Use or create the working copy at this path below HOME instead of the data directory, for example an existing clone
       --scaffold                Create a new repository in the positional directory
       --yes                     Accept defaults and confirmations without reading terminal input
 ```
