@@ -31,6 +31,7 @@ func TestStatusHeadlines(t *testing.T) {
 		{"local drift", text.StatusLocalDrift, StatusSnapshot{Drift: DriftCounts{UpdateNeeded: 2, LocalDrift: 1}}},
 		{"conflicts", text.StatusConflicts, StatusSnapshot{Drift: DriftCounts{LocalDrift: 1, Conflict: 1, UnmanagedObstacle: 1}}},
 		{"tool too old", text.StatusToolTooOld, StatusSnapshot{ToolTooOld: &ToolTooOld{Required: "9.0.0", Current: "1.0.0"}}},
+		{"schema too new", text.StatusSchemaTooNew, StatusSnapshot{ToolTooOld: &ToolTooOld{Current: "1.0.0", Schema: 2, SupportedSchema: 1}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -93,6 +94,17 @@ func TestStatusToolTooOldFromFailedLoad(t *testing.T) {
 	expect(t, got == "This repository requires kitbag 2.0.0 or newer; running 1.0.0", "headline=%q", got)
 	expect(t, !action(t, view.Actions, SyncNow{}).Enabled, "sync offered for a repository requiring a newer tool")
 	expect(t, m.Update(SyncNow{}) == nil, "sync started for a repository requiring a newer tool")
+}
+
+func TestStatusSchemaTooNewFromFailedLoad(t *testing.T) {
+	t.Parallel()
+	m := NewStatus()
+	client := &fakeClient{status: StatusSnapshot{ToolTooOld: &ToolTooOld{Current: "1.0.0", Schema: 2, SupportedSchema: 1}}, statusErr: &Error{Kind: ErrToolTooOld}}
+	settle(t, m, client, m.Init())
+	view := m.View()
+	got := render(view.Headline)
+	expect(t, got == "This repository uses manifest schema 2; running kitbag 1.0.0, which reads schema 1", "headline=%q", got)
+	expect(t, m.Update(SyncNow{}) == nil, "sync started for a manifest schema this tool cannot read")
 }
 
 func TestStatusSyncLifecycle(t *testing.T) {

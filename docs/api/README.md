@@ -25,7 +25,14 @@ and nullable boolean switches (`nil` means the documented default, usually true)
 Unset mode, render, transport, merge and publish fields retain their documented
 adapter or policy defaults. No public signature exposes an internal package type.
 
-Before planning, call `m.CheckVersion(current)` and
+`Preflight(filename, data, current)` reads only `schema` and
+`min_tool_version` before full validation, so a manifest written for a newer
+tool is reported as such even when the rest of the document uses keys or values
+this version does not know. An unmet minimum wins over a newer schema. `Parse`
+and `Load` reject a `schema` above `SchemaLatest` the same way before any other
+check; `SchemaOldest` and `SchemaLatest` (both 1 in this release) bound the
+readable window, and an older schema remains a validation error. Before
+planning, call `Preflight` (or `m.CheckVersion(current)` after loading) and
 `m.ResolveHost(env, configuredHost)`; a `platform.Env` satisfies `Environment`.
 Host precedence is nonempty `KITBAG_HOST`, configured host, then the system's
 short hostname. Explicit configured/override names are used verbatim. Host
@@ -38,7 +45,9 @@ Errors reject the whole document. `errors.As` finds `*manifest.Error` with the
 filename, one-based byte line/column and JSON-pointer key. A missing key points
 to its enclosing table (or 1:1 for a missing root key). Filesystem causes are
 preserved for `errors.Is`; `errors.As` finds `*manifest.VersionError` when the
-running tool is too old, including through a positioned diagnostic.
+running tool is older than `min_tool_version`, and `*manifest.SchemaError`
+(`Found`, `Supported`) when the manifest schema is newer than the tool reads,
+including through a positioned diagnostic.
 
 The TOML dependency is `github.com/pelletier/go-toml/v2 v2.2.4`. Its decoder
 checks TOML syntax and its AST ranges locate semantic errors, including inline,
@@ -47,7 +56,7 @@ one private file and the exact library version is pinned. BurntSushi v1.6.0
 remains the independent schema test decoder: its public metadata API exposes
 keys but not key positions. JSON Schema remains test-only.
 
-`internal/schemacheck` feeds the same three valid and 31 invalid manifest
+`internal/schemacheck` feeds the same three valid and 32 invalid manifest
 fixtures to both readers, checks each intended rejection, compares diagnostic
 goldens, and tests wrong-type/unknown-key mutations throughout the full fixture.
 The ten invalid machine-config fixtures retain their separate schema gate;

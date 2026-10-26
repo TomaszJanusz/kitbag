@@ -45,9 +45,12 @@ type LastSync struct {
 	Changed  int
 }
 
-// ToolTooOld reports a repository requiring a newer kitbag.
+// ToolTooOld reports a repository requiring a newer kitbag: Required is the
+// unmet min_tool_version, or Schema the manifest schema newer than
+// SupportedSchema.
 type ToolTooOld struct {
-	Required, Current string
+	Required, Current       string
+	Schema, SupportedSchema int64
 }
 
 // GitState is Git's local knowledge of the working copy and its upstream.

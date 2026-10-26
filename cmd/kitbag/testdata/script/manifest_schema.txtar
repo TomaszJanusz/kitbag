@@ -1,0 +1,153 @@
+# A manifest schema newer than this tool reads stops every manifest consumer
+# with exit 4 before ANY write, like an unmet min_tool_version; its unknown keys
+# are never reported as validation errors.
+env KITBAG_CONFIG=$WORK/machine.toml
+mkdir $HOME/checkout
+cp next-schema $HOME/checkout/kitbag.toml
+cp source $HOME/checkout/source
+cp machine.toml $HOME/machine.toml
+treesnap $HOME before
+execstatus 4 kitbag sync
+stderr '/schema: manifest schema 2 is newer than this kitbag reads \(schema 1\); update kitbag'
+! stderr 'not allowed|value must be'
+execstatus 4 kitbag sync --no-pull
+execstatus 4 kitbag plan
+stderr 'manifest schema 2 is newer'
+execstatus 4 kitbag plan --json
+! stdout .
+execstatus 4 kitbag status
+stdout '^tool too old: manifest schema 2 needs a newer kitbag; running \S+, which reads schema 1$'
+execstatus 4 kitbag status --json
+stdout '"type": "tool-too-old"'
+stdout '"schema": 2'
+stdout '"supported_schema": 1'
+! stdout '"required"'
+execstatus 4 kitbag adopt
+execstatus 4 kitbag unmanage
+execstatus 4 kitbag revert
+execstatus 4 kitbag revert --list
+execstatus 4 kitbag doctor
+stdout 'manifest-schema: manifest schema 2; kitbag \S+ reads schema 1'
+stdout 'fix: upgrade kitbag to a release that reads this manifest schema'
+execstatus 4 kitbag doctor --json
+doctorschema stdout
+stdout '"id": "manifest-schema"'
+stdout '"status": "FAIL"'
+! stdout '"id": "tool-version"'
+execstatus 4 kitbag doctor --report $HOME/report.json
+! exists $HOME/report.json
+treesnap $HOME after
+cmp before after
+
+# A far-future schema number takes the same path.
+cp far-future $HOME/checkout/kitbag.toml
+execstatus 4 kitbag sync --no-pull
+stderr 'manifest schema 9223372036854775807 is newer than this kitbag reads'
+execstatus 4 kitbag status --json
+stdout '"schema": 9223372036854775807'
+
+# min_tool_version is read before validation: unknown keys and a newer schema
+# still report the minimum version, not a validation error.
+cp minimum-first $HOME/checkout/kitbag.toml
+treesnap $HOME before-minimum
+execstatus 4 kitbag sync --no-pull
+stderr '/min_tool_version: manifest requires kitbag 99.0.0'
+! stderr 'not allowed|newer than this kitbag'
+execstatus 4 kitbag plan
+stderr 'manifest requires kitbag 99.0.0'
+execstatus 4 kitbag status --json
+stdout '"required": "99.0.0"'
+! stdout '"schema"'
+execstatus 4 kitbag doctor --json
+doctorschema stdout
+stdout '"id": "tool-version"'
+treesnap $HOME after-minimum
+cmp before-minimum after-minimum
+
+# Existing state and materialized targets are equally protected.
+cp current $HOME/checkout/kitbag.toml
+exec kitbag sync --no-pull
+exists $HOME/output
+cp next-schema $HOME/checkout/kitbag.toml
+treesnap $HOME before-state
+execstatus 4 kitbag sync --no-pull
+execstatus 4 kitbag plan
+execstatus 4 kitbag status
+execstatus 4 kitbag adopt
+execstatus 4 kitbag unmanage
+execstatus 4 kitbag revert --force
+execstatus 4 kitbag doctor
+treesnap $HOME after-state
+cmp before-state after-state
+
+# A newer schema first discovered by pulling records the failed sync and
+# applies nothing from that tree.
+env KITBAG_CONFIG=$WORK/pulled.toml
+gitremote $WORK/config.git seed
+exec git clone --quiet $WORK/config.git $HOME/pulled
+exec kitbag sync
+content $HOME/pulled-output first
+exec git clone --quiet $WORK/config.git $WORK/upstream
+cp next-schema-pulled $WORK/upstream/kitbag.toml
+exec git -C $WORK/upstream add --all
+exec git -C $WORK/upstream commit --quiet -m 'Bump schema'
+exec git -C $WORK/upstream push --quiet
+execstatus 4 kitbag sync
+stderr 'manifest schema 2 is newer than this kitbag reads'
+! stdout .
+content $HOME/pulled-output first
+! exists $HOME/should-not-exist
+grep '"result": 4' $HOME/.local/state/kitbag/last-sync.json
+
+-- pulled.toml --
+schema=1
+[repo]
+url="local-config"
+path="~/pulled"
+branch="main"
+-- seed/kitbag.toml --
+schema=1
+[[files]]
+src="source"
+dest="~/pulled-output"
+-- seed/source --
+first
+-- next-schema-pulled --
+schema = 2
+[[files]]
+src = "source"
+dest = "~/should-not-exist"
+[targets.claude.instances.second]
+dir = "~/.claude_2"
+hosts = ["mac"]
+-- machine.toml --
+schema=1
+[repo]
+url="unused"
+path="~/checkout"
+[migration]
+legacy_roots=["~/legacy"]
+-- next-schema --
+schema = 2
+[[files]]
+src = "source"
+dest = "~/output"
+[targets.claude]
+agent = "claude"
+[targets.claude.instances.second]
+dir = "~/.claude_2"
+hosts = ["mac"]
+-- far-future --
+schema = 9223372036854775807
+future_key = true
+-- minimum-first --
+schema = 2
+min_tool_version = "99.0.0"
+future_key = true
+-- current --
+schema=1
+[[files]]
+src="source"
+dest="~/output"
+-- source --
+managed content

@@ -3,15 +3,20 @@
 `min_tool_version` is a semantic version. A local manifest requiring a newer
 KitBag blocks sync, plan, status, adopt, unmanage, revert (including `--list`),
 and doctor with exit 4 before creating state directories, taking locks,
-recovering a journal, fetching, moving targets or saving state. Doctor also
+recovering a journal, fetching, moving targets or saving state. A manifest
+`schema` newer than the running KitBag reads is blocked the same way. Both keys
+are read before the rest of the manifest is validated, so unknown keys from a
+newer schema never hide the requirement; an unmet minimum is reported first. Doctor also
 suppresses `--report` writes on this failure. Development builds compare as
 `0.0.0-dev`. Revert remains available with a missing or damaged manifest, but
 cannot bypass a readable manifest's minimum version.
 
-Status prints `tool too old`, the required version and the running version;
-the text is red when colour is enabled and honours `NO_COLOR`. Status JSON adds
-`tool_too_old` with `type: "tool-too-old"`, `required`, `current`, and
-`repository`. Core workflow and doctor accept an optional `Emit` callback for
+Status prints `tool too old`, the required version and the running version
+(for a newer schema: the manifest schema, the running version and the schema it
+reads); the text is red when colour is enabled and honours `NO_COLOR`. Status
+JSON adds `tool_too_old` with `type: "tool-too-old"`, `current`, `repository`,
+and either `required` (unmet minimum) or `schema` and `supported_schema`
+(newer schema). Core workflow and doctor accept an optional `Emit` callback for
 the same typed `compatibility.Event`. This transient event can feed a tray or
 API without changing the host. There is no event file or API dependency.
 
@@ -21,10 +26,10 @@ or apply. That source acquisition has necessarily changed Git's working copy
 and metadata; sync retains its existing explicit last-sync failure record
 (exit 4, zero applied changes). Existing target/state contents are never
 recovered or applied from that incompatible tree. A manifest already known to
-be incompatible does not even update the last-sync record. The testscript
-`min_tool_version.txtar` compares complete HOME tree snapshots, including
-contents, modes, links and file modification times, with both absent and
-existing state. `sync.txtar` covers a minimum introduced by a pull.
+be incompatible does not even update the last-sync record. The testscripts
+`min_tool_version.txtar` and `manifest_schema.txtar` compare complete HOME tree
+snapshots, including contents, modes, links and file modification times, with
+both absent and existing state. `sync.txtar` covers a minimum introduced by a pull.
 
 ## Install-source stamp
 

@@ -170,7 +170,15 @@ func TestSyncFailureRecords(t *testing.T) {
 			t.Helper()
 			f.write(t, "kitbag.toml", "schema=1\nmin_tool_version='9.0.0'")
 		}, apply.ToolTooOld},
-		"invalid manifest": {func(t *testing.T, f *fixture) { t.Helper(); f.write(t, "kitbag.toml", "schema=2") }, apply.Warnings},
+		"newer schema": {func(t *testing.T, f *fixture) {
+			t.Helper()
+			f.write(t, "kitbag.toml", "schema=2\n[future]\nkey=true")
+		}, apply.ToolTooOld},
+		"version before validation": {func(t *testing.T, f *fixture) {
+			t.Helper()
+			f.write(t, "kitbag.toml", "schema=1\nmin_tool_version='9.0.0'\nfuture=true")
+		}, apply.ToolTooOld},
+		"invalid manifest": {func(t *testing.T, f *fixture) { t.Helper(); f.write(t, "kitbag.toml", "schema=0") }, apply.Warnings},
 		"mode":             {func(_ *testing.T, f *fixture) { f.s.ModeFlag = "wrong" }, apply.Usage},
 		"adapter": {func(_ *testing.T, f *fixture) {
 			f.s.Adapters = func(*manifest.Manifest, *[]string) ([]target.Adapter, error) { return nil, fs.ErrPermission }

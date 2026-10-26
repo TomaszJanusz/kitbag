@@ -9,8 +9,11 @@ import (
 )
 
 // Parse decodes a complete schema-v1 document and validates types, keys, portable
-// paths, names and cross-references. It never accesses the host. Use Load to also
-// validate source existence, confinement and skill-directory contents.
+// paths, names and cross-references. It never accesses the host. A schema newer
+// than SchemaLatest is rejected with a positioned error wrapping *SchemaError
+// before any other validation; call Preflight first to also check
+// min_tool_version that early. Use Load to also validate source existence,
+// confinement and skill-directory contents.
 func Parse(filename string, data []byte) (*Manifest, error) {
 	d := &document{file: filename, positions: map[string]position{}}
 	var tree map[string]any
@@ -18,6 +21,9 @@ func Parse(filename string, data []byte) (*Manifest, error) {
 		return nil, d.decodeError(err)
 	}
 	d.index(data)
+	if err := d.preflightSchema(tree); err != nil {
+		return nil, err
+	}
 	if err := d.validate(manifestRule(), tree, ""); err != nil {
 		return nil, err
 	}
