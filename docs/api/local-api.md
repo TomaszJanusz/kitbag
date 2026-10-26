@@ -175,3 +175,34 @@ includes `binary_version` and, when stale, `service_stale`. Clients must compare
 the daemon version with their own binary version, not with `api_version`.
 Refresh is a local service operation, not a daemon RPC: restarting the process
 that is serving the request could cut the operation off midway.
+
+## Agent instances (additive v1 methods)
+
+`agents.list`, `agents.add`, `agents.edit` and `agents.remove` are optional v1
+methods listed by `version.get`; the API version stays 1.0. A daemon without
+them answers `-32601`, and `internal/ui/apiclient` then runs the same core
+workflow in-process, as it does when no daemon listens. They implement the
+[v1 slice of ADR 12](../adr/0012-agent-instance-discovery.md#v1-slice-shipped-first).
+
+- `agents.list` returns `agents_schema: 1` exactly like `kitbag agent list
+  --json`. `probe: true` adds the explicit HOME name probe. `env` carries the
+  caller's relocation variables; the daemon uses only the variables of known
+  agent kinds (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `GEMINI_CLI_HOME`,
+  `XDG_CONFIG_HOME`), treats a known variable the caller did not send as
+  unset, uses them for this request only and stores nothing. Without `env`
+  the daemon's own environment applies.
+- `agents.add`, `agents.edit` and `agents.remove` take `agent` (`kind`,
+  `target`, `name`, `dir`, `settings`; the method sets the operation) and
+  return `agent_change_schema: 1` exactly like `kitbag agent <op> --json`.
+  `dry_run: true` previews (diff, generated commit title and message,
+  publication route, `revision`) without writing. Otherwise the change is
+  published and synchronized under the state lock like `kitbag agent <op>
+  --yes`; pass the preview's `revision` so a manifest that changed since the
+  preview fails with exit code 3 instead of being changed blindly. The
+  mutations use the daemon's environment, like `sync.run`. A sync they ran is
+  announced to subscribers as `sync.finished`.
+- A refused change is `-32002` with `exit_code` 2 (validation, refused layout,
+  unsupported scope, unsafe working copy) or 3 (stale preview, change no
+  longer applying upstream) and an additive `data.detail` explaining why. The
+  detail contains only kinds, targets, instance names and paths the caller
+  chose or the manifest declares; other failures keep the generic message.

@@ -56,7 +56,7 @@ type ConfigResult struct {
 }
 
 func methods() []string {
-	return []string{"status.get", "plan.get", "sync.run", "drift.list", "config.get", "config.set", "events.subscribe", "version.get"}
+	return []string{"status.get", "plan.get", "sync.run", "drift.list", "config.get", "config.set", "agents.list", "agents.add", "agents.edit", "agents.remove", "events.subscribe", "version.get"}
 }
 
 func (h Handlers) call(ctx context.Context, method string, p Params, id json.RawMessage, notify func(Event)) (any, *Error) {
@@ -67,6 +67,8 @@ func (h Handlers) call(ctx context.Context, method string, p Params, id json.Raw
 		return h.configuration(method, p)
 	case "status.get", "plan.get", "sync.run", "drift.list":
 		return h.workflow(ctx, method, p, id, notify)
+	case "agents.list", "agents.add", "agents.edit", "agents.remove":
+		return h.agents(ctx, method, p, id)
 	default:
 		return nil, rpcError(MethodNotFound, "method not found", apply.Usage)
 	}

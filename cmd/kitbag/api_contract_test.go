@@ -81,9 +81,18 @@ func writeAPIFixture(t *testing.T, host platform.Host, repo string) {
 	if err = host.MkdirAll(dirs.Config, 0o700); err != nil {
 		t.Fatal(err)
 	}
+	home, err := host.HomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, dir := range []string{".claude", ".claude_2"} {
+		if err = host.MkdirAll(filepath.Join(home, dir), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
 	for path, content := range map[string]string{
 		filepath.Join(dirs.Config, "config.toml"): "schema=1\n[repo]\nurl=\"https://example.invalid/config.git\"\npath=\"~/repo\"\n[git]\nbackend=\"embedded\"\n",
-		filepath.Join(repo, "kitbag.toml"):        "schema=1\n[[files]]\nsrc=\"source\"\ndest=\"~/output\"\n",
+		filepath.Join(repo, "kitbag.toml"):        "schema=1\n[[files]]\nsrc=\"source\"\ndest=\"~/output\"\n[targets.claude]\nagent=\"claude\"\n[targets.claude.instances.main]\ndir=\"~/.claude\"\n[targets.claude.instances.second]\ndir=\"~/.claude_2\"\n",
 		filepath.Join(repo, "source"):             "api contract bytes\n",
 	} {
 		if err = host.WriteAtomic(path, []byte(content), 0o600); err != nil {

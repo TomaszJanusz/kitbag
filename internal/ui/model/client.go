@@ -20,6 +20,14 @@ type Client interface {
 	// Subscribe delivers EventConnected once registered, then lifecycle hints,
 	// until ctx ends or the connection fails.
 	Subscribe(ctx context.Context, deliver func(Event)) error
+	// Agents lists agent kinds, declared instances and undeclared
+	// directories; probe adds the explicit HOME name probe.
+	Agents(ctx context.Context, probe bool) (AgentsSnapshot, error)
+	// PreviewAgentChange plans change without writing anything.
+	PreviewAgentChange(ctx context.Context, change AgentChange) (AgentPreview, error)
+	// ApplyAgentChange publishes change and syncs when kitbag.toml is still at
+	// revision (from the preview); a stale revision is ErrConflict.
+	ApplyAgentChange(ctx context.Context, change AgentChange, revision string) (AgentApplied, error)
 }
 
 // Classification mirrors the plan and status drift vocabulary.

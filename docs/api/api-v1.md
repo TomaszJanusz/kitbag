@@ -77,6 +77,54 @@ Example method arguments (add `token` and `api_version`):
 {"config":"schema = 1\n[repo]\nurl = \"https://example.invalid/config.git\"\npath = \"~/repo\"\n"}
 ```
 
+## `agents.list`
+
+List agent kinds, declared instances and undeclared directories (agents_schema 1) with the caller's forwarded relocation variables; probe adds the explicit HOME name probe. Read-only.
+
+Request: `$defs/agents_listRequest`; result data: `$defs/agents`.
+
+Example method arguments (add `token` and `api_version`):
+
+```json
+{"probe":false,"env":{"CLAUDE_CONFIG_DIR":""}}
+```
+
+## `agents.add`
+
+Declare an instance for all hosts. With dry_run, preview the manifest diff, commit title and route; otherwise publish like kitbag agent add --yes (revision guards a confirmed preview) and sync.
+
+Request: `$defs/agents_addRequest`; result data: `$defs/agentChangeResult`.
+
+Example method arguments (add `token` and `api_version`):
+
+```json
+{"agent":{"kind":"claude","name":"third","dir":"~/.claude_3"},"dry_run":true}
+```
+
+## `agents.edit`
+
+Change an instance's directory or settings switch; dry_run previews, otherwise publishes and syncs like kitbag agent edit --yes.
+
+Request: `$defs/agents_editRequest`; result data: `$defs/agentChangeResult`.
+
+Example method arguments (add `token` and `api_version`):
+
+```json
+{"agent":{"target":"claude","name":"second","dir":"~/.claude-work"},"dry_run":true}
+```
+
+## `agents.remove`
+
+Remove an instance declaration; dry_run previews, otherwise publishes, hands the directory back by unmanage rules and syncs like kitbag agent remove --yes.
+
+Request: `$defs/agents_removeRequest`; result data: `$defs/agentChangeResult`.
+
+Example method arguments (add `token` and `api_version`):
+
+```json
+{"agent":{"target":"claude","name":"second"},"dry_run":true}
+```
+
 ## `events.subscribe`
 
 Subscribe this connection once; repeat replaces its subscription.

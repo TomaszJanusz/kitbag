@@ -70,3 +70,15 @@ func TestClassify(t *testing.T) {
 	expect(t, render(ResultText(9)) == "finished with code 9", "unknown code")
 	expect(t, render(PhaseText("teleport")) == "working", "unknown phase")
 }
+
+func TestRunnerAgentCommands(t *testing.T) {
+	t.Parallel()
+	client := &fakeClient{agents: agentFixture(), preview: AgentPreview{Revision: "r"}, applied: AgentApplied{ExitCode: 1}, applyErr: errBoom}
+	loaded := as[AgentsLoaded](t, only(t, execute(t, client, LoadAgents{Seq: 3, Probe: true})))
+	expect(t, loaded.Seq == 3 && len(loaded.Snapshot.Instances) == 3 && client.probes[0], "load=%+v", loaded)
+	change := AgentChange{Op: AgentAdd, Name: "x"}
+	previewed := as[AgentPreviewed](t, only(t, execute(t, client, PreviewAgent{Seq: 4, Change: change})))
+	expect(t, previewed.Seq == 4 && previewed.Preview.Revision == "r" && client.changes[0] == change, "preview=%+v", previewed)
+	applied := as[AgentChangeApplied](t, only(t, execute(t, client, ApplyAgent{Change: change, Revision: "r"})))
+	expect(t, errors.Is(applied.Err, errBoom) && applied.Applied.ExitCode == 1 && client.revisions[0] == "r" && applied.At.Equal(fixedNow()), "apply=%+v", applied)
+}

@@ -49,8 +49,9 @@ func (c *commandLine) tuiOptions(profile tui.Profile) tui.Options {
 	adapter := apiclient.Client{
 		BinaryVersion: toolVersion(), Host: c.host, OpenGit: c.settingsGit,
 		Transport: client.Client{Host: c.host}, Env: c.host, Options: c.apiOptions(),
-		Flags: map[string]string{"host": c.flags.host, "mode": c.flags.mode, "git-backend": c.flags.gitBackend},
-		Local: apiclient.Local{Workflow: local.service, Settings: local.settingsService},
+		Flags:          map[string]string{"host": c.flags.host, "mode": c.flags.mode, "git-backend": c.flags.gitBackend},
+		Local:          apiclient.Local{Workflow: local.service, Settings: local.settingsService},
+		AgentVariables: agentVariables(),
 	}
 	return tui.Options{
 		Runner: model.Runner{Client: adapter, Now: time.Now}, Catalog: text.English(),

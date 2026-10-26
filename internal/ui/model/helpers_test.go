@@ -12,6 +12,9 @@ import (
 
 // fakeClient scripts every Client call and records writes and syncs.
 type fakeClient struct {
+	agentsErr   error
+	previewErr  error
+	applyErr    error
 	statusErr   error
 	driftErr    error
 	settingsErr error
@@ -19,6 +22,12 @@ type fakeClient struct {
 	syncErr     error
 	subErr      error
 	refreshErr  error
+	agents      AgentsSnapshot
+	preview     AgentPreview
+	applied     AgentApplied
+	changes     []AgentChange
+	revisions   []string
+	probes      []bool
 	writes      []WriteSetting
 	settings    []SettingValue
 	phases      []string
@@ -67,6 +76,21 @@ func (f *fakeClient) Subscribe(ctx context.Context, deliver func(Event)) error {
 		deliver(event)
 	}
 	return ctx.Err()
+}
+
+func (f *fakeClient) Agents(_ context.Context, probe bool) (AgentsSnapshot, error) {
+	f.probes = append(f.probes, probe)
+	return f.agents, f.agentsErr
+}
+
+func (f *fakeClient) PreviewAgentChange(_ context.Context, change AgentChange) (AgentPreview, error) {
+	f.changes = append(f.changes, change)
+	return f.preview, f.previewErr
+}
+
+func (f *fakeClient) ApplyAgentChange(_ context.Context, change AgentChange, revision string) (AgentApplied, error) {
+	f.changes, f.revisions = append(f.changes, change), append(f.revisions, revision)
+	return f.applied, f.applyErr
 }
 
 func fixedNow() time.Time { return time.Date(2026, 10, 25, 12, 0, 0, 0, time.UTC) }

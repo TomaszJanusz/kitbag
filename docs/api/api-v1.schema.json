@@ -53,6 +53,26 @@
         },
         "force": {
           "type": "boolean"
+        },
+        "agent": {
+          "$ref": "#/$defs/agentChange"
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Caller's agent relocation variables for agents.list; unknown names are ignored, nothing is stored."
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "dry_run": {
+          "type": "boolean"
+        },
+        "probe": {
+          "type": "boolean"
         }
       },
       "required": [
@@ -122,6 +142,10 @@
             },
             "max_version": {
               "const": "1.0"
+            },
+            "detail": {
+              "type": "string",
+              "description": "Why an agent change was refused (validation, layout, stale preview); names and ~/ paths only."
             }
           },
           "required": [
@@ -416,6 +440,10 @@
             "drift.list",
             "config.get",
             "config.set",
+            "agents.list",
+            "agents.add",
+            "agents.edit",
+            "agents.remove",
             "events.subscribe",
             "version.get"
           ]
@@ -736,6 +764,427 @@
         "interval_seconds"
       ],
       "additionalProperties": false
+    },
+    "agentChange": {
+      "type": "object",
+      "description": "An instance change; the method sets op. add needs kind, name and dir; edit and remove need target (a target, or a kind with one target) and name.",
+      "properties": {
+        "op": {
+          "enum": [
+            "add",
+            "edit",
+            "remove"
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "settings": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "agentCandidate": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "dir": {
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "default",
+            "environment",
+            "declared",
+            "probe"
+          ]
+        },
+        "variable": {
+          "type": "string"
+        },
+        "presence": {
+          "enum": [
+            "present",
+            "missing",
+            "not_directory",
+            "symlink",
+            "outside_home",
+            "unreadable"
+          ]
+        },
+        "error_class": {
+          "enum": [
+            "permission",
+            "io"
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "dir",
+        "source",
+        "presence"
+      ],
+      "additionalProperties": true
+    },
+    "agents": {
+      "type": "object",
+      "description": "agents_schema 1, as kitbag agent list --json (schemas/agents.schema.json).",
+      "properties": {
+        "agents_schema": {
+          "const": 1
+        },
+        "host": {
+          "type": "string"
+        },
+        "known_hosts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "kinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "instances": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/agentCandidate"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "target": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "hosts": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "excluded_hosts": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "implicit": {
+                    "type": "boolean"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "settings": {
+                    "type": "boolean"
+                  },
+                  "active_here": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "target",
+                  "name",
+                  "hosts",
+                  "excluded_hosts",
+                  "implicit",
+                  "enabled",
+                  "settings",
+                  "active_here"
+                ]
+              }
+            ]
+          }
+        },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/agentCandidate"
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "schema": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "agents_schema",
+        "host",
+        "known_hosts",
+        "kinds",
+        "instances",
+        "candidates",
+        "warnings",
+        "schema"
+      ],
+      "additionalProperties": false
+    },
+    "agentChangeResult": {
+      "type": "object",
+      "description": "agent_change_schema 1, as kitbag agent add/edit/remove --json (schemas/agent-change.schema.json).",
+      "properties": {
+        "agent_change_schema": {
+          "const": 1
+        },
+        "dry_run": {
+          "type": "boolean"
+        },
+        "manifest": {
+          "type": "string"
+        },
+        "revision_after": {
+          "type": "string"
+        },
+        "plan": {
+          "type": "object",
+          "properties": {
+            "change": {
+              "$ref": "#/$defs/agentChange"
+            },
+            "revision": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "title": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "dropped_dir": {
+              "type": "string"
+            },
+            "diff": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "warnings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "change",
+            "revision",
+            "title",
+            "message",
+            "diff",
+            "warnings"
+          ],
+          "additionalProperties": false
+        },
+        "publication": {
+          "type": "object",
+          "properties": {
+            "state": {
+              "enum": [
+                "dry_run",
+                "published",
+                "not_published",
+                "manual",
+                "conflict"
+              ]
+            },
+            "mode": {
+              "type": "string"
+            },
+            "branch": {
+              "type": "string"
+            },
+            "commit": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "next": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "attempts": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "state",
+            "mode",
+            "branch",
+            "next",
+            "attempts"
+          ],
+          "additionalProperties": false
+        },
+        "released": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "dir": {
+                  "type": "string"
+                },
+                "changed": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "warnings": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "dir",
+                "changed",
+                "warnings"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "sync": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "exit_code": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 5
+                },
+                "changed": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "warnings": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "exit_code",
+                "changed",
+                "warnings"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "agent_change_schema",
+        "dry_run",
+        "manifest",
+        "plan",
+        "publication",
+        "released",
+        "sync"
+      ],
+      "additionalProperties": false
+    },
+    "agents_listRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/request"
+        },
+        {
+          "properties": {
+            "method": {
+              "const": "agents.list"
+            }
+          }
+        }
+      ]
+    },
+    "agents_addRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/request"
+        },
+        {
+          "properties": {
+            "method": {
+              "const": "agents.add"
+            }
+          }
+        }
+      ]
+    },
+    "agents_editRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/request"
+        },
+        {
+          "properties": {
+            "method": {
+              "const": "agents.edit"
+            }
+          }
+        }
+      ]
+    },
+    "agents_removeRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/request"
+        },
+        {
+          "properties": {
+            "method": {
+              "const": "agents.remove"
+            }
+          }
+        }
+      ]
     }
   },
   "x-api-version": "1.0",
@@ -807,6 +1256,77 @@
       },
       "invalid": {
         "config": 5
+      },
+      "invalid_error": -32602
+    },
+    {
+      "name": "agents.list",
+      "summary": "List agent kinds, declared instances and undeclared directories (agents_schema 1) with the caller's forwarded relocation variables; probe adds the explicit HOME name probe. Read-only.",
+      "request": "agents_listRequest",
+      "result": "agents",
+      "valid": {
+        "probe": false,
+        "env": {
+          "CLAUDE_CONFIG_DIR": ""
+        }
+      },
+      "invalid": {
+        "probe": "yes"
+      },
+      "invalid_error": -32602
+    },
+    {
+      "name": "agents.add",
+      "summary": "Declare an instance for all hosts. With dry_run, preview the manifest diff, commit title and route; otherwise publish like kitbag agent add --yes (revision guards a confirmed preview) and sync.",
+      "request": "agents_addRequest",
+      "result": "agentChangeResult",
+      "valid": {
+        "agent": {
+          "kind": "claude",
+          "name": "third",
+          "dir": "~/.claude_3"
+        },
+        "dry_run": true
+      },
+      "invalid": {
+        "agent": 5
+      },
+      "invalid_error": -32602
+    },
+    {
+      "name": "agents.edit",
+      "summary": "Change an instance's directory or settings switch; dry_run previews, otherwise publishes and syncs like kitbag agent edit --yes.",
+      "request": "agents_editRequest",
+      "result": "agentChangeResult",
+      "valid": {
+        "agent": {
+          "target": "claude",
+          "name": "second",
+          "dir": "~/.claude-work"
+        },
+        "dry_run": true
+      },
+      "invalid": {
+        "agent": {
+          "name": 5
+        }
+      },
+      "invalid_error": -32602
+    },
+    {
+      "name": "agents.remove",
+      "summary": "Remove an instance declaration; dry_run previews, otherwise publishes, hands the directory back by unmanage rules and syncs like kitbag agent remove --yes.",
+      "request": "agents_removeRequest",
+      "result": "agentChangeResult",
+      "valid": {
+        "agent": {
+          "target": "claude",
+          "name": "second"
+        },
+        "dry_run": true
+      },
+      "invalid": {
+        "dry_run": "yes"
       },
       "invalid_error": -32602
     },

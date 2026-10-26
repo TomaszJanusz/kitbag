@@ -95,6 +95,9 @@ func (r AgentResult) Code() apply.Code {
 	if r.SyncResult != nil {
 		code = max(code, r.SyncResult.Code())
 	}
+	if r.Sync != nil {
+		code = max(code, r.Sync.ExitCode)
+	}
 	if r.ReleaseResult != nil {
 		code = max(code, r.ReleaseResult.Code())
 	}

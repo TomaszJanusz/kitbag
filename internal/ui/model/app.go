@@ -21,7 +21,10 @@ type App struct {
 	Drift    *Drift
 	Settings *Settings
 	Log      *Log
-	retry    time.Duration
+	// Agents lists agent instances; AgentForm adds, edits or removes one.
+	Agents    *Agents
+	AgentForm *AgentForm
+	retry     time.Duration
 }
 
 // NewApp builds all models; logCapacity bounds the activity log and clock
@@ -29,7 +32,7 @@ type App struct {
 func NewApp(logCapacity int, clock timefmt.Clock) *App {
 	status, log := NewStatus(), NewLog(logCapacity)
 	status.clock, log.clock = clock, clock
-	return &App{Status: status, Drift: NewDrift(), Settings: NewSettings(), Log: log}
+	return &App{Status: status, Drift: NewDrift(), Settings: NewSettings(), Log: log, Agents: NewAgents(), AgentForm: NewAgentForm()}
 }
 
 // Init loads every snapshot and starts the subscription.
@@ -37,6 +40,7 @@ func (a *App) Init() []Cmd {
 	cmds := a.Status.Init()
 	cmds = append(cmds, a.Drift.Init()...)
 	cmds = append(cmds, a.Settings.Init()...)
+	cmds = append(cmds, a.Agents.Init()...)
 	return append(cmds, Subscribe{})
 }
 
@@ -47,6 +51,8 @@ func (a *App) Update(msg Msg) []Cmd {
 	cmds = append(cmds, a.Drift.Update(msg)...)
 	cmds = append(cmds, a.Settings.Update(msg)...)
 	cmds = append(cmds, a.Log.Update(msg)...)
+	cmds = append(cmds, a.Agents.Update(msg)...)
+	cmds = append(cmds, a.AgentForm.Update(msg)...)
 	switch msg := msg.(type) {
 	case EventReceived:
 		if msg.Event.Kind == EventConnected {
