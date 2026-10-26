@@ -120,10 +120,14 @@ func (c *commandLine) serviceStatusCommand() *cobra.Command {
 }
 
 func serviceExit(code *int) string {
-	if code == nil {
+	switch {
+	case code == nil:
 		return "unknown"
+	case *code == service.RestartExitCode:
+		return strconv.Itoa(*code) + " (restarted after its executable was replaced)"
+	default:
+		return strconv.Itoa(*code)
 	}
-	return strconv.Itoa(*code)
 }
 
 func (c *commandLine) printLastServiceSync(report serviceReport) error {

@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"math/rand/v2"
 	"net"
+	"os"
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
@@ -18,6 +21,7 @@ import (
 	"github.com/TomaszJanusz/kitbag/internal/core/apply"
 	"github.com/TomaszJanusz/kitbag/internal/core/daemon"
 	"github.com/TomaszJanusz/kitbag/internal/core/plan"
+	"github.com/TomaszJanusz/kitbag/internal/core/service"
 	"github.com/TomaszJanusz/kitbag/internal/core/workflow"
 	"github.com/TomaszJanusz/kitbag/internal/daemonhost"
 	"github.com/TomaszJanusz/kitbag/internal/platform"
@@ -31,10 +35,12 @@ const (
 	// target bounds heap growth within a cycle (idle budget in docs/daemon.md).
 	daemonProcs     = 2
 	daemonGCPercent = 50
+	// daemonExecutableCheck is the slow poll for a replaced executable.
+	daemonExecutableCheck = time.Minute
 )
 
 func (c *commandLine) daemonCommand() *cobra.Command {
-	return &cobra.Command{Use: "daemon", Short: "Poll configuration, detect drift and serve the local API", Long: "Run in the foreground with a per-user lock, bounded JSON logs, debounced filesystem watches and daily release metadata checks. Remote changes use the normal safe sync workflow; local edits only trigger inspection. Stop with SIGINT or SIGTERM. Restart after changing daemon settings.", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+	return &cobra.Command{Use: "daemon", Short: "Poll configuration, detect drift and serve the local API", Long: "Run in the foreground with a per-user lock, bounded JSON logs, debounced filesystem watches and daily release metadata checks. Remote changes use the normal safe sync workflow; local edits only trigger inspection. Stop with SIGINT or SIGTERM. Restart after changing daemon settings. When its executable file is replaced, for example by a package upgrade, the daemon finishes the current operation and exits with status 75 so that its service manager starts the new version.", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		ctx, stop := platform.ShutdownContext(cmd.Context())
 		defer stop()
 		if c.process {
@@ -141,11 +147,7 @@ func (c *commandLine) serveDaemon(ctx context.Context, listener net.Listener, to
 	log("started", nil)
 	log("watch", err)
 	releases := daemonhost.Releases{Host: c.host, StateDir: dirs.State, URL: c.config.Daemon.ReleaseURL, Version: toolVersion(), Now: time.Now}
-	poll, parseErr := time.ParseDuration(c.config.Sync.PollInterval)
-	if parseErr != nil {
-		return errors.Join(parseErr, listener.Close())
-	}
-	debounce, parseErr := time.ParseDuration(c.config.Daemon.Debounce)
+	options, parseErr := c.daemonOptions()
 	if parseErr != nil {
 		return errors.Join(parseErr, listener.Close())
 	}
@@ -161,12 +163,72 @@ func (c *commandLine) serveDaemon(ctx context.Context, listener net.Listener, to
 	}
 	served := make(chan error, 1)
 	go func() { serveErr := api.Serve(ctx, listener, handlers); cancel(); served <- serveErr }()
-	enabled := c.config.Daemon.UpdateCheck != nil && *c.config.Daemon.UpdateCheck
-	runErr := daemon.Run(ctx, daemon.Options{Poll: poll, Debounce: debounce, UpdateCheck: enabled}, deps)
+	executable := c.watchExecutable(log)
+	if executable != nil {
+		options.ExecutableCheck, deps.Replaced = c.executableCheck, executable.Replaced
+	}
+	runErr := daemon.Run(ctx, options, deps)
 	cancel()
 	serveErr := <-served
 	log("stopped", runErr)
-	return errors.Join(runErr, serveErr, logErr)
+	return errors.Join(c.restartError(runErr, executable), serveErr, logErr)
+}
+
+func (c *commandLine) daemonOptions() (daemon.Options, error) {
+	poll, err := time.ParseDuration(c.config.Sync.PollInterval)
+	if err != nil {
+		return daemon.Options{}, err
+	}
+	debounce, err := time.ParseDuration(c.config.Daemon.Debounce)
+	if err != nil {
+		return daemon.Options{}, err
+	}
+	enabled := c.config.Daemon.UpdateCheck != nil && *c.config.Daemon.UpdateCheck
+	return daemon.Options{Poll: poll, Debounce: debounce, UpdateCheck: enabled}, nil
+}
+
+// restartError selects the restart exit status after a replaced executable.
+func (c *commandLine) restartError(err error, executable *daemonhost.Executable) error {
+	if !errors.Is(err, daemon.ErrReplaced) {
+		return err
+	}
+	c.code = apply.Code(service.RestartExitCode)
+	return fmt.Errorf("%w: %s; exiting with status %d so that the service manager starts the new version", err, executable.Path(), service.RestartExitCode)
+}
+
+// watchExecutable follows the executable path that service install writes, so
+// a package manager's stable link that moves to a new version is a replacement.
+// Without a usable path the daemon keeps running without the check.
+func (c *commandLine) watchExecutable(log func(string, error)) *daemonhost.Executable {
+	if c.executableCheck == 0 {
+		c.executableCheck = daemonExecutableCheck
+	}
+	layout, err := c.host.ServiceLayout()
+	if err != nil {
+		log("executable", err)
+		return nil
+	}
+	executable, err := daemonhost.WatchExecutable(c.host, layout.Binary, fileDigest)
+	if err != nil {
+		log("executable", err)
+		return nil
+	}
+	return executable
+}
+
+// fileDigest streams a SHA-256 digest, so hashing the executable does not hold
+// its whole content in the daemon's heap.
+func fileDigest(path string) (sum []byte, err error) {
+	file, err := os.Open(path) //nolint:gosec // G304: the path is this program's own executable.
+	if err != nil {
+		return nil, err
+	}
+	defer func() { err = errors.Join(err, file.Close()) }()
+	hash := sha256.New()
+	if _, err = io.Copy(hash, file); err != nil {
+		return nil, err
+	}
+	return hash.Sum(nil), nil
 }
 
 func pollJitter(delay time.Duration) time.Duration {

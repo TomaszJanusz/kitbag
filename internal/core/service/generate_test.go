@@ -46,3 +46,39 @@ func TestSystemdEscaping(t *testing.T) {
 		t.Fatal(text)
 	}
 }
+
+// TestDaemonDefinitionsRestartOnRestartExitCode guards the contract with the
+// daemon: after its executable is replaced it exits with RestartExitCode, and
+// the supervisor must start it again. systemd's Restart=on-failure (or always)
+// restarts after a nonzero status unless SuccessExitStatus or
+// RestartPreventExitStatus lists it; launchd's unconditional KeepAlive restarts
+// after any exit, while a KeepAlive dictionary (SuccessfulExit) might not.
+func TestDaemonDefinitionsRestartOnRestartExitCode(t *testing.T) {
+	t.Parallel()
+	if RestartExitCode == 0 {
+		t.Fatal("a zero restart status is a clean exit that on-failure does not restart")
+	}
+	_, _, options := subject(t)
+	options.Mode = "daemon"
+	definitions, err := Generate("systemd", options)
+	must(t, err)
+	unit := definitions["dev.kitbag.agent.service"]
+	restart := ""
+	for line := range strings.SplitSeq(unit, "\n") {
+		key, value, _ := strings.Cut(line, "=")
+		switch key {
+		case "Restart":
+			restart = value
+		case "SuccessExitStatus", "RestartPreventExitStatus":
+			t.Fatalf("%s may exclude the restart status: %s", key, line)
+		}
+	}
+	if restart != "on-failure" && restart != "always" {
+		t.Fatalf("Restart=%q does not restart after status %d:\n%s", restart, RestartExitCode, unit)
+	}
+	definitions, err = Generate("launchd", options)
+	must(t, err)
+	if plist := definitions["dev.kitbag.agent.plist"]; !strings.Contains(plist, "<key>KeepAlive</key><true/>") {
+		t.Fatalf("KeepAlive is not unconditional:\n%s", plist)
+	}
+}

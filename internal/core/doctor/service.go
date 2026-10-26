@@ -27,6 +27,9 @@ func (s Service) serviceChecks(ctx context.Context) []Check {
 	message += fmt.Sprintf("loaded=%t active=%t enabled=%t stale=%t last_run=%s", report.Loaded, report.Active, report.Enabled, report.Stale, report.LastRun)
 	if report.ExitCode != nil {
 		message += fmt.Sprintf(" exit_code=%d", *report.ExitCode)
+		if *report.ExitCode == service.RestartExitCode {
+			message += " (restarted after its executable was replaced)"
+		}
 	}
 	status := OK
 	if unhealthyService(report) {
@@ -37,6 +40,9 @@ func (s Service) serviceChecks(ctx context.Context) []Check {
 	return []Check{{ID: "service", Status: status, Message: message, Fix: fix}}
 }
 
+// unhealthyService accepts the daemon's restart status: launchd keeps
+// reporting it as the last exit code while the restarted daemon runs.
 func unhealthyService(report service.Report) bool {
-	return report.BinaryMissing || !report.Loaded || !report.Active || !report.Enabled || report.Stale || report.ExitCode != nil && *report.ExitCode != 0
+	failed := report.ExitCode != nil && *report.ExitCode != 0 && *report.ExitCode != service.RestartExitCode
+	return report.BinaryMissing || !report.Loaded || !report.Active || !report.Enabled || report.Stale || failed
 }

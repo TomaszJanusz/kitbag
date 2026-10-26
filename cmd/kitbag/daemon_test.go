@@ -24,12 +24,14 @@ import (
 	"time"
 
 	"github.com/TomaszJanusz/kitbag/internal/api"
+	"github.com/TomaszJanusz/kitbag/internal/core/service"
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 	"github.com/TomaszJanusz/kitbag/internal/platform/unix"
 )
 
 type daemonFixture struct {
 	host               platform.Host
+	lookup             func(string) (string, bool)
 	home, remote, seed string
 	env                []string
 }
@@ -40,12 +42,13 @@ func newDaemonFixture(t *testing.T) daemonFixture {
 	home := filepath.Join(root, "home")
 	path, _ := newHost().LookupEnv("PATH")
 	values := map[string]string{"HOME": home, "PATH": path, "XDG_RUNTIME_DIR": filepath.Join(root, "run"), "GIT_CONFIG_GLOBAL": filepath.Join(home, ".gitconfig"), "GIT_CONFIG_NOSYSTEM": "1"}
-	host := unix.New(unix.WithEnv(func(key string) (string, bool) { value, ok := values[key]; return value, ok }))
+	lookup := func(key string) (string, bool) { value, ok := values[key]; return value, ok }
+	host := unix.New(unix.WithEnv(lookup))
 	env := make([]string, 0, len(values))
 	for key, value := range values {
 		env = append(env, key+"="+value)
 	}
-	f := daemonFixture{host: host, home: home, remote: filepath.Join(root, "remote.git"), seed: filepath.Join(root, "seed"), env: env}
+	f := daemonFixture{host: host, lookup: lookup, home: home, remote: filepath.Join(root, "remote.git"), seed: filepath.Join(root, "seed"), env: env}
 	t.Cleanup(func() { f.logFailure(t) })
 	f.git(t, "init", "--quiet", "--bare", "--initial-branch=main", f.remote)
 	f.git(t, "clone", "--quiet", f.remote, f.seed)
@@ -548,4 +551,90 @@ func liveHeap() runtime.MemStats {
 		time.Sleep(100 * time.Millisecond)
 	}
 	return least
+}
+
+// TestDaemonRestartsAfterExecutableReplaced replaces the watched executable
+// on a temporary path: an identical reinstall keeps the daemon running, a
+// different binary makes it exit with the restart status after releasing its
+// locks, and the next daemon neither exits again nor restarts for a missing file.
+func TestDaemonRestartsAfterExecutableReplaced(t *testing.T) {
+	t.Parallel()
+	f := newDaemonFixture(t)
+	binary := filepath.Join(f.home, "bin", "kitbag")
+	f.writeExecutable(t, binary, "#!/bin/sh\n# version 1\n")
+	host := unix.New(unix.WithEnv(f.lookup), unix.WithExecutable(func() (string, error) { return binary, nil }))
+	first := startRestartableDaemon(t, host)
+	waitDaemonFile(t, f, "first")
+	f.writeExecutable(t, binary, "#!/bin/sh\n# version 1\n")
+	first.assertRunning(t, 2500*time.Millisecond)
+	f.writeExecutable(t, binary, "#!/bin/sh\n# version 2 is longer\n")
+	if code := first.wait(t, 5*time.Second); code != service.RestartExitCode {
+		t.Fatalf("exit status %d, want %d; stderr: %s", code, service.RestartExitCode, first.stderr.String())
+	}
+	if !strings.Contains(first.stderr.String(), binary) {
+		t.Fatalf("stderr does not name the executable: %s", first.stderr.String())
+	}
+	assertDaemonReleased(t, f)
+	second := startRestartableDaemon(t, host)
+	waitDaemonLog(t, f, "started", false, 2)
+	second.assertRunning(t, 2500*time.Millisecond)
+	if err := os.Remove(binary); err != nil {
+		t.Fatal(err)
+	}
+	waitDaemonLog(t, f, "executable", true, 1)
+	second.assertRunning(t, 2500*time.Millisecond)
+	second.cancel()
+	if code := second.wait(t, 3*time.Second); code != 0 {
+		t.Fatalf("second daemon exited %d: %s", code, second.stderr.String())
+	}
+	if restarts := waitDaemonLog(t, f, "restart", false, 1); len(restarts) != 1 {
+		t.Fatalf("restarted %d times", len(restarts))
+	}
+	assertDaemonReleased(t, f)
+}
+
+func (f daemonFixture) writeExecutable(t *testing.T, path, body string) {
+	t.Helper()
+	if err := f.host.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.host.WriteAtomic(path, []byte(body), 0o755); err != nil {
+		t.Fatal(err)
+	}
+}
+
+type restartableDaemon struct {
+	stderr *bytes.Buffer
+	cancel context.CancelFunc
+	done   chan int
+}
+
+func startRestartableDaemon(t *testing.T, host platform.Host) restartableDaemon {
+	t.Helper()
+	ctx, cancel := context.WithCancel(t.Context())
+	d := restartableDaemon{stderr: new(bytes.Buffer), cancel: cancel, done: make(chan int, 1)}
+	cli := &commandLine{host: host, stdout: io.Discard, stderr: d.stderr, executableCheck: time.Second}
+	go func() { d.done <- cli.execute(ctx, []string{"daemon"}) }()
+	t.Cleanup(cancel)
+	return d
+}
+
+func (d restartableDaemon) assertRunning(t *testing.T, period time.Duration) {
+	t.Helper()
+	select {
+	case code := <-d.done:
+		t.Fatalf("daemon exited %d: %s", code, d.stderr.String())
+	case <-time.After(period):
+	}
+}
+
+func (d restartableDaemon) wait(t *testing.T, timeout time.Duration) int {
+	t.Helper()
+	select {
+	case code := <-d.done:
+		return code
+	case <-time.After(timeout):
+		t.Fatal("daemon did not exit")
+		return -1
+	}
 }

@@ -85,6 +85,41 @@ active logs remain size-bounded. Writes are atomic; rotation/log failures stop
 the daemon with an operational error. No log goroutine or rotation dependency
 is retained at idle.
 
+## Restart after an upgrade
+
+The daemon notices when its own executable file is replaced, for example by
+`brew upgrade`, a package manager, `install.sh` or `kitbag self-update`, and
+restarts onto the new version without user action. It watches the executable
+path that `kitbag service install` writes into the service definition
+([service.md](service.md)): the resolved running executable, or on macOS the
+stable Homebrew link. The path is followed through links, so a link that moves to
+a new version counts.
+
+Every minute it compares the file's size, modification time and mode with the
+file it started from. A changed identity must be seen unchanged by two
+consecutive checks, so a file still being written is not used, and its SHA-256
+content digest (streamed, not held in memory) must differ from the starting
+file. Then the scheduler finishes the active operation, the daemon releases its
+locks and socket like a normal shutdown, logs `restart`, and exits with status
+**75** (`EX_TEMPFAIL`). The service manager starts the new binary: systemd
+units use `Restart=on-failure`, which restarts after any nonzero status, and the
+LaunchAgent uses `KeepAlive`. A daemon run by hand in a terminal just exits;
+start it again.
+
+It never loops. Identical content (a reinstall of the same version) becomes the
+new baseline without a restart. A missing, unreadable or non-executable file is
+logged as a failed `executable` check every minute and the daemon keeps running
+the old version, because a restart could not start anything. A restarted daemon
+records its own baseline, so one replacement restarts it once. Only an actual
+new binary triggers the next restart.
+
+A Linux Homebrew installation, whose unit names the versioned keg path, and a
+macOS service installed by 0.1.0 still name an executable that `brew cleanup`
+deletes. The daemon then keeps running, and `kitbag service status` and
+`doctor` report the missing executable; run `kitbag service install` once.
+Status and doctor report exit status 75 as a restart, not a failure: launchd
+keeps showing it as the last exit code while the new daemon runs.
+
 ## Release metadata
 
 `daemon.update_check` defaults to **true**. The daemon checks GitHub's latest
@@ -93,7 +128,8 @@ successful-check timestamp as private `release-check.json` in the state director
 Restarting within a day uses cached metadata. Subsequent requests send
 `If-None-Match`; 304 reuses the cached tag. Semantic versions newer than the running
 version publish `update.available`. This is a notification only: the checker
-never downloads assets, follows redirects, installs, or restarts the tool.
+never downloads assets, follows redirects, installs, or restarts the tool; only
+an executable that is already replaced restarts the daemon (above).
 
 The shared `internal/releasehttp` transport serves metadata-only requests for
 the daemon, independently of its explicit self-update asset-fetch API. The
@@ -177,7 +213,8 @@ the explicit-environment override and the idle trim are in effect. It asserts
 no RSS or timing; `-short` skips it.
 
 The fast test suite covers local-remote push/application, process exclusion,
-SIGTERM and context shutdown, stale sockets, target drift preservation, scheduler
+SIGTERM and context shutdown, restart after a replaced executable (and none for
+identical or missing files), stale sockets, target drift preservation, scheduler
 backoff/debounce/serialization, watch limits, metadata-only HTTP/ETag behavior,
 and log size/count/age bounds. These tests run in `mise run check` on Linux/macOS.
 

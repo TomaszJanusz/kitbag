@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -32,16 +33,21 @@ func run(goos string, host platform.Host, args []string, stdout, stderr io.Write
 		return report(stderr, exitUnsupportedOS, err)
 	}
 	cli := &commandLine{host: host, stdout: stdout, stderr: stderr, process: true, clock: timefmt.Clock{Location: time.Local, Now: time.Now}}
-	root := cli.root()
+	return cli.execute(context.Background(), args)
+}
+
+// execute runs one command line and maps its outcome to the exit status.
+func (c *commandLine) execute(ctx context.Context, args []string) int {
+	root := c.root()
 	root.SetArgs(args)
-	if err := root.Execute(); err != nil {
+	if err := root.ExecuteContext(ctx); err != nil {
 		var failure *commandError
 		if errors.As(err, &failure) {
-			return report(stderr, int(max(cli.code, failure.code)), failure.err)
+			return report(c.stderr, int(max(c.code, failure.code)), failure.err)
 		}
-		return report(stderr, exitUsage, err)
+		return report(c.stderr, exitUsage, err)
 	}
-	return int(cli.code)
+	return int(c.code)
 }
 
 func report(stderr io.Writer, code int, args ...any) int {
