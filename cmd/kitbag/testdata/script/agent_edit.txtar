@@ -53,14 +53,18 @@ stderr 'has local changes'
 rm $HOME/checkout/untracked
 cmp $HOME/checkout/kitbag.toml seed/kitbag.toml
 
-# A failed commit (here: no Git identity) restores kitbag.toml; nothing stays dirty.
+# A failed commit (here: a refusing hook) restores kitbag.toml and the index;
+# nothing stays dirty.
+exec git -C $HOME/checkout config user.name 'Agent Owner'
+exec git -C $HOME/checkout config user.email owner@example.com
+exec git -C $HOME/checkout config core.hooksPath $WORK/commit-hooks
+chmod 755 commit-hooks/pre-commit
 execstatus 1 kitbag agent add --agent claude --name second --dir '~/.claude_2' --yes
-stderr 'commit kitbag.toml: .*identity unknown'
+stderr 'commit kitbag.toml: .*refused by test hook'
 cmp $HOME/checkout/kitbag.toml seed/kitbag.toml
 exec git -C $HOME/checkout status --porcelain
 ! stdout .
-exec git -C $HOME/checkout config user.name 'Agent Owner'
-exec git -C $HOME/checkout config user.email owner@example.com
+exec git -C $HOME/checkout config --unset core.hooksPath
 
 # Add: one generated commit on the remote, comments kept, then synchronized.
 exec kitbag agent add --agent claude --name second --dir $HOME/.claude_2 --yes
@@ -234,6 +238,10 @@ once
 always
 -- off --
 off
+-- commit-hooks/pre-commit --
+#!/bin/sh
+echo "refused by test hook" >&2
+exit 1
 -- hooks/pre-receive --
 #!/bin/sh
 # Move main and reject the push: "once" only the first time, "always" each time.
