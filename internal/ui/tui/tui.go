@@ -40,6 +40,7 @@ type Options struct {
 	Clock       timefmt.Clock
 	Runner      model.Runner
 	Catalog     text.Catalog
+	Version     string
 	Profile     Profile
 	LogCapacity int
 	NoColour    bool
@@ -51,8 +52,8 @@ const (
 	statusTab tab = iota
 	driftTab
 	settingsTab
-	agentsTab
 	logTab
+	agentsTab
 	tabCount
 )
 
@@ -66,28 +67,32 @@ type panicMsg struct{ value any }
 // Model is the Bubble Tea model. It is not safe for concurrent use; only the
 // program loop calls Init, Update and View.
 type Model struct {
-	windows  WindowStack
-	styles   styles
-	runner   model.Runner
-	ctx      context.Context
-	app      *model.App
-	cancel   context.CancelFunc
-	results  chan any
-	workers  *sync.WaitGroup
-	queue    *queue
-	catalog  text.Catalog
-	input    textinput.Model
-	height   int
-	width    int
-	setting  int
-	logTop   int
-	dropped  int
-	tab      tab
-	help     bool
-	detail   bool
-	editing  bool
-	follow   bool
-	quitting bool
+	windows   WindowStack
+	version   string
+	styles    styles
+	runner    model.Runner
+	ctx       context.Context
+	app       *model.App
+	cancel    context.CancelFunc
+	results   chan any
+	workers   *sync.WaitGroup
+	queue     *queue
+	catalog   text.Catalog
+	input     textinput.Model
+	menu      int
+	statusTop int
+	height    int
+	width     int
+	setting   int
+	logTop    int
+	dropped   int
+	tab       tab
+	help      bool
+	detail    bool
+	editing   bool
+	follow    bool
+	quitting  bool
+	home      bool
 }
 
 // New builds a renderer; Close must be called once the program has ended.
@@ -109,7 +114,7 @@ func New(opts Options) *Model {
 	// A static cursor avoids a blink timer redrawing the screen.
 	input.Cursor.SetMode(cursor.CursorStatic)
 	return &Model{
-		ctx: ctx, cancel: cancel, app: model.NewApp(opts.LogCapacity, opts.Clock), runner: opts.Runner, catalog: catalog,
+		version: opts.Version, home: true, ctx: ctx, cancel: cancel, app: model.NewApp(opts.LogCapacity, opts.Clock), runner: opts.Runner, catalog: catalog,
 		results: make(chan any), workers: &sync.WaitGroup{}, queue: newQueue(), styles: styles, input: input, follow: true,
 	}
 }
@@ -147,6 +152,10 @@ func (m *Model) dispatch(msg model.Msg) {
 		return
 	}
 	m.start(m.app.Update(msg))
+	if dismissed, ok := msg.(model.DismissDialog); ok && dismissed.ID == helpDialogID {
+		m.help = false
+		m.HideDialog(helpDialogID)
+	}
 	if dialog := m.app.Settings.Dialog(); dialog != nil {
 		m.ShowDialog(*dialog)
 	}
@@ -156,22 +165,6 @@ func (m *Model) dispatch(msg model.Msg) {
 		m.HideDialog(model.ServiceRefreshDialog)
 	}
 	m.agentDialogs()
-}
-
-// agentDialogs projects the agent form and its discard question; the model
-// decides when they open, change step and close.
-func (m *Model) agentDialogs() {
-	form := m.app.AgentForm
-	if dialog := form.Dialog(); dialog != nil {
-		m.ShowDialog(*dialog)
-	} else {
-		m.HideDialog(model.AgentFormDialog)
-	}
-	if dialog := form.DiscardDialog(); dialog != nil {
-		m.ShowDialog(*dialog)
-	} else {
-		m.HideDialog(model.AgentDiscardDialog)
-	}
 }
 
 // Update applies one Bubble Tea message.
@@ -244,4 +237,20 @@ type checkTickMsg struct{}
 
 func checkTick() tea.Cmd {
 	return tea.Tick(time.Second, func(time.Time) tea.Msg { return checkTickMsg{} })
+}
+
+// agentDialogs projects the agent form and its discard question; the model
+// decides when they open, change step and close.
+func (m *Model) agentDialogs() {
+	form := m.app.AgentForm
+	if dialog := form.Dialog(); dialog != nil {
+		m.ShowDialog(*dialog)
+	} else {
+		m.HideDialog(model.AgentFormDialog)
+	}
+	if dialog := form.DiscardDialog(); dialog != nil {
+		m.ShowDialog(*dialog)
+	} else {
+		m.HideDialog(model.AgentDiscardDialog)
+	}
 }

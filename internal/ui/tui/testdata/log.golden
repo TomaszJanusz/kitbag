@@ -1,10 +1,10 @@
- 1 Status   2 Drift   3 Settings   4 Agents  [5 Activity]
+kitbag › Activity
 
 Following new entries · 3 older entries dropped
 13:00:00 warn The daemon detected drift
 13:00:00 warn The daemon detected drift
 13:00:00 warn The daemon detected drift
-13:00:00 warn The daemon detected drift
 13:00:00 warn A sync finished with warnings, 7 changed
 13:00:00 info A newer kitbag release is available
-? help · a advanced · q quit · mouse: click, wheel
+  [ Follow / pause ]
+esc back · ? help · q home

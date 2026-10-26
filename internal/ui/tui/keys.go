@@ -42,23 +42,46 @@ const inputMargin = 4
 
 func (m *Model) key(msg tea.KeyMsg) tea.Cmd {
 	name := msg.String()
-	switch {
-	case name == keyCtrlC:
+	if name == keyCtrlC {
 		return m.quit()
-	case m.app.Status.Dialog() != nil && (name == "y" || name == "n"):
-		return m.serviceRefreshKey(name)
-	case m.windows.Len() > 0:
-		m.windowKey(msg)
-		return nil
-	case m.editing:
-		return m.editKey(msg)
-	case m.help:
-		return m.helpKey(name)
+	}
+	if consumed, cmd := m.overlayKey(msg); consumed {
+		return cmd
+	}
+	if m.home {
+		switch name {
+		case keyQuit, keyHelp, keyRefresh, "i", "1", "2", "3", "4", "5":
+			m.globalKey(name)
+			return m.quitCmd()
+		default:
+			m.homeKey(name)
+			return nil
+		}
 	}
 	if m.globalKey(name) {
 		return m.quitCmd()
 	}
 	return m.tabKey(name)
+}
+
+func (m *Model) overlayKey(msg tea.KeyMsg) (bool, tea.Cmd) {
+	name := msg.String()
+	switch {
+	case m.app.Status.Dialog() != nil && (name == "y" || name == "n"):
+		m.serviceRefreshKey(name)
+		return true, nil
+	case m.windows.Len() > 0:
+		if m.windows.top().view.ID == helpDialogID && name == keyHelp {
+			m.help = false
+			m.HideDialog(helpDialogID)
+		} else {
+			m.windowKey(msg)
+		}
+		return true, nil
+	case m.editing:
+		return true, m.editKey(msg)
+	}
+	return false, nil
 }
 
 func (m *Model) tabKey(name string) tea.Cmd {
@@ -69,22 +92,11 @@ func (m *Model) tabKey(name string) tea.Cmd {
 		return m.settingsKey(name)
 	case logTab:
 		m.logKey(name)
-	case agentsTab:
-		m.agentsKey(name)
 	case statusTab:
 		m.statusKey(name)
+	case agentsTab:
+		m.agentsKey(name)
 	case tabCount:
-	}
-	return nil
-}
-
-// helpKey closes the overlay; other keys are ignored while it is shown.
-func (m *Model) helpKey(name string) tea.Cmd {
-	switch name {
-	case keyQuit:
-		return m.quit()
-	case keyHelp, keyEscape:
-		m.help = false
 	}
 	return nil
 }
@@ -100,21 +112,40 @@ func (m *Model) quitCmd() tea.Cmd {
 // globalKey handles keys shared by every tab and reports whether it consumed
 // the key.
 func (m *Model) globalKey(name string) bool {
+	if m.navigationKey(name) {
+		return true
+	}
 	switch name {
-	case keyQuit:
-		m.quit()
 	case keyHelp:
-		m.help = true
-	case keyNext:
-		m.tab = (m.tab + 1) % tabCount
-	case keyPrevious:
-		m.tab = (m.tab + tabCount - 1) % tabCount
-	case "1", "2", "3", "4", "5":
-		m.tab = tab(name[0] - '1')
+		m.showHelp()
 	case keyRefresh:
 		m.dispatch(model.Refresh{})
 	case keySync:
 		m.dispatch(model.SyncNow{})
+	default:
+		return false
+	}
+	return true
+}
+
+func (m *Model) navigationKey(name string) bool {
+	switch name {
+	case keyQuit:
+		if m.home {
+			m.quit()
+		} else {
+			m.back()
+		}
+	case keyEscape:
+		m.back()
+	case keyNext:
+		m.openScreen((m.tab + 1) % tabCount)
+	case keyPrevious:
+		m.openScreen((m.tab + tabCount - 1) % tabCount)
+	case "1", "2", "3", "4", "5":
+		m.openScreen(tab(name[0] - '1'))
+	case "i":
+		m.openScreen(statusTab)
 	default:
 		return false
 	}
@@ -322,15 +353,27 @@ func pickerKey(field model.FieldView, name string) bool {
 
 // serviceRefreshKey keeps the y/n shortcuts of the repair confirmation; the
 // window stack handles Esc, Enter and focus like any other dialog.
-func (m *Model) serviceRefreshKey(name string) tea.Cmd {
+func (m *Model) serviceRefreshKey(name string) {
 	m.dispatch(model.ConfirmServiceRefresh{Accept: name == "y"})
-	return nil
 }
 
 func (m *Model) statusKey(name string) {
-	if name == "h" {
+	switch name {
+	case "h":
 		m.dispatch(model.RequestServiceRefresh{})
+	case keyUp, keyVimUp:
+		m.scrollStatus(-1)
+	case keyDown, keyVimDown:
+		m.scrollStatus(1)
+	case keyPageUp:
+		m.scrollStatus(-m.bodyHeight())
+	case keyPageDown:
+		m.scrollStatus(m.bodyHeight())
 	}
+}
+
+func (m *Model) scrollStatus(delta int) {
+	m.statusTop = min(max(m.statusTop+delta, 0), max(len(m.statusView())-m.bodyHeight(), 0))
 }
 
 // windowKey scrolls the top window with PgUp/PgDn and gives it every

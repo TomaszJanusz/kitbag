@@ -1,20 +1,15 @@
- 1 Status   2 Drift   3 Settings  [4 Agents]  5 Activity
 
-2 declared instances, 3 other directories found
 
-claude
-> +------------------------------------------------------+
-  | Add an agent instance: Instance name             esc | …
+
+
+
+  +------------------------------------------------------+
+  | Add an agent instance: Instance name             esc |
   | Step 2/7                                             |
-  |                                                      |c…
+  |                                                      |
   | A short name for this instance, unique within its    |
   | target.                                              |
-cl| Instance name: > work                                |
-[a|                                                      |
-[p|                     [ Cancel ]   [ Back ]   [ Next ] |
-Di+------------------------------------------------------+
-Source           declared in kitbag.toml
-Directory state  present
-Hosts            all hosts
-On this host     active on this host
-? help · a add · e edit · d remove · p probe · q quit · mou…
+  | Instance name: > work                                |
+  |                                                      |
+  |                     [ Cancel ]   [ Back ]   [ Next ] |
+  +------------------------------------------------------+

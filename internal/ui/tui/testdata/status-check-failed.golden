@@ -1,4 +1,4 @@
-[1 Status]  2 Drift   3 Settings   4 Agents   5 Activity
+kitbag › Status
 
 2 targets changed locally
 
@@ -17,8 +17,8 @@ Warnings
 - 2026-10-25 12:56:00 CET (4 min ago), failed: The operation failed
 - daemon is not checking
 
-[s] Sync now  [r] Refresh
 
 
 
-? help · a advanced · q quit · mouse: click, wheel
+  [ Sync now ]  [ Refresh ]
+esc back · ? help · q home

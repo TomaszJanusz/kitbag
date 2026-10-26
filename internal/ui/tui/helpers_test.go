@@ -57,7 +57,14 @@ type session struct {
 
 func start(t *testing.T, client *fakeClient, options ...func(*Options)) *session {
 	t.Helper()
-	opts := Options{Runner: model.Runner{Client: client, Now: clock}, Profile: termenv.Ascii, Clock: screenClock(t)}
+	s := startHome(t, client, options...)
+	s.press("1")
+	return s
+}
+
+func startHome(t *testing.T, client *fakeClient, options ...func(*Options)) *session {
+	t.Helper()
+	opts := Options{Version: "0.1.2", Runner: model.Runner{Client: client, Now: clock}, Profile: termenv.Ascii, Clock: screenClock(t)}
 	for _, option := range options {
 		option(&opts)
 	}
@@ -135,7 +142,7 @@ func golden(t *testing.T, name, screen string) {
 	for i, line := range lines {
 		lines[i] = strings.TrimRight(line, " ")
 	}
-	got := []byte(strings.Join(lines, "\n") + "\n")
+	got := []byte(strings.TrimRight(strings.Join(lines, "\n"), "\n") + "\n")
 	path := filepath.Join("testdata", name+".golden")
 	if flag.Lookup(updateFlag).Value.String() == "true" {
 		if err := os.WriteFile(path, got, 0o600); err != nil {

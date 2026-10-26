@@ -1,20 +1,16 @@
- 1 Status   2 Drift   3 Settings  [4 Agents]  5 Activity
 
-2 declared instances, 3 other directories found
 
-cl+------------------------------------------------------+
-> | Add an agent instance: Merge shared settings     esc |
-  | Step 4/7                                             | …
+
+
+  +------------------------------------------------------+
+  | Add an agent instance: Merge shared settings     esc |
+  | Step 4/7                                             |
   |                                                      |
-  | Whether this instance receives the target's shared   |c…
+  | Whether this instance receives the target's shared   |
   | settings fragment.                                   |
   | > (*) Default (merge shared settings)                |
-cl|   ( ) Merge shared settings                          |
-[a|   ( ) Do not merge shared settings                   |
-[p|                                                      |
-Di|                     [ Cancel ]   [ Back ]   [ Next ] |
-So+------------------------------------------------------+
-Directory state  present
-Hosts            all hosts
-On this host     active on this host
-? help · a add · e edit · d remove · p probe · q quit · mou…
+  |   ( ) Merge shared settings                          |
+  |   ( ) Do not merge shared settings                   |
+  |                                                      |
+  |                     [ Cancel ]   [ Back ]   [ Next ] |
+  +------------------------------------------------------+

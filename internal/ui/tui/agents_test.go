@@ -12,8 +12,8 @@ import (
 func TestAgentsListNavigationAndProbe(t *testing.T) {
 	t.Parallel()
 	s := start(t, withAgents(newFake()))
-	s.press("4")
-	s.waitFor("[4 Agents]", "2 declared instances, 1 other directories found", "claude/main")
+	s.press("5")
+	s.waitFor("kitbag › Agents", "2 declared instances, 1 other directories found", "claude/main")
 	s.press(keyDown)
 	s.waitFor("Directory state  missing", "warns and skips it until the directory exists")
 	s.press(keyVimDown)
@@ -31,7 +31,7 @@ func TestAgentsListNavigationAndProbe(t *testing.T) {
 func TestAgentsAddWizardFlow(t *testing.T) {
 	t.Parallel()
 	s := start(t, withAgents(newFake()))
-	s.press("4")
+	s.press("5")
 	s.waitFor("claude/main")
 	s.press(keyAdd)
 	s.waitFor("Step 1/7", "> (*) claude")
@@ -76,7 +76,7 @@ func sameChange(got, want model.AgentChange) bool {
 func TestAgentsCancelAsksBeforeDiscarding(t *testing.T) {
 	t.Parallel()
 	s := start(t, withAgents(newFake()))
-	s.press("4")
+	s.press("5")
 	s.waitFor("claude/main")
 	s.press(keyAdd, keyEscape, keyAdd, keyEnter, keyEnter, "draft", keyEscape)
 	s.waitFor("Discard this change?", "Nothing has been written.", "> [ No ]")
@@ -108,7 +108,7 @@ func TestAgentsBusyWhileApplying(t *testing.T) {
 	}
 	s := start(t, client)
 	t.Cleanup(release)
-	s.press("4")
+	s.press("5")
 	s.waitFor("claude/second")
 	s.press(keyDown, keyRemove)
 	s.waitFor("Step 1/3", "-[targets.claude.instances.second]")
@@ -132,7 +132,7 @@ func TestAgentsBusyWhileApplying(t *testing.T) {
 func TestAgentsResizeWithWizardOpen(t *testing.T) {
 	t.Parallel()
 	s := start(t, withAgents(newFake()))
-	s.press("4")
+	s.press("5")
 	s.waitFor("claude/main")
 	s.press(keyAdd, keyEnter, keyEnter, "kept")
 	s.waitFor("Instance name: > kept")
@@ -152,7 +152,7 @@ func TestAgentsResizeWithWizardOpen(t *testing.T) {
 func TestAgentsValidationErrors(t *testing.T) {
 	t.Parallel()
 	d := drive(t, withAgents(newFake()), 100, 30)
-	d.press("4", keyAdd, keyDown, keyDown, keyDown, keyDown, keySpace)
+	d.press("5", keyAdd, keyDown, keyDown, keyDown, keyDown, keySpace)
 	d.expect("> (*) generic", "Generic agents need explicit roots", "[ Next (unavailable) ]")
 	d.press(keyUp, keyUp, keyUp, keyUp, keySpace)
 	d.expect("> (*) claude")
@@ -183,7 +183,7 @@ func TestAgentsValidationErrors(t *testing.T) {
 func TestAgentsEditDirectory(t *testing.T) {
 	t.Parallel()
 	d := drive(t, withAgents(newFake()), 120, 35)
-	d.press("4", keyDown, keyEnter)
+	d.press("5", keyDown, keyEnter)
 	d.expect("Edit claude/second: Configuration directory", "Step 1/5", "Now /home/user/.claude_2; leave empty to keep it.")
 	d.golden("agents-edit-dir-wide")
 	d.press("~/.claude_9", keyEnter)
@@ -203,7 +203,7 @@ func TestAgentsEditDirectory(t *testing.T) {
 func TestAgentsRemoveNeedsConfirmation(t *testing.T) {
 	t.Parallel()
 	d := drive(t, withAgents(newFake()), 120, 35)
-	d.press("4", keyDown, keyRemove)
+	d.press("5", keyDown, keyRemove)
 	d.expect("Remove claude/second: What will change", "Step 1/3", "-[targets.claude.instances.second]")
 	d.golden("agents-remove-preview-wide")
 	d.press(keyEnter)
@@ -228,7 +228,7 @@ func TestAgentsRemoveNeedsConfirmation(t *testing.T) {
 // step with the Apply button focused.
 func addToConfirm(d *driver) {
 	d.t.Helper()
-	d.press("4", keyAdd, keyEnter, keyEnter, "extra", keyEnter, "~/.claude_3", keyEnter, keyEnter, keyEnter)
+	d.press("5", keyAdd, keyEnter, keyEnter, "extra", keyEnter, "~/.claude_3", keyEnter, keyEnter, keyEnter)
 	d.expect("Step 5/7")
 	d.press(keyEnter, keyRight)
 	d.expect("Step 6/7", "> [ Apply ]")
@@ -279,7 +279,7 @@ func TestAgentsFailedApplyStaysOnConfirm(t *testing.T) {
 func TestAgentsRefusedChangeShowsDetail(t *testing.T) {
 	t.Parallel()
 	d := drive(t, withAgents(newFake()), 120, 35)
-	d.press("4", keyAdd, keyDown, keyEnter, keyEnter, "work", keyEnter, "~/.codex-work", keyEnter, keyRight, keyEnter)
+	d.press("5", keyAdd, keyDown, keyEnter, keyEnter, "work", keyEnter, "~/.codex-work", keyEnter, keyRight, keyEnter)
 	d.expect("(*) Merge shared settings")
 	d.press(keyEnter)
 	d.expect("Step 5/7", "✗ The configuration or request is invalid: target codex declares no settings fragment", "[ Next (unavailable) ]")
@@ -314,7 +314,7 @@ func TestAgentsStalePreviewIsNotApplied(t *testing.T) {
 func TestAgentsDiscardScreen(t *testing.T) {
 	t.Parallel()
 	d := drive(t, withAgents(newFake()), 120, 35)
-	d.press("4", keyAdd, keyEnter, keyEnter, "draft", keyEscape)
+	d.press("5", keyAdd, keyEnter, keyEnter, "draft", keyEscape)
 	d.expect("Discard this change?", "> [ No ]")
 	d.golden("agents-discard-wide")
 	d.press(keyEscape)
@@ -325,7 +325,7 @@ func TestAgentsDiscardScreen(t *testing.T) {
 func TestAgentsMouse(t *testing.T) {
 	t.Parallel()
 	d := drive(t, withAgents(newFake()), 120, 35)
-	d.clickText("4 Agents")
+	d.clickText("Agents")
 	d.clickText("claude/second  /home")
 	d.expect("Directory state  missing")
 	d.refuse("Step 1/5")
@@ -364,7 +364,7 @@ func TestAgentsWindowScrollsLongPreview(t *testing.T) {
 	t.Parallel()
 	client := withAgents(newFake())
 	d := drive(t, client, 60, 15)
-	d.press("4", keyDown, keyEnter, "~/.claude_9", keyEnter, keyEnter, keyEnter)
+	d.press("5", keyDown, keyEnter, "~/.claude_9", keyEnter, keyEnter, keyEnter)
 	d.expect("Step 3/5", "scroll ↑/↓")
 	d.refuse(`+dir = "~/.claude_9"`)
 	d.press(keyPageDown)

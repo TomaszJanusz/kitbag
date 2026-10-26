@@ -1,20 +1,18 @@
- 1 Status   2 Drift   3 Settings  [4 Agents]  5 Activity
+
   +------------------------------------------------------+
-2 | Add an agent instance: What will change          esc |
+  | Add an agent instance: What will change          esc |
   | Step 5/7                                             |
-cl|                                                      |
-> | The change to kitbag.toml, its commit title and how  |
-  | it will be published.                                | …
+  |                                                      |
+  | The change to kitbag.toml, its commit title and how  |
+  | it will be published.                                |
   | Commit: chore(kitbag): add claude instance work at   |
-  | ~/.claude_3                                          |c…
+  | ~/.claude_3                                          |
   | Published directly to main.                          |
   |                                                      |
-cl| Changes to kitbag.toml:                              |
-[a|   @@ kitbag.toml @@                                  |
-[p|   +[targets.claude.instances.work]                   |
-Di|   +dir = "~/.claude_3"                               |
-So|                                                      |
-Di|                     [ Cancel ]   [ Back ] > [ Next ] |
-Ho+------------------------------------------------------+
-On this host     active on this host
-? help · a add · e edit · d remove · p probe · q quit · mou…
+  | Changes to kitbag.toml:                              |
+  |   @@ kitbag.toml @@                                  |
+  |   +[targets.claude.instances.work]                   |
+  |   +dir = "~/.claude_3"                               |
+  |                                                      |
+  |                     [ Cancel ]   [ Back ] > [ Next ] |
+  +------------------------------------------------------+

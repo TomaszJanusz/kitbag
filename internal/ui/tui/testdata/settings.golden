@@ -1,4 +1,4 @@
- 1 Status   2 Drift  [3 Settings]  4 Agents   5 Activity
+kitbag › Settings
 
 Precedence: flag > KITBAG_* environment > config.toml > default
 Advanced [+]
@@ -20,5 +20,5 @@ Default: machine short hostname
 
 [Help]
 ↑/↓: select · Enter: edit
-[w] Save (unavailable)  [u] Remove from config.toml  [esc] Revert (unavailable)
-? help · a advanced · q quit · mouse: click, wheel
+  [ Save (unavailable) ]  [ Remove ]  [ Revert (unavailable) ]
+esc back · ? help · q home

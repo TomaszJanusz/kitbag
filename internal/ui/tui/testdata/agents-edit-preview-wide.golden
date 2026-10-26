@@ -1,18 +1,18 @@
- 1 Status   2 Drift   3 Settings  [4 Agents]  5 Activity
 
-2 declared instances, 1 other directories found                          | claude/second
-                                                                         | Directory        /home/user/.claude_2
-claude                                                                   | Source           declared in kitbag.toml
-  claude/main  /home/user/.claude                                        | Directory state  missing
-    present · declared in kitbag.toml · all hosts · active on this host  | Hosts            only on laptop
-> claude/second  /home/user/.claude_2                                    | On this host     active on this host
-    missing · declared in kitbag.toml · only on laptop · active on this… | Settings         merges shared settings
-  [found+------------------------------------------------------------------------------------------------------+ntil the
-  /srv/c| Edit claude/second: What will change                                                             esc |
-    outs| Step 3/5                                                                                             |
-codex   |                                                                                                      |
-  codex | The change to kitbag.toml, its commit title and how it will be published.                            |fresh
-    pres| Commit: chore(kitbag): move claude instance second to ~/.claude_9                                    |d:
+
+
+
+
+
+
+
+
+        +------------------------------------------------------------------------------------------------------+
+        | Edit claude/second: What will change                                                             esc |
+        | Step 3/5                                                                                             |
+        |                                                                                                      |
+        | The change to kitbag.toml, its commit title and how it will be published.                            |
+        | Commit: chore(kitbag): move claude instance second to ~/.claude_9                                    |
         | Published directly to main.                                                                          |
         | ! ~/.claude_2 is handed back: KitBag removes only what it created there and restores what it         |
         | replaced.                                                                                            |
@@ -24,12 +24,3 @@ codex   |                                                                       
         |                                                                                                      |
         |                                                                     [ Cancel ]   [ Back ] > [ Next ] |
         +------------------------------------------------------------------------------------------------------+
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-? help · a add · e edit · d remove · p probe · q quit · mouse: click, wheel

@@ -1,18 +1,18 @@
- 1 Status   2 Drift   3 Settings  [4 Agents]  5 Activity
 
-2 declared instances, 1 other directories found                          | claude/second
-                                                                         | Directory        /home/user/.claude_2
-claude                                                                   | Source           declared in kitbag.toml
-  claude/main  /home/user/.claude                                        | Directory state  missing
-    present · declared in kitbag.toml · all hosts · active on this host  | Hosts            only on laptop
-> claude/second  /home/user/.claude_2                                    | On this host     active on this host
-    missing · declared in kitbag.toml · only on laptop · active on this… | Settings         merges shared settings
-  [found, not declared]                                                  | Next sync        warns and skips it until the
-  /srv/claude                                                            |                  directory exists
-    outs+------------------------------------------------------------------------------------------------------+
-codex   | Remove claude/second: Confirm                                                                    esc |
-  codex | Step 2/3                                                                                             |fresh
-    pres|                                                                                                      |d:
+
+
+
+
+
+
+
+
+
+
+        +------------------------------------------------------------------------------------------------------+
+        | Remove claude/second: Confirm                                                                    esc |
+        | Step 2/3                                                                                             |
+        |                                                                                                      |
         | Apply writes kitbag.toml for all machines, commits, publishes and syncs this machine.                |
         | Commit: chore(kitbag): remove claude instance second                                                 |
         | Published directly to main.                                                                          |
@@ -21,15 +21,3 @@ codex   | Remove claude/second: Confirm                                         
         |                                                                                                      |
         |                                                                    [ Cancel ] > [ Back ]   [ Apply ] |
         +------------------------------------------------------------------------------------------------------+
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-? help · a add · e edit · d remove · p probe · q quit · mouse: click, wheel

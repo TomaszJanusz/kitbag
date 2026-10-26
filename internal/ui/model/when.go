@@ -12,9 +12,17 @@ import (
 // knows the time. Renderers show it verbatim; they never format times.
 func WhenText(clock timefmt.Clock, t time.Time) text.Message {
 	stamp := text.Plain(clock.Stamp(t))
+	if clock.Now == nil {
+		return stamp
+	}
+	return text.New(text.TimeWithAgo, stamp, RelativeText(clock, t))
+}
+
+// RelativeText renders a catalog-backed relative time, or a timestamp when no clock is supplied.
+func RelativeText(clock timefmt.Clock, t time.Time) text.Message {
 	unit, count, ok := clock.Since(t)
 	if !ok {
-		return stamp
+		return text.Plain(clock.Stamp(t))
 	}
 	var ago text.Message
 	switch unit {
@@ -27,5 +35,5 @@ func WhenText(clock timefmt.Clock, t time.Time) text.Message {
 	case timefmt.JustNow:
 		ago = text.New(text.TimeJustNow)
 	}
-	return text.New(text.TimeWithAgo, stamp, ago)
+	return ago
 }

@@ -134,7 +134,7 @@ func (m *Model) settingDetail(field model.FieldView, width int, inline bool) ([]
 	if field.Editor != model.SettingReadOnly {
 		lines = append(lines, local.wrap(m.styles.faint, m.say(text.New(text.SettingListHint)))...)
 	}
-	lines = append(lines, local.wrap(m.styles.faint, m.controls(field.Actions))...)
+
 	return lines, hits
 }
 

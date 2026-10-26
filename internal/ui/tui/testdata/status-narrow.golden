@@ -1,4 +1,4 @@
-[1 Status] 2 3 4 5
+kitbag › Status
 
 2 targets changed locally
 
@@ -8,5 +8,5 @@ Branch        main → origin/main (0
               ahead, 1 behind)
 Working copy  Clean
 Last sync     2026-10-24 11:30:00 CEST
-              (1 d ago): succeeded, 2
-? help · a advanced · q quit · mouse: c…
+  [ Sync now ]  [ Refresh ]
+esc back · ? help · q home

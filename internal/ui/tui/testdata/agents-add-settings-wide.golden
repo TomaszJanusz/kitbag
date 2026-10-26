@@ -1,35 +1,23 @@
- 1 Status   2 Drift   3 Settings  [4 Agents]  5 Activity
 
-2 declared instances, 3 other directories found                          | claude/main
-                                                                         | Directory        /home/user/.claude
-claude                                                                   | Source           declared in kitbag.toml
-> claude/main  /home/user/.claude                                        | Directory state  present
-    present · declared in kitbag.toml · all hosts · active on this host  | Hosts            all hosts
-  claude/second  /home/user/.claude_2                                    | On this host     active on this host
-    missing · declared in kitbag.toml · only on laptop · active on this… | Settings         merges shared settings
-  [found, not declared]                                                  | Next sync        installs the shared
-  /srv/claude                                                            |                  configuration here
-    outside the home directory; cannot be declared · from CLAUDE_CONFIG… |
-  /home/+------------------------------------------------------------------------------------------------------+
-    pres| Add an agent instance: Merge shared settings                                                     esc |fresh
-codex   | Step 4/7                                                                                             |d:
-  codex |                                                                                                      |
-    pres| Whether this instance receives the target's shared settings fragment.                                |
-  [found| > (*) Default (merge shared settings)                                                                |
-  /home/|   ( ) Merge shared settings                                                                          |
-    pres|   ( ) Do not merge shared settings                                                                   |
+
+
+
+
+
+
+
+
+
+
+
+        +------------------------------------------------------------------------------------------------------+
+        | Add an agent instance: Merge shared settings                                                     esc |
+        | Step 4/7                                                                                             |
+        |                                                                                                      |
+        | Whether this instance receives the target's shared settings fragment.                                |
+        | > (*) Default (merge shared settings)                                                                |
+        |   ( ) Merge shared settings                                                                          |
+        |   ( ) Do not merge shared settings                                                                   |
         |                                                                                                      |
         |                                                                     [ Cancel ]   [ Back ]   [ Next ] |
         +------------------------------------------------------------------------------------------------------+
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-? help · a add · e edit · d remove · p probe · q quit · mouse: click, wheel

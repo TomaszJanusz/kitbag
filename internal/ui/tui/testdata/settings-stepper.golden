@@ -1,9 +1,8 @@
- 1 Status   2 Drift  [3 Settings]  4 Agents   5 Activity
+kitbag › Settings
 
 Precedence: flag > KITBAG_* environment > config.toml > default
 Advanced [+]
 
-  host  laptop · config.toml
   repo.url  unset · default
   repo.path  unset · default
   git.identity.name  unset · default
@@ -21,4 +20,5 @@ Default: 60s
 
 [Help]
 ←/→/Space or click: choose · Enter saves · Esc cancels
-? help · a advanced · q quit · mouse: click, wheel
+  [ Save ]  [ Remove (unavailable) ]  [ Revert ]
+Enter saves · Esc cancels

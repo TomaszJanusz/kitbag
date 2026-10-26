@@ -1,35 +1,24 @@
- 1 Status   2 Drift   3 Settings  [4 Agents]  5 Activity
 
-2 declared instances, 3 other directories found                          | claude/main
-                                                                         | Directory        /home/user/.claude
-claude                                                                   | Source           declared in kitbag.toml
-> claude/main  /home/user/.claude                                        | Directory state  present
-    present · declared in kitbag.toml · all hosts · active on this host  | Hosts            all hosts
-  claude/second  /home/user/.claude_2                                    | On this host     active on this host
-    missing · declared in kitbag.toml · only on laptop · active on this… | Settings         merges shared settings
-  [found, not declared]                                                  | Next sync        installs the shared
-  /srv/claude                                                            |                  configuration here
-    outs+------------------------------------------------------------------------------------------------------+
-  /home/| Add an agent instance: Configuration directory                                                   esc |
-    pres| Step 3/7                                                                                             |fresh
-codex   |                                                                                                      |d:
-  codex | The agent's configuration directory below your home directory, for example ~/.claude_2.              |
-    pres| Configuration directory: >                                                                           |
-  [found| ✗ Use a directory below your home directory, starting with ~/ (or an absolute path).                 |
-  /home/| Directories found on this machine:                                                                   |
-    pres|   ( ) /srv/claude · from CLAUDE_CONFIG_DIR, outside the home directory; cannot be declared           |
+
+
+
+
+
+
+
+
+
+
+        +------------------------------------------------------------------------------------------------------+
+        | Add an agent instance: Configuration directory                                                   esc |
+        | Step 3/7                                                                                             |
+        |                                                                                                      |
+        | The agent's configuration directory below your home directory, for example ~/.claude_2.              |
+        | Configuration directory: >                                                                           |
+        | ✗ Use a directory below your home directory, starting with ~/ (or an absolute path).                 |
+        | Directories found on this machine:                                                                   |
+        |   ( ) /srv/claude · from CLAUDE_CONFIG_DIR, outside the home directory; cannot be declared           |
         |   ( ) /home/user/.claude_3 · found by name, present                                                  |
         |                                                                                                      |
         |                                                       [ Cancel ]   [ Back ]   [ Next (unavailable) ] |
         +------------------------------------------------------------------------------------------------------+
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-? help · a add · e edit · d remove · p probe · q quit · mouse: click, wheel

@@ -1,20 +1,16 @@
- 1 Status   2 Drift   3 Settings  [4 Agents]  5 Activity
 
-2 declared instances, 3 other directories found
 
-cl+------------------------------------------------------+
-> | Add an agent instance: Confirm                   esc |
-  | Step 6/7                                             | …
+
+
+  +------------------------------------------------------+
+  | Add an agent instance: Confirm                   esc |
+  | Step 6/7                                             |
   |                                                      |
-  | Apply writes kitbag.toml for all machines, commits,  |c…
+  | Apply writes kitbag.toml for all machines, commits,  |
   | publishes and syncs this machine.                    |
   | Commit: chore(kitbag): add claude instance work at   |
-cl| ~/.claude_3                                          |
-[a| Published directly to main.                          |
-[p|                                                      |
-Di|                    [ Cancel ] > [ Back ]   [ Apply ] |
-So+------------------------------------------------------+
-Directory state  present
-Hosts            all hosts
-On this host     active on this host
-? help · a add · e edit · d remove · p probe · q quit · mou…
+  | ~/.claude_3                                          |
+  | Published directly to main.                          |
+  |                                                      |
+  |                    [ Cancel ] > [ Back ]   [ Apply ] |
+  +------------------------------------------------------+

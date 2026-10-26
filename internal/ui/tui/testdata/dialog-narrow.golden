@@ -1,20 +1,14 @@
-[1 Status]  2 Drift   3 Settings   4 Agents   5 Activity
 
-2 targets changed locally
 
-Repository    /home/user/.local/share/kitbag/repo
-Branch        main → origin/main (0 ahead, 1 behind)
-Wo+------------------------------------------------------+
-La| Add agent                                        esc |d,
-  | Step 2/5                                             |
-La|                                                      |
-Ta| Directory:   ~/.agent draft                          |
-  |                                                      |
-Co|                                > [ Back ]   [ Next ] |
+
+
+
+
   +------------------------------------------------------+
-Warnings
-- kitbag.toml: unknown agent "zed" ignored
-
-[s] Sync now  [r] Refresh
-
-? help · a advanced · q quit · mouse: click, wheel
+  | Add agent                                        esc |
+  | Step 2/5                                             |
+  |                                                      |
+  | Directory:   ~/.agent draft                          |
+  |                                                      |
+  |                                > [ Back ]   [ Next ] |
+  +------------------------------------------------------+

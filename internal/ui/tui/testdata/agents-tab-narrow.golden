@@ -1,4 +1,4 @@
- 1 Status   2 Drift   3 Settings  [4 Agents]  5 Activity
+kitbag › Agents
 
 2 declared instances, 1 other directories found
 
@@ -17,4 +17,4 @@ Source           declared in kitbag.toml
 Directory state  present
 Hosts            all hosts
 On this host     active on this host
-? help · a add · e edit · d remove · p probe · q quit · mou…
+esc back · ? help · q home
