@@ -41,6 +41,11 @@ filters host-specific files and expands `{host}`. Lower-level materialization
 mode precedence and agent capability checks belong to the planner. Source paths
 and skills are checked across all hosts, including disabled declarations.
 
+`CheckName`, `CheckHostName` and `CheckHomePath` apply the parser's grammar
+for table names, host names and `~/` destinations to a single value, so an
+editor can validate a field per keystroke and get the same verdict `Parse`
+would give.
+
 Errors reject the whole document. `errors.As` finds `*manifest.Error` with the
 filename, one-based byte line/column and JSON-pointer key. A missing key points
 to its enclosing table (or 1:1 for a missing root key). Filesystem causes are
@@ -52,7 +57,8 @@ including through a positioned diagnostic.
 The TOML dependency is `github.com/pelletier/go-toml/v2 v2.2.4`. Its decoder
 checks TOML syntax and its AST ranges locate semantic errors, including inline,
 quoted and dotted keys and array tables. The unstable AST API is confined to
-one private file and the exact library version is pinned. BurntSushi v1.6.0
+one private file here and to `internal/core/manifestedit`, which locates the
+lines it rewrites with the same parser, and the exact library version is pinned. BurntSushi v1.6.0
 remains the independent schema test decoder: its public metadata API exposes
 keys but not key positions. JSON Schema remains test-only.
 
