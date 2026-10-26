@@ -49,12 +49,12 @@ func TestSystemdCommands(t *testing.T) {
 	if err != nil || !enabled {
 		t.Fatal(enabled, err)
 	}
-	for _, operation := range []string{"reload", "enable", "start", "stop", "disable"} {
+	for _, operation := range []string{"reload", "enable", "start", "restart", "stop", "disable"} {
 		if err = h.ServiceControl(t.Context(), operation, true); err != nil {
 			t.Fatal(err)
 		}
 	}
-	want := []string{"loginctl show-user testing -p Linger", "systemctl --user daemon-reload", "systemctl --user enable dev.kitbag.agent.timer", "systemctl --user start dev.kitbag.agent.timer", "systemctl --user stop dev.kitbag.agent.timer", "systemctl --user disable dev.kitbag.agent.timer"}
+	want := []string{"loginctl show-user testing -p Linger", "systemctl --user daemon-reload", "systemctl --user enable dev.kitbag.agent.timer", "systemctl --user start dev.kitbag.agent.timer", "systemctl --user restart dev.kitbag.agent.timer", "systemctl --user stop dev.kitbag.agent.timer", "systemctl --user disable dev.kitbag.agent.timer"}
 	if strings.Join(calls, "\n") != strings.Join(want, "\n") {
 		t.Fatal(calls)
 	}

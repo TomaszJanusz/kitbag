@@ -28,7 +28,7 @@ checks; it does not assert that they passed.
 | Legacy links | With `migration.legacy_roots`, inspect shared/instance skills, instructions, old executable and agent-browser links into those roots or `~/.agents/skills`; review them, then run `kitbag adopt` ([adopt.md](adopt.md)). Dangling links count. Destinations KitBag owns (adopted or synced) are not legacy and are skipped; their drift is `plan`/`status` output. Without readable state nothing is skipped. |
 | Legacy markers | Inspect instruction files for `agent-config-managed` or `Managed by agent-config-sync`; review/migrate them. Owned files, such as adopted ones that keep the script's marker until their output changes, are skipped. |
 | Legacy settings markers | `legacy-settings-markers`: for every enabled Claude instance, a bounded byte search of `<dir>/settings.json` for the hook marker `# agent-config-managed`. It reports only the instance, the path and the number of occurrences; run `kitbag adopt`, then `kitbag sync` ([adopt.md](adopt.md)). A missing file is OK; an unreadable file, or one larger than 4 MiB (not read at all), WARNs with a permission/size hint. |
-| Service | Background service: WARN when not installed (the machine then syncs only on `kitbag sync`; fix `kitbag service install`); WARN when unloaded, inactive, disabled, stale, the last supervisor exit code is nonzero (except 75, the daemon's restart after its executable was replaced), or the executable the definition runs no longer exists (for example after a package upgrade). Shows supervisor run/exit observations; reinstall with `kitbag service install` and inspect `kitbag service status`. |
+| Service | Background service: WARN when not installed (the machine then syncs only on `kitbag sync`; fix `kitbag service install`); WARN when unloaded, inactive, disabled, stale, the last supervisor exit code is nonzero (except 75, the daemon's restart after its executable was replaced), or the executable the definition runs no longer exists (for example after a package upgrade). Shows supervisor run/exit observations; run `kitbag service refresh` when the executable is missing, otherwise reinstall with `kitbag service install`, and inspect `kitbag service status`. |
 | Legacy units | Detect filenames containing `agent-config` under XDG `systemd/user` and `~/Library/LaunchAgents`. Definitions of the host's own manager (systemd units on Linux, `<label>.plist` on macOS, label from the filename) are inspected read-only with `platform.UnitInspect` (`systemctl --user show`, `launchctl print`/`print-disabled`; nothing is loaded, started or changed): a unit neither loaded nor enabled is counted as ignored, anything else WARNs with `loaded=`/`enabled=`. A booted-out LaunchAgent that is not disabled still WARNs, as launchd loads it again at login. Other definitions and failed inspections WARN by presence. Disable and unload old timers/services manually. |
 
 Legacy checks skip when `migration.legacy_roots` is empty. They only detect;
@@ -111,3 +111,10 @@ An installed, active daemon also has a `daemon-poll` check. It reads the bounded
 intervals or the record cannot be read. It does not contact the remote. Missing
 records are reported as not recorded yet (including older daemon versions).
 Timer services and stopped services do not get this check.
+
+The `daemon-version` check reads the existing local API `version.get` method,
+including for older API v1 daemons. A running process shows **daemon X, binary Y**;
+a mismatch is WARN with `kitbag service refresh` as its fix. No listening daemon
+adds no version check; authentication/protocol failures warn without assuming a
+version. `--report` still permits this local observation while skipping remote
+network probes. Doctor never installs, reloads or restarts the service.

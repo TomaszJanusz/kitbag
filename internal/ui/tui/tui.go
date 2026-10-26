@@ -149,6 +149,11 @@ func (m *Model) dispatch(msg model.Msg) {
 	if dialog := m.app.Settings.Dialog(); dialog != nil {
 		m.ShowDialog(*dialog)
 	}
+	if dialog := m.app.Status.Dialog(); dialog != nil {
+		m.ShowDialog(*dialog)
+	} else {
+		m.HideDialog(model.ServiceRefreshDialog)
+	}
 }
 
 // Update applies one Bubble Tea message.

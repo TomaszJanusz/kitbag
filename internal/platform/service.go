@@ -3,7 +3,7 @@ package platform
 import "context"
 
 // Service is the user service supervisor. No operation requests privileges.
-// Control accepts reload, enable, start, stop and disable, and addresses only
+// Control accepts reload, enable, start, restart (systemd), stop and disable, and addresses only
 // KitBag's fixed unit names. timer selects the timer rather than the daemon.
 type Service interface {
 	ServiceLayout() (ServiceLayout, error)

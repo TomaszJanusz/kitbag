@@ -10,9 +10,15 @@ import (
 func (s Service) serviceChecks(ctx context.Context) []Check {
 	bounded, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
+	return append(s.supervisorChecks(bounded), s.daemonVersionCheck(bounded)...)
+}
+
+func (s Service) supervisorChecks(ctx context.Context) []Check {
+	bounded, cancel := context.WithTimeout(ctx, Timeout)
+	defer cancel()
 	supervisor := service.Service{Host: s.Host, Config: s.ServiceConfig}
 	report, err := supervisor.Status(bounded)
-	fix := "run kitbag service install; inspect kitbag service status"
+	fix := "run kitbag service refresh; inspect kitbag service status"
 	if err != nil {
 		return []Check{result("service", "cannot inspect user service", fix, err, Warn)}
 	}
@@ -24,7 +30,7 @@ func (s Service) serviceChecks(ctx context.Context) []Check {
 	message := ""
 	if report.BinaryMissing {
 		message = fmt.Sprintf("service executable %s no longer exists (removed by a package upgrade or uninstall?); ", report.Binary)
-		fix = "run kitbag service install with the installed kitbag to point the service at it"
+		fix = "run kitbag service refresh with the installed kitbag to point the service at it"
 	}
 	message += fmt.Sprintf("loaded=%t active=%t enabled=%t stale=%t last_run=%s", report.Loaded, report.Active, report.Enabled, report.Stale, report.LastRun)
 	if report.ExitCode != nil {
@@ -74,4 +80,23 @@ func (s Service) pollChecks(report service.Report) []Check {
 		return []Check{s.pollCheck()}
 	}
 	return nil
+}
+
+func (s Service) daemonVersionCheck(ctx context.Context) []Check {
+	if s.DaemonVersion == nil {
+		return nil
+	}
+	version, running, err := s.DaemonVersion(ctx)
+	if err != nil {
+		return []Check{{ID: "daemon-version", Status: Warn, Message: "cannot read daemon version", Fix: "inspect kitbag status and daemon logs"}}
+	}
+	if !running {
+		return nil
+	}
+	check := Check{ID: "daemon-version", Status: OK, Message: fmt.Sprintf("daemon %s, binary %s", version, s.Version)}
+	if version != s.Version {
+		check.Status, check.Fix = Warn, "run kitbag service refresh"
+		check.Message += "; version mismatch"
+	}
+	return []Check{check}
 }

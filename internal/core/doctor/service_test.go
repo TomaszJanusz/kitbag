@@ -34,7 +34,7 @@ func TestServiceHealth(t *testing.T) {
 	}
 	// A package upgrade removed the executable the definition still runs.
 	must(t, host.Remove(options.Binary))
-	if check = find(t, s.Run(t.Context()), "service"); check.Status != Warn || !strings.Contains(check.Message, options.Binary+" no longer exists") || !strings.Contains(check.Fix, "kitbag service install") {
+	if check = find(t, s.Run(t.Context()), "service"); check.Status != Warn || !strings.Contains(check.Message, options.Binary+" no longer exists") || !strings.Contains(check.Fix, "kitbag service refresh") {
 		t.Fatal(check)
 	}
 	must(t, host.WriteAtomic(options.Binary, nil, 0o755))

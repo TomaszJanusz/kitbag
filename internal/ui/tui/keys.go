@@ -41,6 +41,8 @@ func (m *Model) key(msg tea.KeyMsg) tea.Cmd {
 	switch {
 	case name == keyCtrlC:
 		return m.quit()
+	case m.app.Status.Dialog() != nil && (name == "y" || name == "n"):
+		return m.serviceRefreshKey(name)
 	case m.windows.Len() > 0:
 		m.dispatch(m.windows.Key(msg))
 		return nil
@@ -52,6 +54,10 @@ func (m *Model) key(msg tea.KeyMsg) tea.Cmd {
 	if m.globalKey(name) {
 		return m.quitCmd()
 	}
+	return m.tabKey(name)
+}
+
+func (m *Model) tabKey(name string) tea.Cmd {
 	switch m.tab {
 	case driftTab:
 		m.driftKey(name)
@@ -59,7 +65,9 @@ func (m *Model) key(msg tea.KeyMsg) tea.Cmd {
 		return m.settingsKey(name)
 	case logTab:
 		m.logKey(name)
-	case statusTab, tabCount:
+	case statusTab:
+		m.statusKey(name)
+	case tabCount:
 	}
 	return nil
 }
@@ -304,4 +312,17 @@ func (m *Model) editText(msg tea.KeyMsg, field model.FieldView) tea.Cmd {
 
 func pickerKey(field model.FieldView, name string) bool {
 	return len(field.Options) > 0 && (name == keyLeft || name == keyRight || (name == keySpace && !field.TextEntry))
+}
+
+// serviceRefreshKey keeps the y/n shortcuts of the repair confirmation; the
+// window stack handles Esc, Enter and focus like any other dialog.
+func (m *Model) serviceRefreshKey(name string) tea.Cmd {
+	m.dispatch(model.ConfirmServiceRefresh{Accept: name == "y"})
+	return nil
+}
+
+func (m *Model) statusKey(name string) {
+	if name == "h" {
+		m.dispatch(model.RequestServiceRefresh{})
+	}
 }

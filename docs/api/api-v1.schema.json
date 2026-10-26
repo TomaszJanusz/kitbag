@@ -280,6 +280,18 @@
         "daemon_running": {
           "type": "boolean",
           "description": "True when the scheduling daemon answers. False makes last_check historical; never treat next_at as scheduled then. Older v1 servers may omit both new fields."
+        },
+        "daemon_version": {
+          "type": "string",
+          "description": "Version of the responding daemon, independent of API v1. Optional for older daemons."
+        },
+        "binary_version": {
+          "type": "string",
+          "description": "Optional local CLI enrichment; not the daemon version."
+        },
+        "service_stale": {
+          "type": "boolean",
+          "description": "Optional local CLI enrichment; not the daemon version."
         }
       },
       "required": [
@@ -458,6 +470,10 @@
         "changed": {
           "type": "integer",
           "minimum": 0
+        },
+        "daemon_version": {
+          "type": "string",
+          "description": "Version of the responding daemon, independent of API v1. Optional for older daemons."
         }
       },
       "required": [

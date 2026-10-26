@@ -79,7 +79,10 @@ Settings projects an optional `SettingsView.Dialog` after
 `RequestUnsetSetting`. Only a stored, writable value can open it. Its Yes
 control carries the existing `UnsetSetting`; cancel carries `DismissDialog`.
 The settings model and command runner retain their existing unset validation
-and write behavior. Shared models know nothing about terminal panes or cells.
+and write behavior. Status projects `StatusView.Dialog` after
+`RequestServiceRefresh` for an installed stale or mismatched service; Yes
+carries `ConfirmServiceRefresh{Accept: true}` and cancel carries
+`ConfirmServiceRefresh{}`. Shared models know nothing about terminal panes or cells.
 
 ## Texts
 

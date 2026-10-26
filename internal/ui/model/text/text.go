@@ -81,6 +81,13 @@ const (
 	SettingLegacyCLI       Key = "setting.legacy_cli"
 	SettingPickerHint      Key = "setting.picker_hint"
 	HelpAdvanced           Key = "help.advanced"
+	ActionServiceRefresh   Key = "action.service_refresh"
+	StatusVersions         Key = "status.versions"
+	StatusVersionMismatch  Key = "status.version_mismatch"
+	StatusServiceStale     Key = "status.service_stale"
+	ServiceRefreshConfirm  Key = "service.refresh_confirm"
+	ServiceRefreshing      Key = "service.refreshing"
+	ServiceRefreshed       Key = "service.refreshed"
 	ActionSyncNow          Key = "action.sync_now"
 	ActionRefresh          Key = "action.refresh"
 	ActionSave             Key = "action.save"
@@ -266,6 +273,13 @@ func English() Catalog {
 
 func statusText() []entry {
 	return []entry{
+		{ActionServiceRefresh, "Repair service"},
+		{StatusVersions, "daemon %s, binary %s"},
+		{StatusVersionMismatch, "Daemon/binary version mismatch; run kitbag service refresh."},
+		{StatusServiceStale, "Service definition is stale; run kitbag service refresh."},
+		{ServiceRefreshConfirm, "Refresh service and restart if needed? y confirm · n/Esc cancel"},
+		{ServiceRefreshing, "Refreshing service…"},
+		{ServiceRefreshed, "Service refreshed."},
 		{ActionSyncNow, "Sync now"},
 		{ActionRefresh, "Refresh"},
 		{ActionSave, "Save"},

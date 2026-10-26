@@ -18,6 +18,7 @@ type fakeClient struct {
 	writeErr    error
 	syncErr     error
 	subErr      error
+	refreshErr  error
 	writes      []WriteSetting
 	settings    []SettingValue
 	phases      []string
@@ -25,6 +26,7 @@ type fakeClient struct {
 	drift       DriftSnapshot
 	status      StatusSnapshot
 	outcome     SyncOutcome
+	refreshes   int
 	syncs       int
 	subscribes  int
 }
@@ -176,3 +178,5 @@ func only[T any](t *testing.T, values []T) T {
 	}
 	return values[0]
 }
+
+func (f *fakeClient) RefreshService(context.Context) error { f.refreshes++; return f.refreshErr }

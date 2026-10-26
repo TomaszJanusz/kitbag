@@ -163,6 +163,8 @@ func (m *Model) controls(controls []model.Control) string {
 
 func intentName(intent model.Msg) string {
 	switch intent.(type) {
+	case model.RequestServiceRefresh:
+		return "h"
 	case model.SyncNow:
 		return keySync
 	case model.Refresh:

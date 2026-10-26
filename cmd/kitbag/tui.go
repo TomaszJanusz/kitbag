@@ -47,7 +47,7 @@ func (c *commandLine) tuiOptions(profile tui.Profile) tui.Options {
 	local := *c
 	local.flags.verbose, local.stderr = false, io.Discard
 	adapter := apiclient.Client{
-		Host: c.host, OpenGit: c.settingsGit,
+		BinaryVersion: toolVersion(), Host: c.host, OpenGit: c.settingsGit,
 		Transport: client.Client{Host: c.host}, Env: c.host, Options: c.apiOptions(),
 		Flags: map[string]string{"host": c.flags.host, "mode": c.flags.mode, "git-backend": c.flags.gitBackend},
 		Local: apiclient.Local{Workflow: local.service, Settings: local.settingsService},

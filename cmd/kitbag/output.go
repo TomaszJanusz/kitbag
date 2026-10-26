@@ -165,6 +165,9 @@ func (c *commandLine) printStatus(status workflow.Status, asJSON bool) error {
 		last = fmt.Sprintf("%s; exit %d, %d changes", c.clock.Describe(status.LastSync.At), status.LastSync.Result, status.LastSync.Changed)
 	}
 	text := fmt.Sprintf("Working copy: %s\nBranch: %s -> %s (ahead %d, behind %d, dirty %t)\nLast sync: %s\n", status.Repository, status.Git.Branch, status.Git.Upstream, status.Git.Ahead, status.Git.Behind, status.Git.Dirty, last)
+	if status.DaemonRunning {
+		text += fmt.Sprintf("Versions: daemon %s, binary %s\n", status.DaemonVersion, status.BinaryVersion)
+	}
 	checkText, warnings := c.checkStatus(status)
 	text += checkText
 	var counts []string
