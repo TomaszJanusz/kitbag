@@ -106,6 +106,7 @@ check() {
 }
 
 says() { grep -Fq -- "$1" "$output"; }
+says_not() { ! says "$1"; }
 installed() { [[ "$("$home/.local/bin/kitbag" version --bare)" == "kitbag $1" ]]; }
 stamp_is() { [[ "$(cat "$home/.local/bin/kitbag.install-source")" == "$1" ]]; }
 platform_is() { grep -Fqx "# $1" "$home/.local/bin/kitbag"; }
@@ -119,13 +120,14 @@ check "writes the install-script stamp" sh_exact_stamp
 check "linux amd64 archive" platform_is linux/amd64
 check "no staging files remain" no_staging
 check "prints PATH advice" says 'is not on your PATH'
-check "prints next steps" says 'kitbag service install'
+check "prints the first-run pointer" says 'run kitbag init'
 check "notes skipped signature" says 'cosign not found'
 
 KEEP_HOME=1 run "upgrade an install-script install" ok --version 1.2.3
 check "explicit version wins" installed 1.2.3
 KEEP_HOME=1 run "upgrade to latest" ok
 check "upgraded to latest" installed 1.2.4
+check "upgrade repeats no first-run pointer" says_not 'run kitbag init'
 
 run "explicit v-prefixed version" ok --version=v1.2.3
 check "installs requested version" installed 1.2.3

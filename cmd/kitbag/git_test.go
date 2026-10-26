@@ -58,7 +58,7 @@ func TestRunGitBackend(t *testing.T) {
 		{name: "missing value", args: []string{"version", "--git-backend"}, code: 2, err: missingValue},
 		{name: "empty value is unset", args: []string{"--git-backend=", "version"}},
 		{name: "similar flag is no flag", args: []string{"--git-backends=auto", "version"}, code: 2, err: "kitbag: unknown flag: --git-backends\n"},
-		{name: "after --", args: []string{"--", "--git-backend=system", "version"}, code: 2, err: "kitbag: " + usage + "\n"},
+		{name: "after --", args: []string{"--", "--git-backend=system", "version"}, code: 2, err: "kitbag: " + usage + "\n" + firstRun + "\n"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()

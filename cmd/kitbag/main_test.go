@@ -30,7 +30,7 @@ func TestRun(t *testing.T) {
 		code int
 	}{
 		{name: "version", args: []string{"version"}, out: "kitbag dev\n"},
-		{name: "missing command", code: 2, err: "kitbag: " + usage + "\n"},
+		{name: "missing command", code: 2, err: "kitbag: " + usage + "\n" + firstRun + "\n"},
 		{name: "unknown command", args: []string{"bogus"}, code: 2, err: "kitbag: unknown command \"bogus\" for \"kitbag\"\n"},
 		{name: "extra argument", args: []string{"version", "extra"}, code: 2, err: "kitbag: unknown command \"extra\" for \"kitbag version\"\n"},
 		{name: "flag is not a command", args: []string{"--version"}, code: 2, err: "kitbag: unknown flag: --version\n"},

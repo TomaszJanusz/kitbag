@@ -46,6 +46,13 @@ verify() {
   }
   bash "$root/scripts/homebrew-formula.sh" "$dist" >"$dist/kitbag.rb.check"
   grep -Fq '(libexec/"kitbag.install-source").write "homebrew\n"' "$dist/kitbag.rb.check"
+  # Caveats print on every install and upgrade: only a missing Git qualifies,
+  # never first-run steps (kitbag prints those itself).
+  grep -Fq '    return if which("git")' "$dist/kitbag.rb.check"
+  if grep -Eq 'kitbag (init|service)' "$dist/kitbag.rb.check"; then
+    echo "release-channels: formula caveats carry first-run instructions" >&2
+    return 1
+  fi
   if command -v ruby >/dev/null 2>&1; then
     ruby -c "$dist/kitbag.rb.check" >/dev/null
   fi

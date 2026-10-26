@@ -137,7 +137,7 @@ func homePath(value string) bool {
 // WorkingCopy resolves repo.path or the repository's platform data location.
 func (c Config) WorkingCopy(env platform.Env) (string, error) {
 	if c.Repo.URL == "" {
-		return "", invalid("repo.url (configure an existing clone)")
+		return "", invalid("repo.url (not configured; run kitbag init, or point it at an existing clone)")
 	}
 	if c.Repo.Path != "" {
 		home, err := env.HomeDir()
