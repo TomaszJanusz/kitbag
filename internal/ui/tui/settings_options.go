@@ -16,7 +16,7 @@ type (
 
 // optionLayout draws options with a shared geometry for pointer hit testing.
 // Selection is textual so monochrome terminals have the same controls.
-func (m *Model) optionLayout(field model.FieldView) ([]string, optionLayout) {
+func (m *Model) optionsAt(field model.FieldView, widthLimit int) ([]string, optionLayout) {
 	layout := optionLayout{}
 	line, column, y := "", 0, 0
 	for i, option := range field.Options {
@@ -25,11 +25,11 @@ func (m *Model) optionLayout(field model.FieldView) ([]string, optionLayout) {
 			label = "[" + m.say(option.Label) + "]"
 		}
 		width := ansi.StringWidth(label)
-		if column > 0 && column+width > m.width {
+		if column > 0 && column+width > widthLimit {
 			layout.lines = append(layout.lines, line)
 			line, column, y = "", 0, y+1
 		}
-		layout.hits = append(layout.hits, optionHit{start: column, end: min(column+width, m.width), y: y, index: i})
+		layout.hits = append(layout.hits, optionHit{start: column, end: min(column+width, widthLimit), y: y, index: i})
 		line += label
 		column += width
 	}

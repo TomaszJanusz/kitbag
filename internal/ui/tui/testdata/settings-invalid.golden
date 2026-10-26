@@ -3,8 +3,6 @@
 Precedence: flag > KITBAG_* environment > config.toml > default
 Advanced [+]
 
-  repo.url  unset · default
-  repo.path  unset · default
   git.identity.name  unset · default
   git.identity.email  unset · default
 > sync.poll_interval *  5m · config.toml
@@ -12,13 +10,15 @@ Advanced [+]
   sync.mode  copy · environment KITBAG_MODE
 
 sync.poll_interval
+ 30s  1m  5m  15m  1h [Custom…]
+> soon
 How often the daemon checks Git for changes. Restart the daemon after saving.
 Custom: 1s to 24h.
 Value: 5m
 Source: config.toml
 Default: 60s
 Allowed: duration from 1s to 24h (ms, s, m, h)
- 30s  1m  5m  15m  1h [Custom…]
-> soon
+
+[Help]
 Editing: Enter saves, Esc cancels
 ? help · a advanced · q quit · mouse: click, wheel

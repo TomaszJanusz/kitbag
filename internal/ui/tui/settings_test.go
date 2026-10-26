@@ -3,6 +3,7 @@ package tui
 import (
 	"strings"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -28,6 +29,18 @@ func (s *session) noWrite() {
 	}
 }
 
+// nextWrite waits for one setting write, failing instead of hanging the package.
+func (s *session) nextWrite() [2]string {
+	s.t.Helper()
+	select {
+	case got := <-s.client.writes:
+		return got
+	case <-time.After(waitLimit):
+		s.t.Fatal("no setting write")
+		return [2]string{}
+	}
+}
+
 func TestSettingsToggleSavesAndCancels(t *testing.T) {
 	t.Parallel()
 	s := start(t, newFake())
@@ -36,7 +49,7 @@ func TestSettingsToggleSavesAndCancels(t *testing.T) {
 	s.press(keyEnter, keySpace)
 	s.waitFor(" On [Off]")
 	s.press(keyEnter)
-	if got := <-s.client.writes; got != [2]string{"daemon.update_check", "false"} {
+	if got := s.nextWrite(); got != [2]string{"daemon.update_check", "false"} {
 		t.Fatalf("toggle write=%v", got)
 	}
 	s.waitFor("daemon.update_check  false · config.toml")
@@ -56,7 +69,7 @@ func TestSettingsAdvancedAndHiddenKeys(t *testing.T) {
 	s.settingRow(9)
 	s.waitFor(">   git.backend", "Advanced [-]")
 	s.press(keyEnter, keySpace, keyEnter)
-	if got := <-s.client.writes; got != [2]string{"git.backend", "system"} {
+	if got := s.nextWrite(); got != [2]string{"git.backend", "system"} {
 		t.Fatalf("backend write=%v", got)
 	}
 	s.waitFor("git.backend  system · config.toml")
@@ -86,12 +99,12 @@ func TestSettingsHostChoiceAndOther(t *testing.T) {
 	s := start(t, newFake())
 	s.waitFor("2 targets changed locally")
 	s.press("3", keyEnter, keyRight, keyEnter)
-	if got := <-s.client.writes; got != [2]string{"host", "mac"} {
+	if got := s.nextWrite(); got != [2]string{"host", "mac"} {
 		t.Fatalf("host write=%v", got)
 	}
 	s.waitFor("host  mac · config.toml")
 	s.press(keyEnter, keyRight, "ctrl+a", "ctrl+k", "another", keyEnter)
-	if got := <-s.client.writes; got != [2]string{"host", "another"} {
+	if got := s.nextWrite(); got != [2]string{"host", "another"} {
 		t.Fatalf("other write=%v", got)
 	}
 	s.waitFor("host  another · config.toml")
@@ -131,20 +144,20 @@ func TestSettingsPickerMouseAndStrayEvents(t *testing.T) {
 	s.settingRow(5)
 	s.press(keyEnter)
 	s.waitFor(" 30s [1m] 5m ")
-	// At 80×24 the preset row is line 20. Clicking a preset changes only the draft.
-	s.click(12, 20)
+	// At 80×24 the stepper is inline in the selected list row.
+	s.click(33, 10)
 	s.waitFor("[5m]")
 	s.mouse(tea.MouseButtonRight, tea.MouseActionPress, 2, 20)
 	s.mouse(tea.MouseButtonLeft, tea.MouseActionRelease, 2, 20)
 	s.mouse(tea.MouseButtonLeft, tea.MouseActionMotion, 2, 20)
 	s.click(2, 19)
 	s.press(keyEnter)
-	if got := <-s.client.writes; got != [2]string{"sync.poll_interval", "5m"} {
+	if got := s.nextWrite(); got != [2]string{"sync.poll_interval", "5m"} {
 		t.Fatalf("mouse write=%v", got)
 	}
 	s.waitFor("sync.poll_interval  5m · config.toml")
 	s.press(keyEnter)
-	s.click(2, 20)
+	s.click(25, 10)
 	s.press(keyEscape)
 	if screen := s.final(); !strings.Contains(screen, "sync.poll_interval  5m · config.toml") {
 		t.Fatal(screen)

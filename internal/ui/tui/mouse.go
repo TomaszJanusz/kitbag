@@ -17,6 +17,10 @@ func (m *Model) mouse(msg tea.MouseMsg) tea.Cmd {
 	if m.outsideScreen(msg.X, msg.Y) {
 		return nil
 	}
+	if m.windows.Len() > 0 {
+		m.dispatch(m.windowMouse(msg))
+		return nil
+	}
 	if m.editing {
 		return m.editorMouse(msg)
 	}
@@ -47,7 +51,7 @@ func (m *Model) click(x, y int) {
 	case driftTab:
 		m.clickDrift(y)
 	case settingsTab:
-		m.clickSetting(y)
+		m.clickSetting(x, y)
 	case statusTab, logTab, tabCount:
 	}
 }
@@ -72,8 +76,12 @@ func (m *Model) clickDrift(y int) {
 
 // clickSetting selects the clicked setting. Editing stays on Enter so a stray
 // click never starts a change.
-func (m *Model) clickSetting(y int) {
-	layout, _ := m.settingsLayout(m.height - chromeLines)
+func (m *Model) clickSetting(x, y int) {
+	screen := m.settingsScreen(m.height - chromeLines)
+	if !screen.panes.Master.Contains(x, y-(chromeLines-1)) {
+		return
+	}
+	layout := screen.list
 	if y < layout.top() || y-layout.top() >= layout.rows {
 		return
 	}
@@ -97,15 +105,9 @@ func (m *Model) clickOption(x, y int) tea.Cmd {
 	if field.Saving {
 		return nil
 	}
-	layout, detail := m.settingsLayout(m.height - chromeLines)
-	_, options := m.optionLayout(field)
-	// Options end the detail, followed by optional text input and one hint.
-	top := layout.top() + layout.rows + 1 + len(detail) - len(options.lines) - len(m.editorHint(field))
-	if field.TextEntry {
-		top--
-	}
-	for _, hit := range options.hits {
-		if y == top+hit.y && x >= hit.start && x < hit.end {
+	screen := m.settingsScreen(m.height - chromeLines)
+	for _, hit := range screen.hits {
+		if y == hit.y && x >= hit.start && x < hit.end {
 			m.dispatch(model.ChooseSetting{Key: field.Path, Index: hit.index})
 			return m.syncInput()
 		}
@@ -113,7 +115,9 @@ func (m *Model) clickOption(x, y int) tea.Cmd {
 	return nil
 }
 
-func (m *Model) mouseUnavailable() bool { return m.help || m.width < MinWidth || m.height < MinHeight }
+func (m *Model) mouseUnavailable() bool {
+	return (m.help && m.windows.Len() == 0) || m.width < MinWidth || m.height < MinHeight
+}
 
 func (m *Model) outsideScreen(x, y int) bool { return x < 0 || y < 0 || x >= m.width || y >= m.height }
 

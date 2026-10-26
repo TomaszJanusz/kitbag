@@ -41,6 +41,9 @@ func (m *Model) key(msg tea.KeyMsg) tea.Cmd {
 	switch {
 	case name == keyCtrlC:
 		return m.quit()
+	case m.windows.Len() > 0:
+		m.dispatch(m.windows.Key(msg))
+		return nil
 	case m.editing:
 		return m.editKey(msg)
 	case m.help:
@@ -144,7 +147,7 @@ func (m *Model) settingsKey(name string) tea.Cmd {
 	case keySave:
 		m.dispatch(model.SaveSetting{Key: m.field().Path})
 	case keyUnset:
-		m.dispatch(model.UnsetSetting{Key: m.field().Path})
+		m.dispatch(model.RequestUnsetSetting{Key: m.field().Path})
 	case keyEscape:
 		m.dispatch(model.RevertSetting{Key: m.field().Path})
 	}

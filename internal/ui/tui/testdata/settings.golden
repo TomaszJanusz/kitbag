@@ -17,8 +17,8 @@ Choose this machine's instructions from hosts/*.md, or enter another host name.
 Value: laptop
 Source: config.toml
 Default: machine short hostname
+
+[Help]
 ↑/↓: select · Enter: edit
 [w] Save (unavailable)  [u] Remove from config.toml  [esc] Revert (unavailable)
-
-
 ? help · a advanced · q quit · mouse: click, wheel

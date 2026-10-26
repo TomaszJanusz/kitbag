@@ -1,0 +1,35 @@
+ 1 Status   2 Drift  [3 Settings]  4 Activity
+
+Precedence: flag > KITBAG_* environment > config.toml > default          | sync.poll_interval
+Advanced [+]                                                             | How often the daemon checks Git for changes.
+                                                                         | Restart the daemon after saving. Custom: 1s
+  host  laptop · config.toml                                             | to 24h.
+  repo.url  unset · default                                              | Value: 60s
+  repo.path  unset · default                                             | Source: default
+  git.identity.name  unset · default                                     | Default: 60s
+  git.identity.email  unset · default                                    |
+> sync.poll_interval *   30s  1m [5m] 15m  1h  Custom…                   | [Help]
+  daemon.update_check  true · default                                    | ←/→/Space or click: choose · Enter saves ·
+  sync.mode  copy · environment KITBAG_MODE                              | Esc cancels
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+                                                                         |
+? help · a advanced · q quit · mouse: click, wheel

@@ -47,7 +47,7 @@ func (m *Model) View() string {
 	screen = append(screen, m.tabBar(), "")
 	screen = append(screen, pad(m.fit(lines, body), body)...)
 	screen = append(screen, m.styles.faint.Render(m.say(text.New(text.TerminalFooter))))
-	return strings.Join(m.fit(screen, m.height), "\n")
+	return strings.Join(m.overlayWindows(m.fit(screen, m.height)), "\n")
 }
 
 func (m *Model) say(message text.Message) string { return m.catalog.Render(message) }
@@ -181,7 +181,7 @@ func intentName(intent model.Msg) string {
 func (m *Model) helpView() []string {
 	keys := []text.Key{
 		text.HelpTabs, text.HelpRefresh, text.HelpSync, text.HelpCheckSync, text.HelpMove, text.HelpDetail, text.HelpEdit,
-		text.HelpSave, text.HelpChoices, text.HelpAdvanced, text.HelpFollow, text.HelpMouse, text.HelpToggle, text.HelpQuit,
+		text.HelpSave, text.HelpDialogs, text.HelpChoices, text.HelpAdvanced, text.HelpFollow, text.HelpMouse, text.HelpToggle, text.HelpQuit,
 	}
 	lines := make([]string, 0, len(keys)+1)
 	lines = append(lines, m.styles.heading.Render(m.say(text.New(text.HelpTitle))))
