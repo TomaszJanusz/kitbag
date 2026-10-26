@@ -73,11 +73,11 @@ rm $HOME/.never
 cp $HOME/.local/state/kitbag/service.json $WORK/service.json.bak
 cp missing-binary.json $HOME/.local/state/kitbag/service.json
 exec kitbag service status
-stdout 'Service executable /kitbag-removed/Cellar/kitbag/0.0.1/bin/kitbag no longer exists.*run kitbag service install'
+stdout 'Service executable /kitbag-removed/Cellar/kitbag/0.1.0/libexec/kitbag no longer exists.*run kitbag service install'
 exec kitbag service status --json
 stdout '"binary_missing":true'
 exec kitbag doctor --json
-stdout '"message": "service executable /kitbag-removed/Cellar/kitbag/0.0.1/bin/kitbag no longer exists'
+stdout '"message": "service executable /kitbag-removed/Cellar/kitbag/0.1.0/libexec/kitbag no longer exists'
 cp $WORK/service.json.bak $HOME/.local/state/kitbag/service.json
 exec kitbag service status --json
 stdout '"binary_missing":false'
@@ -88,6 +88,25 @@ stdout 'Service installed/updated'
 grep 'launchctl bootout gui/[0-9]+/dev.kitbag.agent' $HOME/commands
 grep '<key>KeepAlive</key><true/>' $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
 ! grep 'StartInterval' $HOME/Library/LaunchAgents/dev.kitbag.agent.plist
+
+# Reinstalling a running daemon that never exited preserves the job and plist.
+cp never $HOME/.never
+cp $HOME/Library/LaunchAgents/dev.kitbag.agent.plist $WORK/daemon.plist
+rm $HOME/commands
+exec kitbag service install --mode=daemon
+stdout 'already installed and up to date'
+exec kitbag service install --mode=daemon
+stdout 'already installed and up to date'
+! grep 'launchctl (bootout|bootstrap|kickstart|disable)' $HOME/commands
+cmp $HOME/Library/LaunchAgents/dev.kitbag.agent.plist $WORK/daemon.plist
+exists $HOME/.loaded
+exec kitbag service status --json
+stdout '"loaded":true'
+stdout '"active":true'
+stdout '"exit_code":null'
+exec kitbag doctor --json
+stdout '"message": "loaded=true active=true enabled=true stale=false'
+rm $HOME/.never
 
 exec kitbag service uninstall
 stdout 'Configuration, working copies and sync state were kept'
@@ -104,7 +123,7 @@ stdout 'installed=false loaded=false'
 schema=1
 -- never --
 -- missing-binary.json --
-{"environment":{},"binary":"/kitbag-removed/Cellar/kitbag/0.0.1/bin/kitbag","config":"/kitbag-removed/config.toml","mode":"timer","log_dir":"/kitbag-removed/log","interval":300000000000}
+{"environment":{},"binary":"/kitbag-removed/Cellar/kitbag/0.1.0/libexec/kitbag","config":"/kitbag-removed/config.toml","mode":"timer","log_dir":"/kitbag-removed/log","interval":300000000000}
 -- tools/ssh --
 #!/bin/sh
 exit 0
