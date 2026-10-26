@@ -1,0 +1,24 @@
+1 2 [3 Settings] 4
+
+Precedence: flag > KITBAG_* environment
+> config.toml > default
+Advanced [-]
+
+  sync.mode  copy · environment KITBAG_…
+    repo.branch  unset · default
+    git.backend  auto · default
+>   daemon.debounce  500ms · default
+    ui.color  auto · default
+
+daemon.debounce
+How long the daemon waits to combine
+file changes into one sync. Restart
+after saving. Custom: 100ms to 1m.
+Value: 500ms
+Source: default
+Default: 500ms
+ 100ms  250ms [500ms] 1s  5s  30s  1m
+ Custom…
+←/→/Space or click: choose · Enter saves
+· Esc cancels
+? help · a advanced · q quit · mouse: c…

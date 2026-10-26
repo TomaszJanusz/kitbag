@@ -1,24 +1,24 @@
  1 Status   2 Drift  [3 Settings]  4 Activity
 
 Precedence: flag > KITBAG_* environment > config.toml > default
+Advanced [+]
 
-  repo.branch  unset · default
+  repo.url  unset · default
   repo.path  unset · default
-  git.backend  system · config.toml
   git.identity.name  unset · default
   git.identity.email  unset · default
-> sync.poll_interval *  60s · default
-  daemon.debounce  unset · default
-  daemon.update_check  unset · default
-  daemon.release_url  unset · default
+> sync.poll_interval *  5m · config.toml
+  daemon.update_check  true · default
   sync.mode  copy · environment KITBAG_MODE
 
 sync.poll_interval
-Remote head polling interval; 1s minimum, 24h maximum.
-Value: 60s
-Source: default
+How often the daemon checks Git for changes. Restart the daemon after saving.
+Custom: 1s to 24h.
+Value: 5m
+Source: config.toml
 Default: 60s
 Allowed: duration from 1s to 24h (ms, s, m, h)
+ 30s  1m  5m  15m  1h [Custom…]
 > soon
 Editing: Enter saves, Esc cancels
-? help · q quit · mouse: click, wheel
+? help · a advanced · q quit · mouse: click, wheel

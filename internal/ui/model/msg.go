@@ -18,6 +18,20 @@ type (
 	SelectDrift struct{ Index int }
 	// MoveDrift moves the drift selection by Delta, clamped to the list.
 	MoveDrift struct{ Delta int }
+	// ToggleAdvancedSettings expands or collapses less common settings.
+	ToggleAdvancedSettings struct{}
+	// BeginSetting chooses the appropriate input for the current draft.
+	BeginSetting struct{ Key string }
+	// StepSetting cycles a picker by Delta.
+	StepSetting struct {
+		Key   string
+		Delta int
+	}
+	// ChooseSetting selects the option at Index, including custom input.
+	ChooseSetting struct {
+		Key   string
+		Index int
+	}
 	// EditSetting replaces a field's draft and validates it immediately.
 	EditSetting struct{ Key, Value string }
 	// SaveSetting persists a valid, changed draft.
@@ -120,3 +134,8 @@ func (LoadSettings) isCmd() {}
 func (WriteSetting) isCmd() {}
 func (RunSync) isCmd()      {}
 func (Subscribe) isCmd()    {}
+
+func (ToggleAdvancedSettings) isMsg() {}
+func (BeginSetting) isMsg()           {}
+func (StepSetting) isMsg()            {}
+func (ChooseSetting) isMsg()          {}

@@ -1,0 +1,24 @@
+ 1 Status   2 Drift  [3 Settings]  4 Activity
+
+Precedence: flag > KITBAG_* environment > config.toml > default
+Advanced [+]
+
+  host  laptop · config.toml
+  repo.url  unset · default
+  repo.path  unset · default
+  git.identity.name  unset · default
+  git.identity.email  unset · default
+> sync.poll_interval *  60s · default
+  daemon.update_check  true · default
+  sync.mode  copy · environment KITBAG_MODE
+
+sync.poll_interval
+How often the daemon checks Git for changes. Restart the daemon after saving.
+Custom: 1s to 24h.
+Value: 60s
+Source: default
+Default: 60s
+ 30s  1m [5m] 15m  1h  Custom…
+←/→/Space or click: choose · Enter saves · Esc cancels
+
+? help · a advanced · q quit · mouse: click, wheel

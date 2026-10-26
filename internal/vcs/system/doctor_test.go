@@ -60,3 +60,21 @@ func doctorGitReply(cmd Command) Result {
 		return Result{}
 	}
 }
+
+func TestReadIdentityReturnsOnlyNamedConfig(t *testing.T) {
+	t.Parallel()
+	r := &fakeRunner{gitDir: "/bin", reply: doctorGitReply}
+	b, err := New(t.Context(), Options{Env: fake.New(fake.WithEnv(hostileEnv("/bin"))), Runner: r})
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := b.ReadIdentity(t.Context(), "/work/repo")
+	if err != nil || id != (vcs.Identity{Name: "Private Name", Email: "private@example.invalid"}) {
+		t.Fatal(id, err)
+	}
+	for _, cmd := range r.cmds[1:] {
+		if !slices.Equal(cmd.Args[:2], []string{"config", "--get"}) || !slices.Contains([]string{"user.name", "user.email"}, cmd.Args[2]) {
+			t.Fatal("unexpected identity command", cmd)
+		}
+	}
+}

@@ -32,14 +32,51 @@ corrupt the screen.
 | --- | --- | --- |
 | 1 Status | Headline (in sync, drift, conflicts, syncing with the current phase, another sync running, tool too old with required and running version), last known status when a reload fails, update available, result of the last sync started here, repository, branch and upstream, working copy, last sync, target counts, connection, warnings | `s` sync now, `r` refresh |
 | 2 Drift | Targets other than in sync with their classification; Enter opens the selected target's planned actions (source, backup path, warnings) | `↑`/`↓`, `k`/`j`, Enter, Esc |
-| 3 Settings | Every registry setting with effective value, source, override note, default, allowed values and the description; sensitive values are redacted and never prefilled | `↑`/`↓`, Enter edit, Enter save, Esc cancel, `w` save a kept draft, `u` remove from `config.toml` |
+| 3 Settings | Common settings with value, source, override note, default and plain-language description; sensitive values are redacted and never prefilled | `↑`/`↓`, Enter edit/save, Esc cancel, `←`/`→`/Space choose, `a` Advanced, `w` save a kept draft, `u` remove from `config.toml` |
 | 4 Activity | The bounded activity log (256 entries; dropped entries are counted): daemon hints, sync phases and setting writes | `f` follow, `↑`/`↓`, PgUp/PgDn |
 
 `Tab`, `Shift-Tab` and `1`–`4` switch tabs, `?` shows the key help, `q` or
 `Ctrl-C` quits. While a setting is being edited, typed keys go to the editor;
-`Ctrl-C` still quits. `←`/`→` cycle the allowed values of a closed set. Every
+`Ctrl-C` still quits. `←`/`→`/Space cycle picker options; letters cannot change an enum or toggle. Every
 keystroke is validated with the registry rules: an invalid draft shows its
-constraint and is never saved; a failed save keeps the draft with the reason.
+constraint and is never saved; a failed save keeps the editor open with its draft and the reason. The editor closes only after a successful save (or Enter on an unchanged value).
+
+## Settings controls
+
+The main list contains `host`, `repo.url`, `repo.path`, `git.identity.name/email`,
+`sync.poll_interval`, `daemon.update_check` and `sync.mode`. Press `a` to expand
+or collapse **Advanced**: `repo.branch`, `git.backend`, `daemon.debounce` and
+`ui.color`. Advanced starts collapsed and keeps its state across refreshes.
+The footer and `?` help include the shortcut.
+
+- **Choices:** `sync.mode` offers link/copy; `git.backend` offers
+  auto/system/embedded; `ui.color` offers auto/always/never.
+- **Toggle:** `daemon.update_check` offers On/Off.
+- **Durations:** polling offers 30s, 1m, 5m, 15m and 1h; debounce offers
+  100ms, 250ms, 500ms, 1s, 5s, 30s and 1m. Equivalent durations match the
+  same preset (60s selects 1m). Choose **Custom…** to type another value.
+  The registry still requires polling from 1s to 24h and debounce from 100ms
+  to 1m. Left/Right return to the presets; Space enters a space in custom text.
+- **Host:** choices come from regular `hosts/*.md` files in the effective
+  working copy; symlinks are excluded. **Other…** accepts a validated name.
+  An existing name without a matching file opens Other without replacing it.
+- **Text:** repository URL/path/branch and Git identity remain line editors.
+  Identity details show the effective Git config value as a hint when readable,
+  or say it is unavailable. These hints never prefill an input. The existing
+  identity name/email pair rule still applies; use `kitbag config edit` to set
+  both together. URL and stored identity values remain masked.
+
+`schema` and `daemon.release_url` are internal settings. `ui.notifications` and
+`ui.theme` currently have no effect and are hidden. Colour has a real CLI/TUI
+consumer, so `ui.color` stays in Advanced. `migration.legacy_roots` appears only
+when configured or when `~/src/agent-config` or `~/.local/bin/agent-config-sync`
+exists. Its detail points to the CLI for editing the TOML path list; the TUI
+does not guess or add trusted migration roots. Detection is deliberately limited
+to these conventional locations and does not scan agent contents.
+
+Every key remains available through `kitbag config list/get/set/unset/edit`.
+Saving writes configuration; restart the daemon for polling/debounce/update
+changes, and reopen the TUI for its startup colour preference.
 
 ## Mouse
 
@@ -52,9 +89,10 @@ and the wheel, and the renderer turns them into the same intents as the keys:
   editing stays on Enter, so a stray click never starts a change.
 - The wheel moves the Drift selection and scrolls the Activity log one line per
   notch, like `↑`/`↓`. Scrolling back to the end resumes following.
-- While a setting is edited, in the help overlay and in an open drift detail
-  the mouse is ignored, like keys that do not apply. Other buttons, releases
-  and drags do nothing. Text selection and copying need the terminal's
+- While a setting is edited, click an option to change the draft, including
+  Custom/Other. Enter still saves; Esc cancels. Clicks outside the options
+  are ignored. In help and open drift details the mouse is ignored. Other
+  buttons, releases and drags do nothing. Text selection and copying need the terminal's
   override (usually Shift-drag).
 
 The renderer asks for cell-motion reporting with SGR coordinates and releases
@@ -100,7 +138,8 @@ panics, like the alternate screen. The footer and the `?` help mention the mouse
 `internal/ui/tui` tests drive the program with
 [teatest](https://github.com/charmbracelet/x/tree/main/exp/teatest) against a
 scripted `model.Client`: each tab's main flow, sync progress, drift detail,
-settings validation and save, the bounded log, help, mouse clicks and wheel
+settings pickers/toggles, custom validation, failed saves, Advanced visibility,
+secret masking, the bounded log, help, mouse clicks and wheel
 (with a negative control for each stray event), resize, `NO_COLOR` output
 and subscription shutdown. Golden screens in `internal/ui/tui/testdata` are
 ANSI-stripped at fixed sizes; after reviewing a change, rewrite them with
