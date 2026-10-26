@@ -35,6 +35,9 @@ type commandLine struct {
 	// process is set by run: the command owns the whole Go runtime, so the
 	// daemon may tune it. In-process tests leave it false.
 	process bool
+	// executableCheck is the daemon's replaced-executable poll; zero selects
+	// the production interval, and in-process tests shorten it.
+	executableCheck time.Duration
 }
 
 func (c *commandLine) root() *cobra.Command {

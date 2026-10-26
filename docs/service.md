@@ -30,6 +30,8 @@ session or executable path. Configuration must already be set up with `init`.
 Linux uses `dev.kitbag.agent.service` under `$XDG_CONFIG_HOME/systemd/user`
 (default `~/.config/systemd/user`). Daemon units use `Type=simple`,
 `Restart=on-failure`, `NoNewPrivileges=true`, and `WantedBy=default.target`.
+`Restart=on-failure` also restarts the daemon after it exits with status 75
+because its executable was replaced ([daemon.md](daemon.md#restart-after-an-upgrade)).
 `PrivateTmp` is deliberately omitted: local Git remotes and agent socket paths
 may live in `/tmp`. Timer mode adds `dev.kitbag.agent.timer`, with `OnBootSec=1min`,
 `OnUnitActiveSec=<interval>`, `RandomizedDelaySec=30s` and `timers.target` enablement.
@@ -46,7 +48,8 @@ An unavailable linger probe prints guidance without undoing installation.
 macOS uses `~/Library/LaunchAgents/dev.kitbag.agent.plist`, label
 `dev.kitbag.agent`, in `gui/<uid>`. The plist uses `RunAtLoad`, `ProcessType`
 `Background`, and `KeepAlive` for daemon mode or `StartInterval` for timer mode.
-Enablement uses `launchctl enable`; starting bootstraps the job (or kickstarts an
+`KeepAlive` restarts the daemon after any exit, including status 75 after a
+replaced executable. Enablement uses `launchctl enable`; starting bootstraps the job (or kickstarts an
 already loaded job). `--no-start` writes/enables the job for the next login.
 Uninstall boots it out, disables it, and removes the plist. Standard output and
 error go to `service.stdout.log` and `service.stderr.log` in the platform log
@@ -82,10 +85,11 @@ path. Linux installations, including Homebrew on Linux, are unchanged.
 
 Caveats that remain after an upgrade:
 
-- A running daemon keeps executing the old version until it exits, and an
-  identical reinstall keeps it running. Restart it with
-  `launchctl kickstart -k gui/$(id -u)/dev.kitbag.agent`. Timer runs pick up
-  the new version on their next start.
+- A running daemon restarts onto the new version within about two minutes of
+  the upgrade ([daemon.md](daemon.md#restart-after-an-upgrade)); to restart it
+  at once, run `launchctl kickstart -k gui/$(id -u)/dev.kitbag.agent`. An
+  identical reinstall keeps it running. Timer runs pick up the new version on
+  their next start.
 - A service installed by 0.1.0 still names the keg path and the whole shell
   PATH, so status reports it stale. Run `kitbag service install` once.
 - `brew uninstall kitbag` removes the link; the job then fails to start.
@@ -110,7 +114,7 @@ JSON is versioned with `service_schema: 1`. Sync inspection failure is reported
 separately and does not hide supervisor health. Doctor's `service` check is OK
 when this optional feature is absent, and WARN when installed but inactive,
 disabled, unloaded, stale, its executable is missing, or the last supervisor
-exit code is nonzero. Neither status nor doctor changes supervisor state.
+exit code is nonzero other than the daemon's restart status 75. Neither status nor doctor changes supervisor state.
 
 Uninstall stops/disables jobs, removes both systemd files or the plist and saved
 installation inputs, then reloads systemd. It is safe to repeat. Configuration,
