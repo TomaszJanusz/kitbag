@@ -40,7 +40,7 @@ touch zones. The API, state files and JSON keep UTC RFC 3339.
 | --- | --- | --- |
 | 1 Status | Headline (in sync, drift, conflicts, syncing with the current phase, another sync running, tool too old with required and running version), last known status when a reload fails, update available, result of the last sync started here, repository, branch and upstream, working copy, last sync, target counts, connection, warnings | `s` sync now, `r` refresh |
 | 2 Drift | Targets other than in sync with their classification; Enter opens the selected target's planned actions (source, backup path, warnings) | `↑`/`↓`, `k`/`j`, Enter, Esc |
-| 3 Settings | Common settings with value, source, override note, default and plain-language description; sensitive values are redacted and never prefilled | `↑`/`↓`, Enter edit/save, Esc cancel, `←`/`→`/Space choose, `a` Advanced, `w` save a kept draft, `u` remove from `config.toml` |
+| 3 Settings | Common settings with value, source, override note, default and plain-language description; sensitive values are redacted and never prefilled | `↑`/`↓`, Enter edit/save, Esc cancel, `←`/`→`/Space choose, `a` Advanced, `w` save a kept draft, `u` confirm removal from `config.toml` |
 | 4 Activity | The bounded activity log (256 entries; dropped entries are counted): daemon hints, sync phases and setting writes | `f` follow, `↑`/`↓`, PgUp/PgDn |
 
 `Tab`, `Shift-Tab` and `1`–`4` switch tabs, `?` shows the key help, `q` or
@@ -48,6 +48,69 @@ touch zones. The API, state files and JSON keep UTC RFC 3339.
 `Ctrl-C` still quits. `←`/`→`/Space cycle picker options; letters cannot change an enum or toggle. Every
 keystroke is validated with the registry rules: an invalid draft shows its
 constraint and is never saved; a failed save keeps the editor open with its draft and the reason. The editor closes only after a successful save (or Enter on an unchanged value).
+
+## Layout and windows
+
+Settings uses a master/detail layout. At **100 columns and wider**, the list
+occupies about three fifths of the screen, with the selected field's description,
+effective value, source and default in the right pane. A dedicated **Help**
+section in that pane shows field hints and editor keys. An editor that fits is
+rendered **in the selected row beside the field name**; longer controls use the
+right pane. Below 100 columns the same panes stack vertically and the list
+scrolls to keep the selection visible. Very short screens shorten the details
+to reserve room for the editor and help. Below 40×10 the existing size notice
+replaces the content, preserving open windows and drafts until the next resize.
+
+Modal windows are titled, bordered and centered over the current content. Only
+the top window receives input. `Tab`/`Shift-Tab`, `↑`/`↓` and arrows on buttons
+cycle through enabled fields and buttons. Left/Right within a text field move
+the cursor. `Enter` activates the focused button, or Next/Finish from a field;
+a disabled Next/Finish never activates Back. `Esc` and a primary click outside
+cancel only the top window. Clicking a field focuses it; clicking a button
+activates it. Other mouse events are ignored. Global tab, refresh, sync, help
+and quit keys stay trapped; `Ctrl-C` still exits the application. Text markers
+and borders carry focus and selection with `NO_COLOR` too.
+
+Removing a stored setting with `u` opens a Yes/No confirmation, initially on
+**No**. Yes sends the existing unset intent; No, Esc and outside clicks leave
+configuration untouched. Unset remains unavailable for values supplied by flags,
+environment or defaults. Saving, reverting drafts and sync keep their existing
+behavior; this adds no new persistence semantics.
+
+### Component API for future tabs
+
+The shared contract is in `internal/ui/model/dialog.go`, with all labels in
+`internal/ui/model/text`:
+
+- `DialogView` carries a stable ID, title/message, fields, enabled `Control`
+  buttons, cancel intent, optional step/step-count and initial focus index.
+  `DialogField` carries a stable field ID, draft, label/hint, enabled state and
+  sensitivity. Supply only editable drafts, never a stored secret.
+- `ConfirmDialog(id, title, message, confirm, cancel)` supplies Yes/No and
+  closes on an action. `FormDialog(id, title, step, steps, fields, back, next,
+  cancel)` supplies **Step 2/5**, Back and Next (Finish on the last step).
+  A form stays open after a button intent while its model validates or loads
+  a preview. Disabled controls are skipped by keyboard and mouse.
+- The owning model receives `EditDialogField{Dialog, Field, Value}` on each
+  changed draft and the supplied button/cancel intents. It owns validation,
+  wizard steps, dirty-close policy, asynchronous work and preview revisions.
+  Reproject its view after handling an intent; the renderer never advances a
+  wizard or writes a field itself.
+- `tui.Model.ShowDialog(view)` (or a `DialogView` message on the Bubble Tea
+  loop) opens/replaces a projection by ID; `HideDialog(id)` removes a
+  model-closed window. Call these only on the renderer loop. Replacements
+  preserve focus and the text cursor of unchanged drafts. Distinct IDs stack;
+  closing the top restores the window beneath it.
+- `WindowStack` implements Push/Replace/Pop/Remove/Len and Key-to-intent
+  translation for renderer composition. `MasterDetail(width, height,
+  masterWidth, stackedRows)` returns `PaneLayout` with cell `Rect`s for drawing
+  and hit testing. A zero master width uses the proportion; a nonzero width
+  requests a fixed list width, clamped to leave a usable detail pane. Call it
+  after the minimum-size guard. No toolkit types enter shared models.
+
+The future Agents tab can project its model-owned wizard into `FormDialog`,
+handle field/button intents in the shared model and call ShowDialog with the
+same ID at each step. Confirmation can stack above it using a different ID.
 
 ## Settings controls
 
@@ -99,7 +162,8 @@ and the wheel, and the renderer turns them into the same intents as the keys:
   notch, like `↑`/`↓`. Scrolling back to the end resumes following.
 - While a setting is edited, click an option to change the draft, including
   Custom/Other. Enter still saves; Esc cancels. Clicks outside the options
-  are ignored. In help and open drift details the mouse is ignored. Other
+  are ignored while editing a setting. Dialog clicks follow the window rules
+  above. In help and open drift details the mouse is ignored. Other
   buttons, releases and drags do nothing. Text selection and copying need the terminal's
   override (usually Shift-drag).
 
@@ -154,6 +218,14 @@ ANSI-stripped at fixed sizes; after reviewing a change, rewrite them with
 `go test ./internal/ui/tui -args -update-screens`. A testscript covers the
 non-terminal refusal.
 
+Pane and window flows additionally cover the 99/100-column breakpoint, inline
+steppers, side-panel help, selection hit testing, modal focus trapping, disabled
+Next, nested windows, outside cancellation, dialog buttons/fields, secret
+masking and resizes with a draft open. Settings and dialog golden screens cover
+120×35, 100×30, 60×20 and 40×10, plus the below-minimum notice. Tests use scripted
+clients and do not run KitBag against a real home directory.
+
+
 ## Remote check freshness
 
 The Status tab keeps separate `Last check`, `Next check` and `Last sync` rows.
@@ -166,10 +238,12 @@ updates ages and warnings even when no daemon events arrive. With no daemon,
 the persisted check says “stale; daemon not running” and no next check is shown.
 
 Status shows **daemon X, binary Y** and warns about version mismatch or a stale
-installed service definition. Press **h** on Status to request repair, then **y**
-to confirm or **n/Esc** to cancel. The shared view model owns the warning,
-confirmation and refresh intent; the terminal renderer draws them and forwards
-keys. Refresh runs locally through the service core rather than an RPC inside
+installed service definition. Press **h** on Status to request repair: a
+**Repair service** confirmation window opens, initially on **No**. Press **y**
+(or activate Yes) to confirm; **n**, **Esc**, No or an outside click cancels.
+The shared view model owns the warning, the `ConfirmDialog` projection
+(`StatusView.Dialog`) and the refresh intent; the terminal renderer draws them
+and forwards keys. Refresh runs locally through the service core rather than an RPC inside
 the daemon being restarted, so older API v1 daemons can be repaired too. Matching
 or uninstalled services have no repair action. No repair runs before confirmation;
 ordinary **r** only reloads views. A failed repair remains visible and retryable.

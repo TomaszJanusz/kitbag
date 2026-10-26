@@ -9,9 +9,6 @@ import (
 	"github.com/TomaszJanusz/kitbag/internal/ui/model/text"
 )
 
-// settingsSpacing counts the blank lines around the settings list.
-const settingsSpacing = 2
-
 func (m *Model) statusView() []string {
 	view := m.app.Status.View()
 	headline := m.styles.heading
@@ -116,71 +113,6 @@ func (m *Model) driftDetail(detail model.DriftDetail) []string {
 	lines = append(lines, "")
 	lines = append(lines, m.wrap(m.styles.faint, m.say(detail.Diff))...)
 	return append(lines, "", m.styles.faint.Render(m.say(text.New(text.DriftDetailHint))))
-}
-
-func (m *Model) settingsLayout(height int) (listLayout, []string) {
-	view := m.app.Settings.View()
-	head := m.wrap(m.styles.heading, m.say(view.Headline))
-	head = append(head, m.problem(view.Problem, view.Headline)...)
-	head = append(head, m.say(view.Advanced.Label))
-	if len(view.Fields) == 0 {
-		return listLayout{head: head}, nil
-	}
-	detail := m.fieldDetail(m.field())
-	space := height - len(head) - len(detail) - settingsSpacing
-	first := window(m.setting, len(view.Fields), space)
-	return listLayout{head: head, tail: detail, first: first, rows: min(max(space, 1), len(view.Fields)-first)}, detail
-}
-
-func (m *Model) settingsView(height int) []string {
-	view := m.app.Settings.View()
-	layout, detail := m.settingsLayout(height)
-	lines := layout.head
-	if len(view.Fields) == 0 {
-		return lines
-	}
-	lines = append(lines, "")
-	for i, field := range view.Fields[layout.first : layout.first+layout.rows] {
-		name := field.Path
-		if field.Advanced {
-			name = indent + name
-		}
-		if control(field.Actions, model.RevertSetting{Key: field.Path}).Enabled {
-			name += " *"
-		}
-		lines = append(lines, m.listRow(layout.first+i == m.setting, name, m.say(field.Value)+" · "+m.say(field.Source)))
-	}
-	return append(append(lines, ""), detail...)
-}
-
-func (m *Model) fieldDetail(field model.FieldView) []string {
-	lines := []string{m.styles.heading.Render(field.Path)}
-	lines = append(lines, m.wrap(m.styles.tab, m.say(field.Description))...)
-	lines = append(lines, m.wrap(m.styles.tab, m.say(text.New(text.SettingValue, field.Value)))...)
-	lines = append(lines, m.wrap(m.styles.tab, m.say(text.New(text.SettingSource, field.Source)))...)
-	if field.Override != nil {
-		lines = append(lines, m.wrap(m.styles.warning, m.say(*field.Override))...)
-	}
-	lines = append(lines, m.wrap(m.styles.faint, m.say(field.Default))...)
-	if field.Hint != nil {
-		lines = append(lines, m.wrap(m.styles.faint, m.say(*field.Hint))...)
-	}
-	if len(field.Choices) > 0 {
-		lines = append(lines, m.wrap(m.styles.faint, m.say(text.New(text.SettingChoices, text.Plain(strings.Join(field.Choices, ", ")))))...)
-	}
-	lines = append(lines, m.problem(field.Problem, text.Message{})...)
-	if m.editing {
-		options, _ := m.optionLayout(field)
-		lines = append(lines, options...)
-		if field.TextEntry {
-			lines = append(lines, m.input.View())
-		}
-		return append(lines, m.editorHint(field)...)
-	}
-	if field.Editor == model.SettingReadOnly {
-		return append(lines, m.controls(field.Actions))
-	}
-	return append(lines, m.styles.faint.Render(m.say(text.New(text.SettingListHint))), m.controls(field.Actions))
 }
 
 // logRows is the number of entries the log tab shows at the current size.

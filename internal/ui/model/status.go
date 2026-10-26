@@ -133,6 +133,7 @@ func (m *Status) event(e Event) []Cmd {
 
 // StatusView is everything a renderer shows for status.
 type StatusView struct {
+	Dialog         *DialogView
 	Title          text.Message
 	Headline       text.Message
 	Problem        *text.Message

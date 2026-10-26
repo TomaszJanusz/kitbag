@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -34,11 +35,15 @@ func TestServiceRefreshKeyConfirmsAndCancels(t *testing.T) {
 	if c.refreshes.Load() != 0 {
 		t.Fatal("cancel refreshed service")
 	}
+	// The confirmation is a dialog: Enter on the initial No, an outside
+	// click and n all cancel; only y (or Yes) runs the repair.
+	s.press("h", keyEnter, "h", "n", "h")
+	s.click(0, 0)
 	s.tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
 	s.tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
 	s.waitFor("Service refreshed.")
-	if c.refreshes.Load() != 1 {
-		t.Fatal(c.refreshes.Load())
+	screen := s.final()
+	if c.refreshes.Load() != 1 || s.m.windows.Len() != 0 || strings.Contains(screen, "y confirm") {
+		t.Fatal(c.refreshes.Load(), screen)
 	}
-	s.final()
 }

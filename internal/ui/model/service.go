@@ -40,9 +40,8 @@ func (m *Status) serviceRefreshView(view *StatusView) {
 		view.Warnings = append(view.Warnings, text.New(text.StatusServiceStale))
 	}
 	view.ConfirmRefresh = m.confirmRefresh
+	view.Dialog = m.Dialog()
 	switch {
-	case m.confirmRefresh:
-		view.Notices = append(view.Notices, text.New(text.ServiceRefreshConfirm))
 	case m.refreshingService:
 		view.Notices = append(view.Notices, text.New(text.ServiceRefreshing))
 	case m.refreshProblem != nil:
@@ -50,6 +49,20 @@ func (m *Status) serviceRefreshView(view *StatusView) {
 	case m.refreshed:
 		view.Notices = append(view.Notices, text.New(text.ServiceRefreshed))
 	}
+}
+
+// ServiceRefreshDialog is the stable ID of the repair confirmation window.
+const ServiceRefreshDialog = "status.service_refresh"
+
+// Dialog returns the repair confirmation while it is open. Yes confirms; No,
+// Esc and outside clicks cancel; nothing runs before confirmation.
+func (m *Status) Dialog() *DialogView {
+	if !m.confirmRefresh {
+		return nil
+	}
+	dialog := ConfirmDialog(ServiceRefreshDialog, text.New(text.ActionServiceRefresh), text.New(text.ServiceRefreshConfirm),
+		ConfirmServiceRefresh{Accept: true}, ConfirmServiceRefresh{})
+	return &dialog
 }
 
 func (m *Status) canRefreshService() bool {

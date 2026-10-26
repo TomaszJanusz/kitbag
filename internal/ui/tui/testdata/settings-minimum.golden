@@ -1,0 +1,10 @@
+1 2 [3 Settings] 4
+
+
+> sync.poll_interval *  60s · default
+
+sync.poll_interval
+ 30s  1m [5m] 15m  1h  Custom…
+How often the daemon checks Git for
+[Help] Enter saves · Esc cancels
+? help · a advanced · q quit · mouse: c…

@@ -58,6 +58,18 @@ func SettingDescription(path string) Key { return Key(settingPrefix + path) }
 
 // Static keys.
 const (
+	SettingCompactHint     Key = "setting.compact_hint"
+	DialogYes              Key = "dialog.yes"
+	DialogNo               Key = "dialog.no"
+	DialogBack             Key = "dialog.back"
+	DialogNext             Key = "dialog.next"
+	DialogFinish           Key = "dialog.finish"
+	DialogStep             Key = "dialog.step"
+	DialogHint             Key = "dialog.hint"
+	HelpDialogs            Key = "help.dialogs"
+	SettingHelp            Key = "setting.help"
+	SettingUnsetTitle      Key = "setting.unset_title"
+	SettingUnsetConfirm    Key = "setting.unset_confirm"
 	SettingsAdvancedClosed Key = "settings.advanced_closed"
 	SettingsAdvancedOpen   Key = "settings.advanced_open"
 	SettingOn              Key = "setting.on"
@@ -437,6 +449,18 @@ func formText() []entry {
 // terminalText is the chrome of the terminal renderer (kitbag tui).
 func terminalText() []entry {
 	return []entry{
+		{DialogYes, "Yes"},
+		{DialogNo, "No"},
+		{DialogBack, "Back"},
+		{DialogNext, "Next"},
+		{DialogFinish, "Finish"},
+		{DialogStep, "Step %s/%s"},
+		{DialogHint, "Tab/↑/↓: focus · Enter: confirm · Esc/outside click: cancel"},
+		{HelpDialogs, "Dialogs: Tab/arrows focus; Enter confirms; Esc/outside click cancels"},
+		{SettingHelp, "Help"},
+		{SettingCompactHint, "Enter saves · Esc cancels"},
+		{SettingUnsetTitle, "Remove stored setting?"},
+		{SettingUnsetConfirm, "Remove %s from config.toml? The effective value will be resolved again using the normal precedence."},
 		{TerminalTooSmall, "Enlarge the terminal to at least %s×%s (now %s×%s)"},
 		{TerminalFooter, "? help · a advanced · q quit · mouse: click, wheel"},
 		{TerminalWarnings, "Warnings"},
@@ -457,7 +481,7 @@ func terminalText() []entry {
 		{HelpMove, "↑/↓ or k/j: move the selection"},
 		{HelpDetail, "Enter: open drift details; Esc: close them"},
 		{HelpEdit, "Enter: edit a setting, Enter again saves; Esc cancels"},
-		{HelpSave, "w: save a kept draft; u: remove the value from config.toml"},
+		{HelpSave, "w: save a kept draft; u: confirm removal from config.toml"},
 		{HelpChoices, "←/→/Space or click while editing: choose; Custom/Other: type"},
 		{HelpAdvanced, "a on Settings: expand or collapse Advanced"},
 		{HelpFollow, "f: follow new activity; ↑/↓, PgUp/PgDn: scroll"},

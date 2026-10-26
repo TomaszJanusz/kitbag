@@ -18,8 +18,8 @@ func TestServiceRefreshRequiresConfirmation(t *testing.T) {
 	}
 	checkRefreshCancellation(t, m)
 	m.Update(RequestServiceRefresh{})
-	cmds := m.Update(ConfirmServiceRefresh{Accept: true})
-	if _, ok := only(t, cmds).(RunServiceRefresh); !ok {
+	cmds := m.Update(m.Dialog().Buttons[0].Intent)
+	if _, ok := only(t, cmds).(RunServiceRefresh); !ok || m.Dialog() != nil {
 		t.Fatal(cmds)
 	}
 	if got := m.Update(RequestServiceRefresh{}); len(got) != 0 || m.View().ConfirmRefresh {
@@ -67,10 +67,12 @@ func checkRefreshCancellation(t *testing.T, m *Status) {
 		t.Fatal("confirmed without prompt", got)
 	}
 	m.Update(RequestServiceRefresh{})
-	if !m.View().ConfirmRefresh {
-		t.Fatal("missing confirmation")
+	dialog := m.View().Dialog
+	if !m.View().ConfirmRefresh || dialog == nil || dialog.ID != ServiceRefreshDialog || dialog.InitialFocus != 1 {
+		t.Fatal("missing confirmation", dialog)
 	}
-	if got := m.Update(ConfirmServiceRefresh{}); len(got) != 0 || m.View().ConfirmRefresh {
+	checkText(t, dialog.Title, dialog.Message, dialog.Buttons[0].Label, dialog.Buttons[1].Label)
+	if got := m.Update(dialog.Cancel); len(got) != 0 || m.View().ConfirmRefresh || m.Dialog() != nil {
 		t.Fatal("cancel ran refresh")
 	}
 }

@@ -9,6 +9,7 @@ import (
 // registry's own rules on every edit; only a valid, changed draft is saved.
 // The complete file is validated again when it is written.
 type Settings struct {
+	dialog   *DialogView
 	problem  *Error
 	fields   []field
 	issued   uint64
@@ -58,6 +59,7 @@ func (m *Settings) Update(msg Msg) []Cmd {
 	case SaveSetting:
 		return m.save(msg.Key)
 	case UnsetSetting:
+		m.dialog = nil
 		return m.unset(msg.Key)
 	case SettingWritten:
 		return m.written(msg)
@@ -174,6 +176,7 @@ type FieldView struct {
 
 // SettingsView is everything a renderer shows for settings.
 type SettingsView struct {
+	Dialog   *DialogView
 	Problem  *text.Message
 	Title    text.Message
 	Headline text.Message
@@ -183,9 +186,13 @@ type SettingsView struct {
 	Expanded bool
 }
 
+// Dialog returns the current window projection without rebuilding the settings
+// fields. Renderers can synchronize overlays after each intent at constant cost.
+func (m *Settings) Dialog() *DialogView { return m.dialog }
+
 // View projects the current state.
 func (m *Settings) View() SettingsView {
-	view := SettingsView{Phase: m.phase, Title: text.New(text.SettingsTitle), Headline: text.New(text.SettingsReady, text.Plain(settingskey.Precedence()))}
+	view := SettingsView{Dialog: m.dialog, Phase: m.phase, Title: text.New(text.SettingsTitle), Headline: text.New(text.SettingsReady, text.Plain(settingskey.Precedence()))}
 	view.Expanded = m.advanced
 	label := text.SettingsAdvancedClosed
 	if m.advanced {
@@ -280,6 +287,8 @@ func (m *Settings) updateControl(msg Msg) {
 		if f := m.field(msg.Key); f != nil && !f.saving {
 			f.draft, f.invalid, f.failed, f.custom = f.current.Value, nil, nil, false
 		}
+	default:
+		m.dialogControl(msg)
 	}
 }
 
@@ -288,5 +297,35 @@ func (f *field) actions(known bool) []Control {
 		{Intent: SaveSetting{Key: f.key.Path}, Label: text.New(text.ActionSave), Enabled: known && f.canSave()},
 		{Intent: UnsetSetting{Key: f.key.Path}, Label: text.New(text.ActionUnset), Enabled: known && !f.saving && f.current.Source == SourceFile},
 		{Intent: RevertSetting{Key: f.key.Path}, Label: text.New(text.ActionRevert), Enabled: !f.saving && f.draft != f.current.Value},
+	}
+}
+
+func (m *Settings) requestUnset(key string) {
+	f := m.field(key)
+	if f == nil || !controlEnabled(f.actions(m.known), UnsetSetting{Key: key}) {
+		return
+	}
+	dialog := ConfirmDialog("settings.unset", text.New(text.SettingUnsetTitle),
+		text.New(text.SettingUnsetConfirm, text.Plain(key)), UnsetSetting{Key: key}, DismissDialog{ID: "settings.unset"})
+	m.dialog = &dialog
+}
+
+func controlEnabled(controls []Control, intent Msg) bool {
+	for _, control := range controls {
+		if control.Intent == intent {
+			return control.Enabled
+		}
+	}
+	return false
+}
+
+func (m *Settings) dialogControl(msg Msg) {
+	switch msg := msg.(type) {
+	case RequestUnsetSetting:
+		m.requestUnset(msg.Key)
+	case DismissDialog:
+		if m.dialog != nil && m.dialog.ID == msg.ID {
+			m.dialog = nil
+		}
 	}
 }

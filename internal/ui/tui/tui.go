@@ -65,6 +65,7 @@ type panicMsg struct{ value any }
 // Model is the Bubble Tea model. It is not safe for concurrent use; only the
 // program loop calls Init, Update and View.
 type Model struct {
+	windows  WindowStack
 	styles   styles
 	runner   model.Runner
 	ctx      context.Context
@@ -99,13 +100,16 @@ func New(opts Options) *Model {
 	if opts.NoColour {
 		profile = termenv.Ascii
 	}
+	styles := newStyles(profile)
 	input := textinput.New()
+	input.TextStyle, input.PromptStyle, input.PlaceholderStyle = styles.tab, styles.tab, styles.tab
+	input.Cursor.Style, input.Cursor.TextStyle = styles.selected, styles.tab
 	input.Prompt = marker
 	// A static cursor avoids a blink timer redrawing the screen.
 	input.Cursor.SetMode(cursor.CursorStatic)
 	return &Model{
 		ctx: ctx, cancel: cancel, app: model.NewApp(opts.LogCapacity, opts.Clock), runner: opts.Runner, catalog: catalog,
-		results: make(chan any), workers: &sync.WaitGroup{}, queue: newQueue(), styles: newStyles(profile), input: input, follow: true,
+		results: make(chan any), workers: &sync.WaitGroup{}, queue: newQueue(), styles: styles, input: input, follow: true,
 	}
 }
 
@@ -137,7 +141,20 @@ func (m *Model) listen() tea.Cmd {
 	}
 }
 
-func (m *Model) dispatch(msg model.Msg) { m.start(m.app.Update(msg)) }
+func (m *Model) dispatch(msg model.Msg) {
+	if msg == nil {
+		return
+	}
+	m.start(m.app.Update(msg))
+	if dialog := m.app.Settings.Dialog(); dialog != nil {
+		m.ShowDialog(*dialog)
+	}
+	if dialog := m.app.Status.Dialog(); dialog != nil {
+		m.ShowDialog(*dialog)
+	} else {
+		m.HideDialog(model.ServiceRefreshDialog)
+	}
+}
 
 // Update applies one Bubble Tea message.
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -154,6 +171,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.listen()
 	case checkTickMsg:
 		return m, checkTick()
+	case model.DialogView:
+		m.ShowDialog(msg)
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		m.input.Width = max(msg.Width-inputMargin, 1)

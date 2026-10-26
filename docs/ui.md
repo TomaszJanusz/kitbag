@@ -63,6 +63,27 @@ hints unavailable without blocking the form. Host files are regular
 `hosts/*.md` files; identity reads only user.name/email through the optional
 `vcs.IdentityReader` capability. No signing keys or credentials are returned.
 
+## Dialog presentation contract
+
+`DialogView`, `DialogField`, `ConfirmDialog` and `FormDialog` describe reusable
+confirmation and wizard windows without a terminal dependency. They carry
+`text.Message` labels, enabled model controls, stable dialog/field IDs and
+optional step counts. `EditDialogField` forwards draft changes to the owning
+model. The owner validates, updates its projection and decides when the window
+closes; a form action does not automatically advance a step or persist a value.
+Cancel is an explicit intent, so a wizard can ask about a dirty draft by
+projecting another confirmation window. Focus, geometry, text cursors, stacking
+and hit testing belong to the renderer. See the [TUI component API](tui.md#component-api-for-future-tabs).
+
+Settings projects an optional `SettingsView.Dialog` after
+`RequestUnsetSetting`. Only a stored, writable value can open it. Its Yes
+control carries the existing `UnsetSetting`; cancel carries `DismissDialog`.
+The settings model and command runner retain their existing unset validation
+and write behavior. Status projects `StatusView.Dialog` after
+`RequestServiceRefresh` for an installed stale or mismatched service; Yes
+carries `ConfirmServiceRefresh{Accept: true}` and cancel carries
+`ConfirmServiceRefresh{}`. Shared models know nothing about terminal panes or cells.
+
 ## Texts
 
 All user-visible text is in `internal/ui/model/text`: typed `Key` constants and

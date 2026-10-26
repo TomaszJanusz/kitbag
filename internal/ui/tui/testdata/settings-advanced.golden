@@ -3,7 +3,6 @@
 Precedence: flag > KITBAG_* environment > config.toml > default
 Advanced [-]
 
-  git.identity.email  unset · default
   sync.poll_interval  60s · default
   daemon.update_check  true · default
   sync.mode  copy · environment KITBAG_MODE
@@ -18,7 +17,8 @@ implementation.
 Value: system
 Source: config.toml
 Default: auto
-Values: auto, system, embedded
+
+[Help]
 ↑/↓: select · Enter: edit
 [w] Save (unavailable)  [u] Remove from config.toml  [esc] Revert (unavailable)
 ? help · a advanced · q quit · mouse: click, wheel

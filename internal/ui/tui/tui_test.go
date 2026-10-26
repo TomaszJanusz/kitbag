@@ -129,7 +129,7 @@ func TestSettingsEditValidateAndSave(t *testing.T) {
 	s.waitFor("Precedence:", "host  laptop · config.toml")
 	// Polling uses a duration stepper; 60s matches the 1m preset.
 	s.press(keyDown, keyDown, keyDown, keyDown, keyDown, keyEnter, keyRight, keyEnter)
-	if got := <-s.client.writes; got != [2]string{"sync.poll_interval", "5m"} {
+	if got := s.nextWrite(); got != [2]string{"sync.poll_interval", "5m"} {
 		t.Fatalf("write=%v", got)
 	}
 	s.waitFor("sync.poll_interval  5m · config.toml")
@@ -166,7 +166,9 @@ func TestSettingsUnsetRevertAndMaskSecrets(t *testing.T) {
 	s.press(keyPrevious, keyPrevious)
 	s.waitFor("host  laptop · config.toml")
 	s.press(keyUnset)
-	if got := <-s.client.writes; got != [2]string{"host", ""} {
+	s.waitFor("Remove stored setting?")
+	s.press(keyLeft, keyEnter)
+	if got := s.nextWrite(); got != [2]string{"host", ""} {
 		t.Fatalf("unset=%v", got)
 	}
 	s.press(keyVimDown, keyEnter, "https://x")
@@ -174,7 +176,7 @@ func TestSettingsUnsetRevertAndMaskSecrets(t *testing.T) {
 	s.press(keyEscape)
 	s.waitFor("repo.url  unset · default")
 	s.press(keyEnter, "h", keyEnter)
-	if got := <-s.client.writes; got != [2]string{"repo.url", "h"} {
+	if got := s.nextWrite(); got != [2]string{"repo.url", "h"} {
 		t.Fatalf("write=%v", got)
 	}
 	s.waitFor("repo.url  [redacted] · config.toml")
