@@ -1,0 +1,60 @@
+# KIT-79: init with --repo-path uses an existing clone (agent-config-sync's)
+# instead of creating an unused one in the data directory.
+env KITBAG_CONFIG=
+env KITBAG_HOST=test
+env KITBAG_GIT_BACKEND=
+env KITBAG_MODE=
+env KITBAG_REPO_PATH=
+env CLAUDE_CONFIG_DIR=
+env CODEX_HOME=
+env XDG_CONFIG_HOME=$HOME/.config
+env XDG_DATA_HOME=$HOME/.local/share
+env XDG_STATE_HOME=$HOME/.local/state
+env CONFIG=$HOME/.config/kitbag/config.toml
+gitremote $WORK/config.git seed
+exec git clone --quiet $WORK/config.git $HOME/src/agent-config
+
+# A clone with another origin is refused before anything is written, naming both.
+exec git clone --quiet $WORK/config.git $HOME/src/other
+exec git -C $HOME/src/other remote set-url origin $WORK/elsewhere.git
+! exec kitbag init $WORK/config.git --yes --git-backend=system --repo-path '~/src/other'
+stderr 'working copy .*/src/other has origin ".*elsewhere\.git", not ".*config\.git"'
+! exists $CONFIG
+
+# A path outside HOME is refused.
+! exec kitbag init $WORK/config.git --yes --git-backend=system --repo-path $WORK/outside
+stderr 'is not below HOME'
+! exists $CONFIG
+
+# The shell-expanded spelling of ~/src/agent-config is stored as a home path,
+# the existing clone is reused and no second clone is made.
+exec kitbag init $WORK/config.git --yes --git-backend=system --repo-path $HOME/src/agent-config
+stdout 'Working copy: .*/src/agent-config \(already exists: true\)'
+stdout 'Wrote '
+! exists $HOME/.local/share/kitbag/repos
+grep '^path = .~/src/agent-config.$' $CONFIG
+configschema $CONFIG
+exec kitbag config get repo.path
+stdout '^~/src/agent-config$'
+
+# Changing repo.path names the clone it leaves unused and never deletes it.
+exec kitbag config unset repo.path
+stderr '^note: working copy .*/src/agent-config is no longer used'
+exists $HOME/src/agent-config/.git
+exec kitbag --config=$WORK/second.toml init $WORK/config.git --yes --git-backend=system
+exists $HOME/.local/share/kitbag/repos/config/.git
+exec kitbag --config=$WORK/second.toml config set repo.path '~/src/agent-config'
+stderr '^note: working copy .*/\.local/share/kitbag/repos/config is no longer used; kitbag never deletes it'
+exists $HOME/.local/share/kitbag/repos/config/.git
+exec kitbag --config=$WORK/second.toml config set repo.path '~/src/agent-config'
+! stderr .
+exec kitbag --config=$WORK/second.toml config set sync.mode copy
+! stderr .
+
+-- seed/kitbag.toml --
+schema = 1
+[[files]]
+src = "source"
+dest = "~/init-output"
+-- seed/source --
+hello

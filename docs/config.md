@@ -10,7 +10,7 @@ Use `kitbag config get <key>`, `set <key> <value>`, `unset <key>`, `list`, `expl
 
 `edit` runs `$EDITOR` as a shell command with a separate quoted draft filename argument. Editor arguments are supported. It validates on exit and offers re-edit or abort (the default, including EOF). The original stays intact on invalid input, editor failure or abort. A private adjacent draft is removed on exit; after a crash, inspect and remove the leftover draft before retrying. Configuration mutations share a nonblocking lock; external edits detected before saving are refused.
 
-`--config` > `KITBAG_CONFIG` > the platform config directory selects the file; these selectors are not config.toml keys. The repo, branch and identity flags apply to init only. Paths explicitly selected by config commands may be absent to allow first-run setup. Dynamic defaults: `host` uses the short hostname, `repo.branch` follows the remote default and `repo.path` uses the platform data directory. `sync.mode` defaults to link on Unix and copy on future Windows (Windows runtime is deferred).
+`--config` > `KITBAG_CONFIG` > the platform config directory selects the file; these selectors are not config.toml keys. The repo, repo path, branch and identity flags apply to init only. Changing `repo.url` or `repo.path` with `set`/`unset` prints a note naming a former working copy that is no longer used; it is never deleted. Paths explicitly selected by config commands may be absent to allow first-run setup. Dynamic defaults: `host` uses the short hostname, `repo.branch` follows the remote default and `repo.path` uses the platform data directory. `sync.mode` defaults to link on Unix and copy on future Windows (Windows runtime is deferred).
 
 | Key | Type | Default | Environment | Flag | Allowed | Sensitive | Description |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -18,7 +18,7 @@ Use `kitbag config get <key>`, `set <key> <value>`, `unset <key>`, `list`, `expl
 | `host` | string | `machine short hostname` | `KITBAG_HOST` | `host` | ^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$ | false | Manifest host selector; default is the machine's short hostname. |
 | `repo.url` | string | `unset` | `KITBAG_REPO_URL` | `repo` | ^[^\s]+$ | true | Configuration repository URL; required in a saved file. Never include credentials. |
 | `repo.branch` | string | `remote default branch` | `KITBAG_REPO_BRANCH` | `branch` | ^[A-Za-z0-9][A-Za-z0-9/_.-]{0,254}$ | false | Branch to follow; unset follows the remote default. |
-| `repo.path` | string | `platform data directory / repos / repository name` | `KITBAG_REPO_PATH` | `` | home path, at most 4096 bytes | false | Working copy below HOME; unset uses the platform data directory. |
+| `repo.path` | string | `platform data directory / repos / repository name` | `KITBAG_REPO_PATH` | `repo-path` | home path, at most 4096 bytes | false | Working copy below HOME; unset uses the platform data directory. |
 | `git.backend` | string | `auto` | `KITBAG_GIT_BACKEND` | `git-backend` | auto, system, embedded | false | Prefer system Git automatically, or force one backend. |
 | `git.identity.name` | string | `unset` | `KITBAG_GIT_IDENTITY_NAME` | `identity-name` | ^[^<>\r\n\x00]+$ | true | Fallback embedded commit author; name and email must be configured together. |
 | `git.identity.email` | string | `unset` | `KITBAG_GIT_IDENTITY_EMAIL` | `identity-email` | ^[^<>\s\x00]+@[^<>\s\x00]+$ | true | Fallback embedded commit email; name and email must be configured together. |

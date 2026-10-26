@@ -19,6 +19,7 @@ type initFlags struct {
 	selection                                vcs.Selection
 	instanceText, detected                   string
 	repo, branch, name, email, backend, mode string
+	repoPath                                 string
 	agents, instances                        []string
 	yes, scaffold                            bool
 }
@@ -35,6 +36,7 @@ func (c *commandLine) initCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&flags.scaffold, "scaffold", false, "Create a new repository in the positional directory")
 	cmd.Flags().StringVar(&flags.repo, "repo", "", "Repository URL (alternative to the positional URL)")
 	cmd.Flags().StringVar(&flags.branch, "branch", "", "Repository branch (default: remote default)")
+	cmd.Flags().StringVar(&flags.repoPath, "repo-path", "", "Use or create the working copy at this path below HOME instead of the data directory, for example an existing clone")
 	cmd.Flags().StringVar(&flags.name, "identity-name", "", "Fallback unsigned embedded commit author name")
 	cmd.Flags().StringVar(&flags.email, "identity-email", "", "Fallback unsigned embedded commit author email")
 	cmd.Flags().StringSliceVar(&flags.agents, "agents", nil, "Scaffold agent kinds: claude,codex (default: detected, else claude)")
@@ -173,7 +175,7 @@ func (c *commandLine) saveInitial(service initialize.Service) error {
 
 func (f initFlags) configuration(host string) config.Config {
 	cfg := config.Config{Schema: 1, Host: host}
-	cfg.Repo.URL, cfg.Repo.Branch = f.repo, f.branch
+	cfg.Repo.URL, cfg.Repo.Branch, cfg.Repo.Path = f.repo, f.branch, f.repoPath
 	cfg.Git.Backend, cfg.Git.Identity = f.backend, vcs.Identity{Name: f.name, Email: f.email}
 	cfg.Sync.Mode = f.mode
 	return cfg
@@ -219,6 +221,7 @@ func (c *commandLine) initSettings(flags *initFlags, positional bool) error {
 	}{
 		{&flags.repo, "repo.url"},
 		{&flags.branch, "repo.branch"},
+		{&flags.repoPath, "repo.path"},
 		{&flags.name, "git.identity.name"},
 		{&flags.email, "git.identity.email"},
 		{&c.flags.host, "host"},
@@ -236,8 +239,29 @@ func (c *commandLine) initSettings(flags *initFlags, positional bool) error {
 }
 
 func (c *commandLine) initInputs(args []string, flags *initFlags) error {
+	if err := c.initRepoPath(flags); err != nil {
+		return err
+	}
 	if err := c.initSettings(flags, len(args) > 0); err != nil {
 		return err
 	}
 	return initRepo(args, flags)
+}
+
+// initRepoPath accepts the shell-expanded spelling of --repo-path below HOME
+// ("--repo-path ~/src/x" arrives as "/home/user/src/x") and stores it as "~/...".
+func (c *commandLine) initRepoPath(flags *initFlags) error {
+	if !filepath.IsAbs(flags.repoPath) {
+		return nil
+	}
+	home, err := c.host.HomeDir()
+	if err != nil {
+		return err
+	}
+	relative, err := filepath.Rel(home, filepath.Clean(flags.repoPath))
+	if err != nil || relative == "." || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("--repo-path %s is not below HOME %s: %w", flags.repoPath, home, fs.ErrInvalid)
+	}
+	flags.repoPath = "~/" + filepath.ToSlash(relative)
+	return nil
 }
