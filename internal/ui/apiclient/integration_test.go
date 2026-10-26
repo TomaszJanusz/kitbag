@@ -10,6 +10,7 @@ import (
 	"github.com/TomaszJanusz/kitbag/internal/api/client"
 	"github.com/TomaszJanusz/kitbag/internal/core/workflow"
 	"github.com/TomaszJanusz/kitbag/internal/platform/fake"
+	"github.com/TomaszJanusz/kitbag/internal/timefmt"
 	"github.com/TomaszJanusz/kitbag/internal/ui/model"
 	"github.com/TomaszJanusz/kitbag/internal/ui/model/text"
 )
@@ -79,7 +80,7 @@ func TestModelsOverTheLocalAPI(t *testing.T) {
 	events := daemon(t, host)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	h := &harness{ctx: ctx, app: model.NewApp(model.DefaultLogCapacity), results: make(chan model.Msg, 16)}
+	h := &harness{ctx: ctx, app: model.NewApp(model.DefaultLogCapacity, timefmt.Clock{}), results: make(chan model.Msg, 16)}
 	h.runner = model.Runner{Client: Client{Transport: client.Client{Host: host}, Env: host}, Now: time.Now}
 	h.pending = h.app.Init()
 	h.drain()

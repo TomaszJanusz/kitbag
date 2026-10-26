@@ -36,7 +36,8 @@ stdout '"exit_code":0'
 # Status reports the persisted record of a manual sync.
 exec kitbag sync
 exec kitbag service status
-stdout 'Last sync: \{"at":"[^"]+","repository":"[^"]+","schema_version":1,"result":0,"changed":0\}'
+stdout 'Last sync: \d{4}-\d\d-\d\d \d\d:\d\d:\d\d \S+ \(.+\); exit code: 0; 0 changed; '
+! stdout 'Last sync: .*\dZ'
 exec kitbag service status --json
 stdout '"last_sync":\{"at":'
 ! stdout 'sync_error'

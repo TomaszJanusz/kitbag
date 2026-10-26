@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/TomaszJanusz/kitbag/internal/timefmt"
+)
 
 // Resubscription backoff: the first retry follows quickly, repeated failures
 // (for example while no daemon runs) back off to a ceiling.
@@ -20,9 +24,12 @@ type App struct {
 	retry    time.Duration
 }
 
-// NewApp builds all models; logCapacity bounds the activity log.
-func NewApp(logCapacity int) *App {
-	return &App{Status: NewStatus(), Drift: NewDrift(), Settings: NewSettings(), Log: NewLog(logCapacity)}
+// NewApp builds all models; logCapacity bounds the activity log and clock
+// decides the zone and relative hints of every time shown.
+func NewApp(logCapacity int, clock timefmt.Clock) *App {
+	status, log := NewStatus(), NewLog(logCapacity)
+	status.clock, log.clock = clock, clock
+	return &App{Status: status, Drift: NewDrift(), Settings: NewSettings(), Log: log}
 }
 
 // Init loads every snapshot and starts the subscription.

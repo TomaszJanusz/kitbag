@@ -4,11 +4,13 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/TomaszJanusz/kitbag/internal/timefmt"
 )
 
 func TestAppInitAndRouting(t *testing.T) {
 	t.Parallel()
-	app := NewApp(8)
+	app := NewApp(8, timefmt.Clock{})
 	cmds := app.Init()
 	if len(cmds) != 4 || cmds[0] != (LoadStatus{Seq: 1}) || cmds[1] != (LoadDrift{Seq: 1}) || cmds[2] != (LoadSettings{Seq: 1}) || cmds[3] != (Subscribe{}) {
 		t.Fatalf("init=%v", cmds)
@@ -27,7 +29,7 @@ func TestAppInitAndRouting(t *testing.T) {
 
 func TestAppResubscribesWithBackoff(t *testing.T) {
 	t.Parallel()
-	app := NewApp(DefaultLogCapacity)
+	app := NewApp(DefaultLogCapacity, timefmt.Clock{})
 	want := []time.Duration{time.Second, 2 * time.Second, 4 * time.Second, 8 * time.Second, 16 * time.Second, RetryMaximum, RetryMaximum}
 	for i := range want {
 		delay := as[Subscribe](t, only(t, app.Update(SubscriptionEnded{Err: &Error{Kind: ErrUnavailable}}))).Delay
@@ -52,7 +54,7 @@ func TestAppDrivenThroughRunner(t *testing.T) {
 		outcome:  SyncOutcome{Changed: 1},
 		events:   []Event{{Kind: EventUpdateAvailable}},
 	}
-	app := NewApp(DefaultLogCapacity)
+	app := NewApp(DefaultLogCapacity, timefmt.Clock{})
 	settle(t, app, client, app.Init())
 	for _, msg := range execute(t, client, Subscribe{}) {
 		settle(t, app, client, app.Update(msg))
