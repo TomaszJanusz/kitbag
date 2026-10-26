@@ -211,13 +211,17 @@ stamp=$prefix/kitbag.install-source
 if [ -L "$target" ]; then
   fail "$target is a symbolic link (another installer owns it); remove it or choose --prefix"
 fi
+fresh=true
 if [ -e "$target" ]; then
   previous=unknown
   if [ -f "$stamp" ]; then
     previous=$(tr -d ' \t\r\n' <"$stamp")
   fi
   case $previous in
-  install-script | release-archive) say "upgrading the existing kitbag in $prefix" ;;
+  install-script | release-archive)
+    fresh=false
+    say "upgrading the existing kitbag in $prefix"
+    ;;
   homebrew | deb | rpm | aur | go-install)
     fail "$target was installed by $previous; upgrade it with that tool instead"
     ;;
@@ -248,9 +252,11 @@ case :${PATH:-}: in
   printf '\n  export PATH="%s:$PATH"\n\n' "$prefix"
   ;;
 esac
-cat <<'EOF'
-Next steps:
-  kitbag init              # create or connect your configuration repository
-  kitbag service install   # background sync; init offers it, or run it later
-KitBag uses Git; install it if it is not already available.
-EOF
+# Upgrades already have a configuration repository and service; only a fresh
+# install gets the first-run pointer. kitbag init offers the service itself.
+if $fresh; then
+  say "next: run kitbag init to create or connect your configuration repository"
+fi
+if ! command -v git >/dev/null 2>&1; then
+  say "KitBag uses Git, which was not found; install it before running kitbag init"
+fi

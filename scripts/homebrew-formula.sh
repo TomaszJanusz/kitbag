@@ -62,14 +62,14 @@ class Kitbag < Formula
     bin.install_symlink libexec/"kitbag"
   end
 
+  # Only a missing prerequisite is worth a caveat: Homebrew prints caveats on
+  # every install and upgrade. First-run guidance belongs to kitbag itself.
   def caveats
+    return if which("git")
+
     <<~EOS
       KitBag uses Git to fetch and publish your configuration repository.
-      Install Git if it is missing, for example: brew install git
-
-      Create or connect your configuration repository:
-        kitbag init
-      init offers the background service; to install it later: kitbag service install
+      Git was not found on your PATH; install it, for example: brew install git
     EOS
   end
 

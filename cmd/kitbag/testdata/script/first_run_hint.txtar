@@ -1,0 +1,10 @@
+# A machine without configuration is pointed at `kitbag init`; the Homebrew
+# formula prints no first-run instructions, so these hints are the only ones.
+! exec kitbag
+stderr 'usage: kitbag'
+stderr 'run kitbag init'
+! stdout .
+
+! exec kitbag status
+stderr 'not configured; run kitbag init'
+! stdout .

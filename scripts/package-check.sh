@@ -102,7 +102,13 @@ homebrew)
   brew tap-new --no-git kitbag-ci/local
   tap=$(brew --repository kitbag-ci/local)
   bash "$root/scripts/homebrew-formula.sh" "$dir" "file://$dir" >"$tap/Formula/kitbag.rb"
-  brew install --formula kitbag-ci/local/kitbag
+  # Caveats print on every install and upgrade; the runner has Git, so none.
+  out=$(brew install --formula kitbag-ci/local/kitbag 2>&1)
+  printf '%s\n' "$out"
+  if grep -Eq 'Caveats|kitbag init|service install' <<<"$out"; then
+    echo "package-check: unexpected Homebrew caveats" >&2
+    exit 1
+  fi
   brew test kitbag-ci/local/kitbag
   prefix=$(brew --prefix)
   [[ -L "$prefix/bin/kitbag" ]]
