@@ -40,6 +40,8 @@ func TestFailingByDesign(t *testing.T) {
 		"agentdirs_real_home.txtar":    `refusing to run with HOME=.*: it is the real home directory`,
 		"content_mismatch.txtar":       `file holds "hello\\n", want "goodbye\\n"`,
 		"content_negated.txtar":        `file unexpectedly holds "hello\\n"`,
+		"filemode_mismatch.txtar":      `file has mode 0640, want 0644`,
+		"filemode_negated.txtar":       `file unexpectedly has mode 0640`,
 		"gitremote_exists.txtar":       `gitremote: remote\.git already exists`,
 		"hidecmd_usage.txtar":          `usage: hidecmd program\.\.\.`,
 		"homefixture_escape.txtar":     `path escapes from parent`,

@@ -1,6 +1,7 @@
 package apply_test
 
 import (
+	"io/fs"
 	"strings"
 	"testing"
 
@@ -111,5 +112,49 @@ func TestLegacyOutputReplacedWithoutBackup(t *testing.T) {
 				t.Fatalf("repeat = %+v", result)
 			}
 		})
+	}
+}
+
+func TestOutputKeepsExistingFileMode(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		current string
+		perm    fs.FileMode
+	}{
+		"new file":         {"", 0o600},
+		"legacy rendering": {"<!-- agent-config-sync (/old/agent-config) -->\nbody\n", 0o644},
+		"hand-edited":      {"<!-- agent-config-sync (/old/agent-config) -->\nbody\nlocal\n", 0o640},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h, store := testHost(t)
+			d := declaration("CLAUDE.md")
+			d.Kind, d.SourcePath = target.Generated, ""
+			d.Content = []byte("<!-- kitbag -->\nbody\n")
+			d.Legacy = []byte("<!-- agent-config-sync (/repo) -->\nbody\n")
+			if c.current != "" {
+				write(t, h, d.Path, c.current)
+				must(t, h.Chmod(d.Path, c.perm))
+			}
+			req := request(d)
+			req.LegacyRoots = []string{"/old/agent-config"}
+			assertCode(t, run(t, h, store, req, options("link")), apply.OK)
+			assertPerm(t, h, d.Path, c.perm)
+			// A later repository change keeps the mode a user chose since.
+			must(t, h.Chmod(d.Path, 0o604))
+			d.Content = []byte("<!-- kitbag -->\nchanged\n")
+			assertCode(t, run(t, h, store, request(d), options("link")), apply.OK)
+			content(t, h, d.Path, "<!-- kitbag -->\nchanged\n")
+			assertPerm(t, h, d.Path, 0o604)
+		})
+	}
+}
+
+func assertPerm(t *testing.T, h platform.FS, path string, want fs.FileMode) {
+	t.Helper()
+	info, err := h.Lstat(path)
+	must(t, err)
+	if got := info.Mode().Perm(); got != want {
+		t.Fatalf("%s mode = %v; want %v", path, got, want)
 	}
 }

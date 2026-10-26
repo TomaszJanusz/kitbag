@@ -18,6 +18,10 @@ gitremote $WORK/config.git seed
 exec git clone --quiet $WORK/config.git $HOME/checkout
 homefixture legacyhome
 cp notes.local $HOME/notes.md
+# The script left world-readable renderings; rewriting them keeps that mode.
+chmod 0644 $HOME/.claude/CLAUDE.md
+chmod 0644 $HOME/.codex/AGENTS.md
+chmod 0644 $HOME/.claude/settings.json
 linktarget $HOME/.claude/skills/review $HOME/checkout/skills/review
 
 # KitBag's own output, derived from the legacy files: the clone path and the
@@ -71,6 +75,9 @@ linktarget $HOME/.local/bin/agent-config-sync $HOME/checkout/bin/agent-config-sy
 cmp $HOME/.claude/CLAUDE.md $WORK/claude.want
 cmp $HOME/.codex/AGENTS.md $WORK/agents.want
 cmp $HOME/.claude/settings.json $WORK/settings.want
+filemode $HOME/.claude/CLAUDE.md 0644
+filemode $HOME/.codex/AGENTS.md 0644
+filemode $HOME/.claude/settings.json 0644
 
 # The migration is complete: a repeat sync is silent.
 exec kitbag plan

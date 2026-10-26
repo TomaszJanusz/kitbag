@@ -100,7 +100,12 @@ link and never touches it.
   markers are accepted as equivalent; kitbag writes its own marker the next time
   the content has to change.
 - The script's change to your global Git configuration (`include.path`) stays;
-  kitbag adds its own include only if missing and never removes one.
+  kitbag adds its own include only if no existing one names the same file
+  (compared after expanding `~` and resolving symbolic links) and never removes
+  one. With a separate working copy the script's include names the old clone's
+  file, so both stay until you remove the script's yourself.
+- Rewritten `CLAUDE.md`, `AGENTS.md` and `settings.json` keep their file mode;
+  new files are created private (0600).
 - `kitbag revert` and `kitbag unmanage` are the ways back. Reverting an adoption
   only forgets ownership; it changes no file. Limits: a link or rendering that a
   later sync replaced in place has no backup (the repository reproduces it), and

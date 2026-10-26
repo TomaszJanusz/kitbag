@@ -32,7 +32,13 @@ sync after failure; removal from the manifest never removes existing includes.
 This step is not an atomic transaction with file apply, and concurrent external
 Git config writers can race the read/add sequence.
 
-Existing include values are compared after expanding `~`/`~/` and cleaning paths.
+Existing include values are compared after expanding `~`/`~/`, cleaning paths and
+resolving symbolic links in every component, so an include of the same file
+through a linked directory (for example agent-config-sync's include of a clone
+reached through a link) causes no second entry. Missing components, link loops
+and relative values are compared as spelled. An include of a different file,
+such as the old clone's copy when `repo.path` names another working copy, is a
+different include: KitBag adds its own and never removes the user's.
 A matching chezmoi-managed entry causes no write, including in a linked or
 read-only global config. Otherwise a symlink, nonregular or read-only config is
 left alone with a warning naming the missing include. System Git performs reads
