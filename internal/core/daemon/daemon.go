@@ -7,6 +7,10 @@ import (
 	"errors"
 	"io/fs"
 	"time"
+
+	"github.com/TomaszJanusz/kitbag/internal/core/apply"
+	"github.com/TomaszJanusz/kitbag/internal/core/state"
+	"github.com/TomaszJanusz/kitbag/internal/platform"
 )
 
 const (
@@ -45,8 +49,11 @@ type Options struct {
 // dropped/coalesced: periodic scans remain authoritative. Publish must not block.
 // Optional Trim returns idle memory after timer-driven work (initial sync, poll,
 // periodic scan, update check), so it runs at most a few times per poll interval
-// and never once per watch hint.
+// and never once per watch hint. Optional Now/Checked record completed polls;
+// Checked receives only safe categories and hex hashes and must not block long.
 type Dependencies struct {
+	Now      func() time.Time
+	Checked  func(state.CheckRecord)
 	Clock    Clock
 	Probe    func(context.Context) (string, error)
 	Sync     func(context.Context) (string, error)
@@ -89,7 +96,7 @@ func Run(ctx context.Context, options Options, deps Dependencies) error {
 	deps.Log("sync", err)
 	loop.checkUpdate(ctx)
 	loop.trim()
-	loop.poll.Reset(jitter(deps, loop.delay))
+	loop.schedule(err, loop.head)
 	return loop.run(ctx)
 }
 
@@ -174,7 +181,17 @@ func (s *scheduler) checkUpdate(ctx context.Context) {
 func (s *scheduler) pollOnce(ctx context.Context) {
 	const multiplier = 2
 	var err error
-	s.head, err = pollOnce(ctx, s.deps, s.head)
+	seen := ""
+	deps := s.deps
+	deps.Probe = func(ctx context.Context) (string, error) {
+		head, failure := s.deps.Probe(ctx)
+		seen = head
+		return head, failure
+	}
+	s.head, err = pollOnce(ctx, deps, s.head)
+	if seen == "" && err == nil {
+		seen = s.head
+	}
 	s.deps.Log("poll", err)
 	s.trim()
 	if err != nil {
@@ -182,7 +199,7 @@ func (s *scheduler) pollOnce(ctx context.Context) {
 	} else {
 		s.delay = s.options.Poll
 	}
-	s.poll.Reset(jitter(s.deps, s.delay))
+	s.schedule(err, seen)
 }
 
 func validate(o Options, d Dependencies) error {
@@ -250,5 +267,54 @@ func checkUpdate(ctx context.Context, d Dependencies) {
 	d.Log("update", err)
 	if err == nil && available {
 		d.Publish("update.available")
+	}
+}
+
+// schedule publishes only fixed categories and validated short hashes.
+func (s *scheduler) schedule(failure error, head string) {
+	delay := jitter(s.deps, s.delay)
+	if s.deps.Checked != nil && s.deps.Now != nil {
+		now := s.deps.Now().UTC()
+		r := state.CheckRecord{SchemaVersion: 1, At: now, NextAt: now.Add(delay), IntervalSeconds: float64(s.options.Poll) / float64(time.Second), Outcome: "ok", Head: shortHead(head)}
+		if failure != nil {
+			r.Outcome, r.Category = "failed", category(failure)
+		}
+		s.deps.Checked(r)
+	}
+	s.poll.Reset(delay)
+}
+
+func shortHead(head string) string {
+	const length = 12
+	for _, c := range head {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			return ""
+		}
+	}
+	return head[:min(len(head), length)]
+}
+
+func category(err error) string {
+	switch {
+	case errors.Is(err, context.Canceled):
+		return "canceled"
+	case errors.Is(err, platform.ErrLocked):
+		return "busy"
+	case errors.Is(err, fs.ErrInvalid):
+		return "invalid"
+	}
+	switch apply.ErrorCode(err) {
+	case apply.Usage:
+		return "invalid"
+	case apply.Conflict:
+		return "conflict"
+	case apply.ToolTooOld:
+		return "tool_too_old"
+	case apply.UnsupportedOS:
+		return "unsupported_os"
+	case apply.OK, apply.Warnings:
+		return "operation"
+	default:
+		return "operation"
 	}
 }

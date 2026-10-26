@@ -146,16 +146,16 @@ func TestStatusEvents(t *testing.T) {
 	t.Parallel()
 	m := readyStatus(t, &fakeClient{status: StatusSnapshot{Daemon: true}})
 	only(t, m.Update(EventReceived{Event: Event{Kind: EventConnected}}))
-	expect(t, m.View().Rows[5].Value.Key == text.StatusDaemonLive, "connection row=%+v", m.View().Rows[5])
-	for _, kind := range []EventKind{EventDriftDetected, EventSyncFinished} {
+	expect(t, m.View().Rows[6].Value.Key == text.StatusDaemonLive, "connection row=%+v", m.View().Rows[6])
+	for _, kind := range []EventKind{EventPollFinished, EventDriftDetected, EventSyncFinished} {
 		only(t, m.Update(EventReceived{Event: Event{Kind: kind}}))
 	}
 	expect(t, m.Update(EventReceived{Event: Event{Kind: EventUpdateAvailable}}) == nil, "update hint reloaded")
 	expect(t, m.View().Notices[0].Key == text.StatusUpdate, "update notice missing")
 	m.Update(SubscriptionEnded{Err: errBoom})
-	expect(t, m.View().Rows[5].Value.Key == text.StatusDaemonQuiet, "disconnected row=%+v", m.View().Rows[5])
+	expect(t, m.View().Rows[6].Value.Key == text.StatusDaemonQuiet, "disconnected row=%+v", m.View().Rows[6])
 	m.snapshot.Daemon = false
-	expect(t, m.View().Rows[5].Value.Key == text.StatusLocal, "local row=%+v", m.View().Rows[5])
+	expect(t, m.View().Rows[6].Value.Key == text.StatusLocal, "local row=%+v", m.View().Rows[6])
 	checkText(t, statusTexts(m.View())...)
 }
 
@@ -200,6 +200,7 @@ func TestStatusRows(t *testing.T) {
 		"Branch: main → origin/main (1 ahead, 2 behind)",
 		"Working copy: Uncommitted changes",
 		"Last sync: 2026-10-24 09:30:00 CEST (1 h ago): succeeded, 3 changed",
+		"Last check: No check recorded",
 		"Targets: 4 in sync, 1 to update, 0 changed locally, 0 conflicts, 0 obstacles",
 		"Connection: Daemon, live updates unavailable",
 	}

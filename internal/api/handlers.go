@@ -10,6 +10,7 @@ import (
 	"github.com/TomaszJanusz/kitbag/internal/core/initialize"
 	"github.com/TomaszJanusz/kitbag/internal/core/plan"
 	"github.com/TomaszJanusz/kitbag/internal/core/settings"
+	"github.com/TomaszJanusz/kitbag/internal/core/state"
 	"github.com/TomaszJanusz/kitbag/internal/core/workflow"
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 )
@@ -21,6 +22,7 @@ type ServiceFactory func(context.Context, Options) (workflow.Service, error)
 // Handlers supplies authentication and dependencies. KIT-30 owns daemon lifetime.
 // Configuration is loaded afresh for every call by Service; no snapshot is cached.
 type Handlers struct {
+	Check       func(string) *state.CheckRecord
 	Host        platform.Host
 	Service     ServiceFactory
 	Events      *Events
@@ -78,6 +80,10 @@ func (h Handlers) workflow(ctx context.Context, method string, p Params, id json
 	switch method {
 	case "status.get":
 		result, err := service.Status(ctx)
+		if h.Check != nil {
+			result.LastCheck = h.Check(service.Repository)
+			result.DaemonRunning = true
+		}
 		return result, operationError(err)
 	case "plan.get", "drift.list":
 		result, err := service.Inspect()

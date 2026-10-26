@@ -123,3 +123,4 @@ Example method arguments (add `token` and `api_version`):
 - `sync.finished`: Subscribers: sync completed, including failures.
 - `drift.detected`: Subscribers: daemon detected drift; refresh snapshots.
 - `update.available`: Subscribers: daemon detected a tool update.
+- `poll.finished`: Subscribers: remote check completed, including failure or no change; refresh status.get. Initial sync also produces a check. No raw errors or repository data in the hint.

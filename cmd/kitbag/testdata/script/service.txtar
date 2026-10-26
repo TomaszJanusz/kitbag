@@ -59,6 +59,20 @@ exec kitbag service install --mode=daemon
 ! exists $HOME/.config/systemd/user/dev.kitbag.agent.timer
 grep 'Type=simple' $HOME/.config/systemd/user/dev.kitbag.agent.service
 grep 'Restart=on-failure' $HOME/.config/systemd/user/dev.kitbag.agent.service
+# A running service with an old check warns without another remote probe.
+homefixture poll
+exec kitbag doctor --json --report $WORK/poll-doctor.json
+doctorschema stdout
+stdout '"id": "daemon-poll",\n\s*"status": "WARN"'
+stdout 'daemon is not checking; last check is older than three poll intervals'
+stdout 'inspect kitbag service status and daemon logs; restart the user service'
+# With no listening daemon, ordinary status labels the same record historical.
+exec kitbag status
+stdout 'Last check: .*ok \(stale; daemon not running\)'
+! stdout 'Next check:'
+exec kitbag status --json
+stdout '"daemon_running": false'
+stdout '"last_check": \{'
 exec kitbag service uninstall
 stdout 'Configuration, working copies and sync state were kept'
 ! exists $HOME/.config/systemd/user/dev.kitbag.agent.service
@@ -103,3 +117,5 @@ disable) rm -f "$HOME/.enabled";;
 start) touch "$HOME/.active";;
 stop) rm -f "$HOME/.active";;
 esac
+-- poll/.local/state/kitbag/last-check.json --
+{"schema_version":1,"repository":"@HOME@/.local/share/kitbag/repos/config","at":"2020-01-01T00:00:00Z","next_at":"2020-01-01T00:01:00Z","interval_seconds":60,"outcome":"ok","head":"abc123"}

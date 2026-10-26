@@ -79,6 +79,8 @@ func (m *Log) Update(msg Msg) []Cmd {
 func (m *Log) event(msg EventReceived) {
 	e := msg.Event
 	switch e.Kind {
+	case EventPollFinished:
+		return
 	case EventConnected:
 		m.connected = true
 		m.add(msg.At, Info, text.New(text.LogConnected))

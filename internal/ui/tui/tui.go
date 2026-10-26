@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -114,7 +115,7 @@ func (m *Model) Init() tea.Cmd {
 	m.workers.Add(1)
 	go m.serve()
 	m.start(m.app.Init())
-	return m.listen()
+	return tea.Batch(m.listen(), checkTick())
 }
 
 // Close cancels outstanding work, closing the event subscription, and waits
@@ -151,6 +152,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.settle()
 		}
 		return m, m.listen()
+	case checkTickMsg:
+		return m, checkTick()
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		m.input.Width = max(msg.Width-inputMargin, 1)
@@ -195,4 +198,10 @@ func (m *Model) editResult(result model.Msg) {
 	if written, ok := result.(model.SettingWritten); ok && m.editing && written.Key == m.field().Path && written.Err == nil {
 		m.stopEdit()
 	}
+}
+
+type checkTickMsg struct{}
+
+func checkTick() tea.Cmd {
+	return tea.Tick(time.Second, func(time.Time) tea.Msg { return checkTickMsg{} })
 }

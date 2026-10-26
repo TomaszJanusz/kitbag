@@ -180,7 +180,7 @@ func intentName(intent model.Msg) string {
 
 func (m *Model) helpView() []string {
 	keys := []text.Key{
-		text.HelpTabs, text.HelpRefresh, text.HelpSync, text.HelpMove, text.HelpDetail, text.HelpEdit,
+		text.HelpTabs, text.HelpRefresh, text.HelpSync, text.HelpCheckSync, text.HelpMove, text.HelpDetail, text.HelpEdit,
 		text.HelpSave, text.HelpChoices, text.HelpAdvanced, text.HelpFollow, text.HelpMouse, text.HelpToggle, text.HelpQuit,
 	}
 	lines := make([]string, 0, len(keys)+1)

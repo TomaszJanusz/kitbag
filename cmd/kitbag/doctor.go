@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -50,7 +51,7 @@ func (c *commandLine) doctorService(offline bool) (doctor.Service, error) {
 		return doctor.Service{}, err
 	}
 	return doctor.Service{
-		ServiceConfig: c.configPath, Host: c.host, Store: store, Repository: repo, Config: c.config, Homes: agentHomes(), Version: toolVersion(), HostFlag: c.flags.host, ModeFlag: c.flags.mode, Offline: offline,
+		Now: time.Now, ServiceConfig: c.configPath, Host: c.host, Store: store, Repository: repo, Config: c.config, Homes: agentHomes(), Version: toolVersion(), HostFlag: c.flags.host, ModeFlag: c.flags.mode, Offline: offline,
 		Open: func(ctx context.Context) (vcs.Backend, vcs.Resolution, error) {
 			return vcs.Open(ctx, c.selection, gitFactories(c.host, c.config.Git.Identity))
 		},

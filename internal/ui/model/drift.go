@@ -40,7 +40,7 @@ func (m *Drift) Update(msg Msg) []Cmd {
 		switch msg.Event.Kind {
 		case EventConnected, EventSyncFinished, EventDriftDetected:
 			return m.load()
-		case EventSyncStarted, EventUpdateAvailable:
+		case EventPollFinished, EventSyncStarted, EventUpdateAvailable:
 		}
 	}
 	return nil

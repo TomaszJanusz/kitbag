@@ -45,6 +45,13 @@ type LastSync struct {
 	Changed  int
 }
 
+// LastCheck is the latest daemon remote check.
+type LastCheck struct {
+	At, NextAt              time.Time
+	Outcome, Category, Head string
+	Interval                time.Duration
+}
+
 // ToolTooOld reports a repository requiring a newer kitbag: Required is the
 // unmet min_tool_version, or Schema the manifest schema newer than
 // SupportedSchema.
@@ -62,6 +69,7 @@ type GitState struct {
 
 // StatusSnapshot is one status.get result; Daemon reports who answered.
 type StatusSnapshot struct {
+	LastCheck  *LastCheck
 	LastSync   *LastSync
 	ToolTooOld *ToolTooOld
 	Repository string
@@ -140,6 +148,7 @@ type EventKind string
 
 // Lifecycle hints. EventConnected is synthesized when a subscription starts.
 const (
+	EventPollFinished    EventKind = "poll.finished"
 	EventConnected       EventKind = "connected"
 	EventSyncStarted     EventKind = "sync.started"
 	EventSyncFinished    EventKind = "sync.finished"
