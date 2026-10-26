@@ -27,9 +27,13 @@ configuration after displaying a dry plan; sync can also create a missing clone.
 When `repo.branch` is set, sync refuses a different checked-out branch before
 fetching or applying; it never switches branches automatically. The
 configuration parser rejects unknown fields, invalid values and unsupported
-schemas. An absent default config is allowed for `version`; everyday commands
+schemas. An absent default config is allowed for `version` and `agent list`; sync commands
 require a repository URL. An explicit missing config is an error.
 
+- `agent list`: read-only known kinds, declared instances, source and directory
+  presence, even before configuration exists. `--json` emits `agents_schema: 1`;
+  `--probe` explicitly lists HOME names once, keeping only known agent patterns.
+  See [agent discovery](agents.md#discover-agent-directories-and-instances) for the privacy and output contracts.
 - `sync`: hold the state lock, fetch and fast-forward a clean clone, read the new
   manifest, check `min_tool_version`, resolve host/mode, recover pending work,
   build **one** plan, execute **once**, then ensure Git includes and record the

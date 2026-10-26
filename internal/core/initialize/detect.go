@@ -27,7 +27,8 @@ func Detect(host platform.Host, homes discover.Table) ([]Agent, error) {
 			return nil, candidate.Err
 		case discover.Present:
 			result = append(result, Agent{Kind: candidate.Agent, Directory: candidate.Directory})
-		case discover.Missing, discover.NotDirectory, discover.Symlink:
+		case discover.Missing, discover.NotDirectory, discover.Symlink, discover.OutsideHome:
+			// OutsideHome is a listing-only classification; Defaults never returns it.
 		}
 	}
 	return result, nil

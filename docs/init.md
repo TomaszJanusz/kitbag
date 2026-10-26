@@ -45,9 +45,15 @@ required for clone or sync; `--yes` prints guidance when it is missing.
 Detection checks only whether `.claude` and `.codex` are real directories,
 through platform FS/Env. `CLAUDE_CONFIG_DIR` and `CODEX_HOME` replace their
 respective defaults; the override must be absolute. Missing directories,
-regular files and final symlinks are not detected. Detection never lists HOME
-or reads agent settings, credentials, sessions or instance files, and it never
-runs an agent executable. Directory presence is a conservative hint, not proof
+regular files and final symlinks are not detected.
+
+Detection never lists HOME on its own. Only an explicit request
+(`kitbag agent list --probe` or **Look for more directories** in the
+terminal interface) reads the names of HOME's direct entries, once, without
+descending into or following any of them. Names that do not match a known
+agent directory are discarded without being shown or stored. Detection never
+reads agent settings, credentials, sessions or instance files, and never runs
+an agent executable. Directory presence is a conservative hint, not proof
 that an agent executable is installed. Additional instances are explicit.
 
 For an imported repository, targets and instances remain the policy declared

@@ -21,6 +21,7 @@ kitbag [flags]
 ### SEE ALSO
 
 * [kitbag adopt](kitbag_adopt.md)	 - Take over destinations agent-config-sync already manages
+* [kitbag agent](kitbag_agent.md)	 - Inspect agent kinds and instances
 * [kitbag config](kitbag_config.md)	 - Inspect and change machine settings
 * [kitbag daemon](kitbag_daemon.md)	 - Poll configuration, detect drift and serve the local API
 * [kitbag doctor](kitbag_doctor.md)	 - Explain synchronization problems and suggest fixes

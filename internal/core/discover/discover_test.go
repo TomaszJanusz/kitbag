@@ -48,6 +48,11 @@ type recorder struct {
 	t *testing.T
 }
 
+func (r recorder) Open(path string) error {
+	r.t.Errorf("discovery opened %s", path)
+	return fs.ErrPermission
+}
+
 func (r recorder) ReadFile(path string) ([]byte, error) {
 	r.t.Errorf("discovery read %s", path)
 	return nil, fs.ErrPermission

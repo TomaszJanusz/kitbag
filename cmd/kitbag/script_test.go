@@ -19,6 +19,7 @@ func TestScripts(t *testing.T) {
 
 	params := e2e.Params("testdata/script")
 	configureAPIScripts(&params)
+	params.Cmds["agentsschema"] = validatePlanCommand(namedSchema(t, "agents"))
 	params.Cmds["adoptschema"] = validatePlanCommand(namedSchema(t, "adopt"))
 	params.Cmds["configschema"] = validateConfigCommand(namedSchema(t, "config"))
 	params.Cmds["doctorschema"] = validatePlanCommand(namedSchema(t, "doctor"))

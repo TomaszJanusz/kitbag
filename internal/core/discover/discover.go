@@ -1,7 +1,7 @@
 // Package discover resolves agent instance candidates: each native adapter's
 // default configuration directory under the caller's relocation variables. A
 // candidate is observed with one Lstat of the directory itself; nothing is
-// opened, listed or followed (ADR 12, section 1). The adapters' resolvers
+// opened or followed; HOME names are listed only by an explicit List probe (ADR 12, section 1). The adapters' resolvers
 // arrive as an injected Table, so core imports no adapter.
 package discover
 
@@ -28,6 +28,10 @@ const (
 	Default Source = "default"
 	// Environment is a relocation variable set by the caller.
 	Environment Source = "environment"
+	// Declared is an explicit manifest instance.
+	Declared Source = "declared"
+	// Probe is an opt-in HOME name match.
+	Probe Source = "probe"
 )
 
 // Presence is what a single Lstat found at a candidate's directory.
@@ -42,6 +46,8 @@ const (
 	Symlink Presence = "symlink"
 	// Unreadable means Lstat failed for another reason; see Candidate.Err.
 	Unreadable Presence = "unreadable"
+	// OutsideHome is a directory that cannot be expressed in a manifest.
+	OutsideHome Presence = "outside_home"
 )
 
 // Host is the part of the platform discovery needs: the caller's environment
@@ -58,6 +64,8 @@ type Resolver struct {
 	Home func(platform.Env) (string, error)
 	// Agent is the manifest agent kind.
 	Agent string
+	// ProbePrefix is a documented direct HOME directory name. Empty disables probing.
+	ProbePrefix string
 	// Variable names the relocation variable, if any; it only labels the
 	// source, as Home applies it.
 	Variable string
