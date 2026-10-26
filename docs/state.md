@@ -152,3 +152,18 @@ A record write failure fails the command; completed file operations remain in
 their own journal. As with state saves, a post-rename durability error can mean
 the new record is already visible. Dry-run/status commands never save the record
 or recover a pending step; they may create the private state directory/lock.
+
+## Last remote check
+
+`last-check.json` is a separate, private (0600), atomic snapshot under the state
+directory. The daemon lifetime lock owns its single writer; reads do not take
+the apply lock. It never rewrites `last-sync.json`, ownership or history.
+The bounded record is at most 4096 bytes and has `schema_version: 1`, UTC RFC
+3339 `at` and `next_at`, local `repository`, `outcome` (`ok` or `failed`),
+`interval_seconds` (1–86400, including fractional seconds), optional short hex `head` (at most 12 characters),
+and a fixed `category` for failures. Categories reuse the UI error catalog:
+`operation`, `busy`, `invalid`, `conflict`, `tool_too_old`, `unsupported_os`,
+`canceled`. No raw error or remote URL is stored. Missing records mean no check
+recorded; invalid/newer records are preserved and reported as unavailable.
+A stopped daemon leaves historical data: callers must pair it with daemon
+liveness and must not present the saved next time as a current schedule.

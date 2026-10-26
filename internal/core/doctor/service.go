@@ -39,7 +39,10 @@ func (s Service) serviceChecks(ctx context.Context) []Check {
 	} else {
 		fix = ""
 	}
-	return []Check{{ID: "service", Status: status, Message: message, Fix: fix}}
+	const serviceChecks = 2
+	checks := make([]Check, 1, serviceChecks)
+	checks[0] = Check{ID: "service", Status: status, Message: message, Fix: fix}
+	return append(checks, s.pollChecks(report)...)
 }
 
 // unhealthyService accepts the daemon's restart status: launchd keeps
@@ -47,4 +50,28 @@ func (s Service) serviceChecks(ctx context.Context) []Check {
 func unhealthyService(report service.Report) bool {
 	failed := report.ExitCode != nil && *report.ExitCode != 0 && *report.ExitCode != service.RestartExitCode
 	return report.BinaryMissing || !report.Loaded || !report.Active || !report.Enabled || report.Stale || failed
+}
+
+func (s Service) pollCheck() Check {
+	check := Check{ID: "daemon-poll", Status: OK, Message: "last check is recent"}
+	record, _, err := s.Store.LoadCheck()
+	switch {
+	case err != nil:
+		check.Status, check.Message = Warn, "last check record is unavailable"
+	case record == nil || record.Repository != s.Repository:
+		check.Message = "no check recorded for this repository yet"
+	case record.Stale(s.Now()):
+		check.Status, check.Message = Warn, "daemon is not checking; last check is older than three poll intervals"
+	}
+	if check.Status == Warn {
+		check.Fix = "inspect kitbag service status and daemon logs; restart the user service"
+	}
+	return check
+}
+
+func (s Service) pollChecks(report service.Report) []Check {
+	if report.Mode == "daemon" && report.Active && s.Now != nil && s.Store != nil {
+		return []Check{s.pollCheck()}
+	}
+	return nil
 }

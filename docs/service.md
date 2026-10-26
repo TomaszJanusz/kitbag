@@ -124,3 +124,21 @@ Uninstall stops/disables jobs, removes both systemd files or the plist and saved
 installation inputs, then reloads systemd. It is safe to repeat. Configuration,
 working copies, sync history and daemon logs are retained. No administrator or
 other user's units are changed. Windows provides explicit unsupported stubs.
+
+## Last check and last sync
+
+The daemon checks the remote every `sync.poll_interval` (60 seconds by default),
+with bounded jitter and failure backoff. `Last check` records every completed
+check, including no change and failures; `Last sync` records attempts to apply
+changes. An old sync can be healthy when checks are recent. The initial sync
+also records a check. Failed checks show a fixed error-catalog category, never
+raw Git output, credentials or remote URLs. `Next check` is the actual next
+scheduled time, including jitter/backoff. It follows completed work.
+
+`kitbag status` uses local time with relative age in text, and UTC RFC 3339 in
+JSON. When no daemon runs, the persisted last check is explicitly stale and
+`Next check` is hidden. `kitbag doctor` warns when an installed, active daemon's
+persisted check is older than three configured poll intervals. It reads one
+small local record and performs no extra remote request. Timer services are
+excluded. Failure backoff or a long sync can also exceed this threshold; inspect
+the service logs before restarting.

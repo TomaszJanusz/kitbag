@@ -119,7 +119,7 @@ func (m *Status) event(e Event) []Cmd {
 	case EventSyncFinished:
 		m.otherSync = false
 		return m.load()
-	case EventDriftDetected:
+	case EventPollFinished, EventDriftDetected:
 		return m.load()
 	case EventUpdateAvailable:
 		m.update = true
@@ -150,6 +150,7 @@ func (m *Status) View() StatusView {
 		}
 		view.Problem = &problem
 	}
+	view.Warnings = append(view.Warnings, m.checkWarnings()...)
 	view.Notices = m.notices()
 	if m.known {
 		view.Rows = m.rows()
@@ -224,14 +225,19 @@ func (m *Status) rows() []Row {
 		last = text.New(text.StatusLastSyncValue, WhenText(m.clock, s.LastSync.At), ResultText(s.LastSync.ExitCode), number(s.LastSync.Changed))
 	}
 	d := s.Drift
-	return []Row{
+	rows := []Row{
 		{Label: text.New(text.StatusRepository), Value: text.Plain(s.Repository)},
 		{Label: text.New(text.StatusBranch), Value: branch},
 		{Label: text.New(text.StatusWorkingCopy), Value: copyState},
 		{Label: text.New(text.StatusLastSync), Value: last},
+		{Label: text.New(text.StatusLastCheck), Value: CheckValue(m.clock, s.LastCheck, s.Daemon)},
 		{Label: text.New(text.StatusDrift), Value: text.New(text.StatusDriftValue, number(d.InSync), number(d.UpdateNeeded), number(d.LocalDrift), number(d.Conflict), number(d.UnmanagedObstacle))},
 		{Label: text.New(text.StatusConnection), Value: m.connection()},
 	}
+	if s.Daemon && s.LastCheck != nil {
+		rows = append(rows, Row{Label: text.New(text.StatusNextCheck), Value: text.Plain(m.clock.Stamp(s.LastCheck.NextAt))})
+	}
+	return rows
 }
 
 func (m *Status) connection() text.Message {

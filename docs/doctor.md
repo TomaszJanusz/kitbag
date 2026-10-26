@@ -105,3 +105,9 @@ Core does not import `os` or `os/exec`. Real agent probes use the existing
 avoid widening the base backend contract while KIT-22 adds embedded Git.
 Add a testscript failure/warning with its fix hint for every new check, plus
 schema and exit-code coverage when the public contract changes.
+
+An installed, active daemon also has a `daemon-poll` check. It reads the bounded
+`last-check.json` snapshot and warns when its age exceeds three recorded poll
+intervals or the record cannot be read. It does not contact the remote. Missing
+records are reported as not recorded yet (including older daemon versions).
+Timer services and stopped services do not get this check.

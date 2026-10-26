@@ -153,3 +153,14 @@ and subscription shutdown. Golden screens in `internal/ui/tui/testdata` are
 ANSI-stripped at fixed sizes; after reviewing a change, rewrite them with
 `go test ./internal/ui/tui -args -update-screens`. A testscript covers the
 non-terminal refusal.
+
+## Remote check freshness
+
+The Status tab keeps separate `Last check`, `Next check` and `Last sync` rows.
+A check looked at the remote; a sync applied changes. The help overlay repeats
+this distinction. `poll.finished` refreshes the status snapshot even when
+nothing changed. Check failure uses the shared error text catalog and appears
+as a warning with its age. While the daemon is running, an age greater than
+three poll intervals warns “daemon is not checking”. A lightweight clock tick
+updates ages and warnings even when no daemon events arrive. With no daemon,
+the persisted check says “stale; daemon not running” and no next check is shown.

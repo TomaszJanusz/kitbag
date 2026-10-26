@@ -45,6 +45,7 @@ type Report struct {
 // accept contexts and must respect cancellation. Offline disables remote probes.
 // Homes resolves the default directory of a target that lists no instances.
 type Service struct {
+	Now                                     func() time.Time
 	Emit                                    func(compatibility.Event)
 	Host                                    platform.Host
 	Homes                                   discover.Table

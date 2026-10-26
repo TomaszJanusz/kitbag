@@ -44,7 +44,7 @@ func (e *Events) Publish(event Event) {
 
 func eventKind(kind string) bool {
 	switch kind {
-	case "sync.started", "sync.finished", "drift.detected", "update.available":
+	case "poll.finished", "sync.started", "sync.finished", "drift.detected", "update.available":
 		return true
 	default:
 		return false
