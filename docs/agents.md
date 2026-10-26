@@ -648,3 +648,66 @@ their official documentation corpus/index, not inferred from search snippets.
 [F3]: https://docs.factory.com/harness/skills
 [Y1]: https://aider.chat/docs/config/aider_conf.html
 [Y2]: https://aider.chat/docs/usage/conventions.html
+
+## Discover agent directories and instances
+
+`kitbag agent list [--json] [--probe]` is read-only. It shows the known native
+kinds (Claude, Codex, Gemini and OpenCode), declared instances grouped by kind,
+then undeclared candidates. Generic has no default and appears only when
+configured. Directories are hints, not proof that an executable is installed.
+No Git command, daemon request, state lock or write occurs.
+
+Defaults use the caller's `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `GEMINI_CLI_HOME`
+(the parent of `.gemini`), and `XDG_CONFIG_HOME` for OpenCode. An explicit
+manifest directory wins for that instance; a relocated default can still appear
+as an undeclared candidate. Sources are `default`, `environment` (with its
+variable name), `declared` and `probe`. Variables are never persisted.
+
+The effective machine configuration selects the repository and host, using the
+usual flag/environment/config precedence. The existing manifest loader validates
+`kitbag.toml` and minimum tool versions. Without repository configuration or a
+manifest, detection still succeeds and says why declarations are unavailable.
+Invalid manifests fail instead of silently hiding declarations. Publication
+queues and manifest overlays arrive later in the ADR 12 rollout.
+
+Schema 1 declarations include target, instance name, directory, settings merge,
+enabled state, host scope and `active_here`. Empty `hosts` means all hosts except
+`excluded_hosts`; these exclusions represent schema 1's replacement instance
+sets. Replacement entries list the host they belong to. Disabled and other-host
+instances stay visible. Rows in the selected host scope reflect its target
+enable/disable override. Targets without instances show an `implicit` default;
+listing explicit instances replaces that default. Candidates already represented
+by an instance of the same kind and directory are omitted.
+
+| Presence | Meaning |
+| --- | --- |
+| `present` | Real directory. |
+| `missing` | No entry; listing still exits 0. |
+| `not_directory` | File or other entry. |
+| `symlink` | Final symbolic link, never followed. |
+| `outside_home` | Absolute path outside HOME; cannot be declared in a manifest. |
+| `unreadable` | Lstat failed; only `permission` or `io` is exposed as `error_class`. |
+
+Presence uses `Lstat` of the candidate directory. `outside_home` takes precedence
+in this listing; containment is lexical, not a traversal of ancestor links.
+
+`--probe` explicitly reads HOME's direct entry names once and matches `.claude`,
+`.codex` or `.gemini` followed by `_`, `-` or `.` and a nonempty suffix (for
+example `.claude_2`, `.claude-work`, `.codex.alt`). Other names are discarded
+immediately. OpenCode's default is nested under `.config`, so it has no direct
+HOME name probe. Nothing descends into matched entries or reads file contents.
+See the full [detection privacy promise](init.md#detection-and-existing-repositories),
+also included in `--probe` help. Init, doctor and sync never probe HOME.
+
+`--json` emits `agents_schema: 1`, validated against
+[agents.schema.json](../schemas/agents.schema.json). It contains `host`,
+`known_hosts`, `schema` (manifest version; 0 when absent), `kinds`, `instances`,
+`candidates` and `warnings`. Collections are always arrays. Text warnings use
+stderr; JSON warnings stay within stdout's document. Neither output contains
+agent file contents or raw filesystem error messages.
+
+Exit codes follow [everyday commands](commands.md): successful inspection is 0,
+even for missing, unreadable or outside-HOME candidates; a failed HOME probe or
+other operational failure is 1; invalid configuration, manifest or arguments are
+2; incompatible manifest/tool versions are 4; Windows runtime is 5. There is no
+mutation, recovery or conflict operation in this command.

@@ -1,0 +1,307 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kitbag.sh/schemas/agents.schema.json",
+  "title": "KitBag agent list (agents_schema 1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "agents_schema",
+    "host",
+    "schema",
+    "known_hosts",
+    "kinds",
+    "instances",
+    "candidates",
+    "warnings"
+  ],
+  "properties": {
+    "agents_schema": {
+      "const": 1
+    },
+    "host": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schema": {
+      "enum": [
+        0,
+        1
+      ]
+    },
+    "known_hosts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "kinds": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "claude",
+          "codex",
+          "gemini",
+          "opencode",
+          "generic"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "instances": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "dir",
+          "source",
+          "presence",
+          "target",
+          "name",
+          "hosts",
+          "excluded_hosts",
+          "implicit",
+          "enabled",
+          "settings",
+          "active_here"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "claude",
+              "codex",
+              "gemini",
+              "opencode",
+              "generic"
+            ]
+          },
+          "dir": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source": {
+            "enum": [
+              "default",
+              "environment",
+              "declared"
+            ]
+          },
+          "variable": {
+            "enum": [
+              "CLAUDE_CONFIG_DIR",
+              "CODEX_HOME",
+              "GEMINI_CLI_HOME",
+              "XDG_CONFIG_HOME"
+            ]
+          },
+          "presence": {
+            "enum": [
+              "present",
+              "missing",
+              "not_directory",
+              "symlink",
+              "outside_home",
+              "unreadable"
+            ]
+          },
+          "error_class": {
+            "enum": [
+              "permission",
+              "io"
+            ]
+          },
+          "target": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "hosts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "excluded_hosts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "implicit": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "settings": {
+            "type": "boolean"
+          },
+          "active_here": {
+            "type": "boolean"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "source": {
+                  "const": "environment"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "variable"
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "variable"
+                ]
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "presence": {
+                  "const": "unreadable"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "error_class"
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "error_class"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "dir",
+          "source",
+          "presence"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "claude",
+              "codex",
+              "gemini",
+              "opencode",
+              "generic"
+            ]
+          },
+          "dir": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source": {
+            "enum": [
+              "default",
+              "environment",
+              "declared",
+              "probe"
+            ]
+          },
+          "variable": {
+            "enum": [
+              "CLAUDE_CONFIG_DIR",
+              "CODEX_HOME",
+              "GEMINI_CLI_HOME",
+              "XDG_CONFIG_HOME"
+            ]
+          },
+          "presence": {
+            "enum": [
+              "present",
+              "missing",
+              "not_directory",
+              "symlink",
+              "outside_home",
+              "unreadable"
+            ]
+          },
+          "error_class": {
+            "enum": [
+              "permission",
+              "io"
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "source": {
+                  "const": "environment"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "variable"
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "variable"
+                ]
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "presence": {
+                  "const": "unreadable"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "error_class"
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "error_class"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

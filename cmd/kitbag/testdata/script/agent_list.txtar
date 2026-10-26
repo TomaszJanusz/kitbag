@@ -1,0 +1,148 @@
+# Every command uses the harness's throwaway HOME and isolated Git config.
+[windows] stop 'Windows refuses commands before 1.x'
+env KITBAG_CONFIG=
+env KITBAG_HOST=test
+env CLAUDE_CONFIG_DIR=
+env CODEX_HOME=
+env GEMINI_CLI_HOME=
+env XDG_CONFIG_HOME=
+env XDG_DATA_HOME=
+env XDG_STATE_HOME=
+env XDG_CACHE_HOME=
+env KITBAG_REPO_URL=
+agentdirs .claude .codex .gemini .config/opencode .claude_2 unrelated .claudette_2
+# Credential contents are never discovery markers.
+cp credential $HOME/.claude_2/.credentials.json
+cp credential $HOME/.codex/auth.json
+
+exec kitbag agent list
+stdout '\.claude  default  present'
+stdout '\.codex  default  present'
+stdout '\.gemini  default  present'
+stdout 'opencode  default  present'
+! stdout 'generic'
+! stdout 'claude_2|unrelated|claudette|secret-sentinel'
+stderr 'No repository configured'
+exec kitbag agent list --json
+agentsschema stdout
+stdout '"agents_schema": 1'
+stdout '"schema": 0'
+stdout 'No repository configured'
+! stderr .
+
+# A name probe explicitly finds only suffixed known directory names.
+exec kitbag agent list --probe --json
+agentsschema stdout
+stdout '"dir": ".*/\.claude_2",\n\s*"source": "probe",\n\s*"presence": "present"'
+! stdout 'unrelated|claudette|secret-sentinel|credentials|auth.json'
+cmp credential $HOME/.claude_2/.credentials.json
+
+# Final links are reported without following their directory target.
+exec ln -s $HOME/unrelated $HOME/.codex.alt
+exec kitbag agent list --probe
+stdout '\.codex.alt  probe  symlink'
+linktarget $HOME/.codex.alt $HOME/unrelated
+
+# Environment overrides label their source; outside HOME is metadata, exit 0.
+env CLAUDE_CONFIG_DIR=$HOME/override
+agentdirs override
+exec kitbag agent list
+stdout 'override  environment \(CLAUDE_CONFIG_DIR\)  present'
+env CLAUDE_CONFIG_DIR=$WORK/outside
+exec kitbag agent list --json
+agentsschema stdout
+stdout '"presence": "outside_home"'
+env CLAUDE_CONFIG_DIR=relative
+execstatus 2 kitbag agent list
+env CLAUDE_CONFIG_DIR=$HOME/override
+
+# Existing configuration is loaded even when its manifest has not arrived yet.
+env KITBAG_CONFIG=$WORK/machine.toml
+exec kitbag agent list
+stderr 'No manifest yet'
+agentdirs checkout
+cp manifest $HOME/checkout/kitbag.toml
+exec kitbag agent list
+stdout '\.claude  declared  present  claude/main hosts=all excluded_hosts=mac settings=true enabled=true active_here=true'
+stdout '\.claude_missing  declared  missing  claude/missing'
+stdout '\.claude_2  declared  present  claude/second hosts=mac.*settings=false enabled=true active_here=false'
+stdout 'custom  declared  missing  custom/only'
+stdout 'override  environment \(CLAUDE_CONFIG_DIR\)  present'
+! stderr .
+exec kitbag agent list --json --probe
+agentsschema stdout
+stdout '"known_hosts": \[\n\s*"mac"'
+! stdout 'unrelated|claudette|secret-sentinel'
+# --host beats the caller environment; the schema-1 replacement set wins.
+exec kitbag --host mac agent list
+stdout 'claude/main .*active_here=false'
+stdout 'claude/second .*active_here=true'
+cmp manifest $HOME/checkout/kitbag.toml
+! exists $HOME/.local/state/kitbag
+
+# File candidates and malformed input retain the shared exit semantics.
+rm $HOME/.codex/auth.json $HOME/.codex
+cp credential $HOME/.codex
+exec kitbag agent list --json
+agentsschema stdout
+stdout '"presence": "not_directory"'
+cp future $HOME/checkout/kitbag.toml
+execstatus 4 kitbag agent list
+cp version $HOME/checkout/kitbag.toml
+execstatus 4 kitbag agent list
+cp default $HOME/checkout/kitbag.toml
+exec kitbag agent list --json
+agentsschema stdout
+stdout '"known_hosts": \[\]'
+cp invalid $HOME/checkout/kitbag.toml
+execstatus 2 kitbag agent list
+cp missing-source $HOME/checkout/kitbag.toml
+execstatus 2 kitbag agent list
+! stderr 'No manifest yet'
+execstatus 1 kitbag --config=$WORK/absent agent list
+execstatus 2 kitbag agent list --unknown
+execstatus 2 kitbag agent list extra
+
+-- machine.toml --
+schema=1
+[repo]
+url="local"
+path="~/checkout"
+-- manifest --
+schema=1
+[targets.claude]
+agent="claude"
+settings="settings.json"
+[targets.claude.instances.main]
+dir="~/.claude"
+[targets.claude.instances.missing]
+dir="~/.claude_missing"
+[hosts.mac.targets.claude.instances.second]
+dir="~/.claude_2"
+settings=false
+[targets.custom]
+agent="generic"
+[targets.custom.instances.only]
+dir="~/custom"
+roots={instructions="~/custom/AGENTS.md"}
+-- home/checkout/settings.json --
+{}
+-- credential --
+secret-sentinel
+-- future --
+schema=99
+-- version --
+schema=1
+min_tool_version="99.0.0"
+-- invalid --
+not valid TOML
+-- missing-source --
+schema=1
+[targets.claude]
+agent="claude"
+settings="absent.json"
+
+-- default --
+schema=1
+[targets.claude]
+agent="claude"

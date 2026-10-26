@@ -1,11 +1,12 @@
 # Schemas
 
-JSON Schema (draft 2020-12) for the two TOML files KitBag reads. The contract
+JSON Schema (draft 2020-12) for TOML configuration and command output. The contract
 they encode is written out in [docs/manifest.md](../docs/manifest.md).
 
 | File | `$id` | Describes |
 | --- | --- | --- |
 | `kitbag.schema.json` | `https://kitbag.sh/schemas/kitbag.schema.json` | `kitbag.toml`, committed in a configuration repository |
+| `agents.schema.json` | `https://kitbag.sh/schemas/agents.schema.json` | `kitbag agent list --json`; see [agent discovery](../docs/agents.md#discover-agent-directories-and-instances) |
 | `config.schema.json` | `https://kitbag.sh/schemas/config.schema.json` | `config.toml`, machine-local tool configuration |
 
 The `$id` values are stable identifiers; nothing is fetched from them.
