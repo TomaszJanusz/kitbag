@@ -1,6 +1,6 @@
 ## kitbag agent
 
-Inspect agent kinds and instances
+Inspect and change agent kinds and instances
 
 ### Options
 
@@ -22,5 +22,8 @@ Inspect agent kinds and instances
 ### SEE ALSO
 
 * [kitbag](kitbag.md)	 - Synchronize coding-agent configuration
+* [kitbag agent add](kitbag_agent_add.md)	 - Declare an agent instance in kitbag.toml and publish it
+* [kitbag agent edit](kitbag_agent_edit.md)	 - Change an instance's directory or settings merge and publish it
 * [kitbag agent list](kitbag_agent_list.md)	 - List agent directories and declared instances
+* [kitbag agent remove](kitbag_agent_remove.md)	 - Remove an instance from kitbag.toml and publish it
 

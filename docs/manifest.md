@@ -218,6 +218,11 @@ harness and Windsurf's Devin-era layout are not kinds of their own and must
 be declared explicitly (`generic` with `roots`, or a separate instance `dir`),
 never inferred from an existing instance.
 
+`kitbag agent add`, `edit` and `remove` change instance tables for all hosts
+without re-encoding the file: comments and layout outside the edited table
+stay, and instances written as inline tables or dotted keys are left to hand
+edits ([agent edits](agents.md#add-edit-and-remove-instances)).
+
 #### Settings merge rules
 
 The fragment is in the agent's native format (JSON for Claude Code). Merging

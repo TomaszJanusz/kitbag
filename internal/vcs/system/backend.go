@@ -3,6 +3,7 @@ package system
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"slices"
@@ -245,10 +246,58 @@ func (b *Backend) Commit(ctx context.Context, dir string, opts vcs.CommitOptions
 		return "", b.commandError([]string{"diff", "--cached"}, res)
 	}
 	if _, err = b.repo(ctx, dir, "commit", "--quiet", "--message="+opts.Message); err != nil {
-		return "", err
+		return "", errors.Join(err, b.unstage(ctx, dir))
 	}
 	h, err := b.Head(ctx, dir)
 	return h.Commit, err
+}
+
+// DropCommit checks the contract's preconditions, then runs git reset --keep
+// to the commit's only parent.
+func (b *Backend) DropCommit(ctx context.Context, dir, commit string) error {
+	if err := checkRevisions(commit); err != nil {
+		return err
+	}
+	s, err := b.Status(ctx, dir)
+	if err != nil {
+		return err
+	}
+	if err = vcs.CheckDrop(s, commit); err != nil {
+		return err
+	}
+	args := []string{"merge-base", "--is-ancestor", commit, "@{upstream}"}
+	res, err := b.exec(ctx, dir, args...)
+	switch {
+	case err != nil:
+		return err
+	case res.ExitCode == 0:
+		return fmt.Errorf("drop commit %s: %w", commit, vcs.ErrPublished)
+	case res.ExitCode != 1:
+		return b.commandError(args, res)
+	}
+	res, err = b.repo(ctx, dir, "rev-list", "--parents", "--max-count=1", commit)
+	if err != nil {
+		return err
+	}
+	// rev-list --parents prints the commit followed by its parents.
+	const commitAndParent = 2
+	ids := strings.Fields(string(res.Stdout))
+	if len(ids) != commitAndParent {
+		return fmt.Errorf("drop commit %s: not a single-parent commit: %w", commit, vcs.ErrInvalidArgument)
+	}
+	_, err = b.repo(ctx, dir, "reset", "--quiet", "--keep", ids[1])
+	return err
+}
+
+// unstage resets the index to HEAD after a refused commit, keeping the
+// working tree; an unborn branch has no HEAD and keeps its index.
+func (b *Backend) unstage(ctx context.Context, dir string) error {
+	h, err := b.Head(ctx, dir)
+	if err != nil || h.Unborn() {
+		return err
+	}
+	_, err = b.repo(ctx, dir, "reset", "--quiet")
+	return err
 }
 
 // Push runs git push --porcelain with an explicit refspec, never forcing.

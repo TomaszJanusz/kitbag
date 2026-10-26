@@ -47,6 +47,7 @@ func runContract(t *testing.T, newSubject factory) {
 	t.Run("PullSkipsDirty", s.testPullSkipsDirty)
 	t.Run("PullLeavesDiverged", s.testPullLeavesDiverged)
 	t.Run("PushRejectsNonFF", s.testPushRejectsNonFastForward)
+	t.Run("DropCommit", s.testDropCommit)
 	t.Run("Branches", s.testBranches)
 	t.Run("ReadIdentity", s.testReadIdentity)
 	t.Run("RemoteURL", s.testRemoteURL)

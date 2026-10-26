@@ -193,10 +193,12 @@ linters:
             - pkg: github.com/santhosh-tekuri/jsonschema/v6
               desc: JSON Schema validation is a test-only dependency of internal/schemacheck.
         manifest-toml:
-          files: ["$all", "!**/pkg/manifest/*.go", "!**/internal/config/*.go"]
+          # internal/core/manifestedit locates kitbag.toml lines with the same
+          # go-toml/v2/unstable parser pkg/manifest uses for positions (ADR 12).
+          files: ["$all", "!**/pkg/manifest/*.go", "!**/internal/config/*.go", "!**/internal/core/manifestedit/*.go"]
           deny:
             - pkg: github.com/pelletier/go-toml/v2
-              desc: TOML parsing belongs in pkg/manifest or internal/config.
+              desc: TOML parsing belongs in pkg/manifest, internal/config or internal/core/manifestedit.
         manifest-host:
           # Public parsing code and its tests use injected platform contracts.
           files: ["**/pkg/manifest/*.go", "**/pkg/manifest/**/*.go"]

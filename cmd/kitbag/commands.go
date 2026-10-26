@@ -106,7 +106,7 @@ func (c *commandLine) service(ctx context.Context) (workflow.Service, error) {
 	if err != nil {
 		return workflow.Service{}, err
 	}
-	return workflow.Service{Host: c.host, Backend: backend, Store: store, Config: c.config, Repository: repo, Version: toolVersion(), HostFlag: c.flags.host, ModeFlag: c.flags.mode, Now: time.Now, Adapters: c.adapters}, nil
+	return workflow.Service{Host: c.host, Backend: backend, Store: store, Config: c.config, Repository: repo, Version: toolVersion(), HostFlag: c.flags.host, ModeFlag: c.flags.mode, Now: time.Now, Adapters: c.adapters, Kinds: agentHomes()}, nil
 }
 
 // A development build has no release version; it may only consume manifests

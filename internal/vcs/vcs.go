@@ -3,6 +3,7 @@ package vcs
 import (
 	"context"
 	"errors"
+	"fmt"
 )
 
 // DefaultRemote is the remote a clone creates and that [Backend.Fetch] and
@@ -31,6 +32,12 @@ var (
 	// before running Git, such as a relative directory or a revision that
 	// looks like an option.
 	ErrInvalidArgument = errors.New("invalid argument")
+	// ErrDirty reports local changes, untracked files included, that an
+	// operation refuses to touch.
+	ErrDirty = errors.New("the working copy has local changes")
+	// ErrPublished reports a commit already reachable from the upstream
+	// branch, which [Backend.DropCommit] never removes.
+	ErrPublished = errors.New("commit is already on the upstream branch")
 )
 
 // Backend is a Git implementation. Every dir argument is the absolute path of
@@ -64,8 +71,17 @@ type Backend interface {
 	Preview(ctx context.Context, dir, from, to string) (string, error)
 	// Commit records every change in the working tree, including new and
 	// deleted files, and returns the new commit. A clean working tree fails
-	// with [ErrNothingToCommit].
+	// with [ErrNothingToCommit]. A commit that fails after staging, for
+	// example because a hook refuses it, unstages again: the index matches
+	// HEAD and the working tree is unchanged.
 	Commit(ctx context.Context, dir string, opts CommitOptions) (string, error)
+	// DropCommit removes commit, which must be the HEAD of the current
+	// branch, have exactly one parent and not be reachable from the upstream
+	// (never pushed), by moving the branch and the clean working tree back to
+	// its parent. It exists so a caller can rebuild a commit it has just made
+	// after its push was rejected; any other commit, a published one
+	// ([ErrPublished]) and a working copy with changes ([ErrDirty]) are refused.
+	DropCommit(ctx context.Context, dir, commit string) error
 	// Push sends a local branch to the branch of the same name on
 	// [DefaultRemote]. It never forces; a rejection fails with
 	// [ErrPushRejected].
@@ -206,4 +222,20 @@ func (k ChangeKind) String() string {
 		return "untracked"
 	}
 	return "unknown"
+}
+
+// CheckDrop applies [Backend.DropCommit]'s preconditions that a status shows;
+// backends add the reachability and parent checks.
+func CheckDrop(s Status, commit string) error {
+	switch {
+	case s.Detached():
+		return fmt.Errorf("drop commit: %w", ErrDetachedHead)
+	case s.Upstream == "" || s.UpstreamGone:
+		return fmt.Errorf("drop commit on %s: %w", s.Branch, ErrNoUpstream)
+	case !s.Clean():
+		return fmt.Errorf("drop commit: %w", ErrDirty)
+	case commit == "" || s.Commit != commit:
+		return fmt.Errorf("drop commit %s: not the HEAD of %s: %w", commit, s.Branch, ErrInvalidArgument)
+	}
+	return nil
 }

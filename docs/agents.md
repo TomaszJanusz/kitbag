@@ -711,3 +711,112 @@ even for missing, unreadable or outside-HOME candidates; a failed HOME probe or
 other operational failure is 1; invalid configuration, manifest or arguments are
 2; incompatible manifest/tool versions are 4; Windows runtime is 5. There is no
 mutation, recovery or conflict operation in this command.
+
+## Add, edit and remove instances
+
+```sh
+kitbag agent add --agent <kind> --name <instance> --dir <path> [--target <t>] [--settings on|off] [--dry-run] [--json] [--yes]
+kitbag agent edit <target-or-kind>/<name> [--dir <path>] [--settings on|off] [--dry-run] [--json] [--yes]
+kitbag agent remove <target-or-kind>/<name> [--dry-run] [--json] [--yes]
+```
+
+This is the v1 slice of [ADR 12](adr/0012-agent-instance-discovery.md#v1-slice-shipped-first).
+Every change edits the shared `kitbag.toml` in the working copy and applies to
+**all hosts**: a global `--host` is refused, because per-host instances need
+manifest schema 2. A target whose instance set a `[hosts.<h>.targets.<t>.instances]`
+table replaces is refused too, since an all-hosts edit would not reach that host;
+edit such a manifest by hand.
+
+**Validation** uses the manifest parser and the adapters' discovery table:
+the kind must be a native kind (`claude`, `codex`, `gemini`, `opencode`;
+`generic` needs explicit roots and stays a hand edit), the name must follow the
+manifest name grammar and be free in its target, and the directory must be
+below HOME (`~/...`, `~`-relative or absolute; it is stored as `~/...`) and not
+declared by another instance of the kind (compared case-insensitively). A
+missing directory is allowed with a warning (sync skips it until the agent
+creates it); a file in its place is refused. `--settings` is accepted only for a
+target that declares a settings fragment. Without `--target`, `add` uses the
+kind's only target or creates `[targets.<kind>]`; with several, choose one.
+`edit` and `remove` name the instance by its target, or by an agent kind used by
+exactly one target.
+
+Adding the first listed instance to a target also declares the kind's
+documented default directory (`~/.claude`, `~/.codex`, `~/.gemini` or
+`~/.config/opencode`) as instance `main` (`default` when the new instance is
+called `main`), because listing any instance replaces the implicit default.
+Removing a target's last listed instance is refused for the same reason: the
+target would start managing its default directory.
+
+**Editing** never re-encodes the file. Only the affected lines and tables are
+inserted, rewritten or deleted; comments, order and layout elsewhere stay byte
+for byte. The result must reparse to the old manifest plus exactly the change.
+Instances or targets written as inline tables or dotted keys are refused (exit 2)
+with a request to edit by hand.
+
+**Preview and confirmation.** A preview shows the change, the manifest diff,
+the generated commit title and how it will be published. On a terminal the
+command asks before writing; without one it needs `--yes`, or `--dry-run`,
+which never writes and exits 0. If `kitbag.toml` changes upstream between the
+preview and the confirmation, the new preview is shown and asked again.
+
+**Publication.** The command holds the state lock, so the daemon cannot sync
+meanwhile. The working copy must be on its configured branch (`repo.branch`
+and `publish.branch` when set), have an upstream, no local changes and no
+unpublished commits. KitBag fast-forwards it, writes `kitbag.toml`, and commits
+only that file with your Git identity (the Git configuration, or
+`git.identity.*` for embedded Git) and a generated Conventional Commit message:
+
+```text
+chore(kitbag): add claude instance second at ~/.claude_2
+
+- add claude instance second at ~/.claude_2
+- declare the default directory ~/.claude as instance main so it stays managed
+
+Kitbag-Host: mac
+Kitbag-Op: agent.add
+```
+
+The message contains only kinds, names and `~/` paths. If the commit fails
+(for example a refusing hook or a missing identity) the file and the index are
+restored, so the clone never stays dirty and sync keeps pulling. Then, by the
+host's publish mode (`[publish]`, overridden by `[hosts.<h>.publish]`):
+
+| Mode | What happens | `publication.state` |
+| --- | --- | --- |
+| `direct` | Push without force. A rejected push (the branch moved) is fetched, the local commit dropped and the **same** change prepared again on the new `kitbag.toml`, committed and pushed once more. | `published` |
+| `direct`, change no longer applies upstream | Nothing is left behind; the working copy is at the new upstream. Exit 3. | `conflict` |
+| `direct`, rejected twice or other push failure | The commit stays local; the command prints `git pull --rebase` and `git push` for the working copy. Exit 1. Sync keeps applying it here until the upstream moves, then stops as diverged. | `not_published` |
+| `pr` | Nothing is written: pull requests are not opened yet. The diff, the title and the commands to propose it on a `kitbag/<kind>-<name>` branch are printed. Exit 0. | `manual` |
+
+**After publishing**, a removal or an edit that moves the instance first hands
+back the directory it no longer declares, by the rules of
+[`kitbag unmanage`](commands.md), limited to that directory and to outputs the
+new manifest does not declare elsewhere:
+
+- unchanged links and copies KitBag made are removed (`discard`);
+- an original KitBag displaced with a one-time backup is restored (`restore`),
+  and merged settings are unmerged, keeping your own keys;
+- an output you changed since KitBag wrote it stays as it is and is released
+  from ownership (`release`) with a warning, so no later sync touches it;
+- the directory itself and every other file stay; nothing is deleted that
+  KitBag did not create unchanged.
+
+Then the normal sync runs in the same lock and its result is printed (it may
+exit 1, for example for a directory that does not exist yet). A repeated
+`kitbag sync` has nothing left to do for the released directory.
+
+Turning `--settings off` stops merging for that instance; keys already merged
+stay until you remove them or run `kitbag unmanage`.
+
+`--json` (with `--yes` or `--dry-run`) emits `agent_change_schema: 1`, validated
+against [agent-change.schema.json](../schemas/agent-change.schema.json): `plan`
+(normalized `change`, `revision` of the manifest it was made from, `title`,
+`message`, `diff` lines, `dropped_dir`, `warnings`), `manifest`,
+`revision_after`, `publication` (`state`, `mode`, `branch`, `commit`, `reason`,
+`next`, `attempts`), `released` and `sync` (null when they did not run) and
+`dry_run`.
+
+Exit codes: 0 published and synchronized, previewed or manual; 1 not published
+or a sync warning; 2 invalid arguments, validation, refused layout, dirty or
+diverged working copy, unsupported scope; 3 the manifest changed since the
+preview or the change no longer applies upstream; 4 tool too old.
