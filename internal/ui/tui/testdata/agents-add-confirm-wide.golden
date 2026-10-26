@@ -10,16 +10,16 @@ claude                                                                   | Sourc
   [found, not declared]                                                  | Next sync        installs the shared
   /srv/claude                                                            |                  configuration here
     outside the home directory; cannot be declared · from CLAUDE_CONFIG… |
-  /home/user/.claude_3                                                   | [a] Add agent  [e] Edit  [d] Remove
-    pres+ Add an agent instance: Confirm ----------------------------------------------------------------------+fresh
+  /home/+------------------------------------------------------------------------------------------------------+
+    pres| Add an agent instance: Confirm                                                                   esc |fresh
 codex   | Step 6/7                                                                                             |d:
-  codex | Apply writes kitbag.toml for all machines, commits, publishes and syncs this machine.                |
-    pres| Commit: chore(kitbag): add claude instance work at ~/.claude_3                                       |
-  [found| Published directly to main.                                                                          |
-  /home/|   [ Cancel ]> [ Back ]  [ Apply ]                                                                    |
-    pres| Tab/↑/↓: focus · Enter: confirm · Esc/outside click: cancel                                          |
+  codex |                                                                                                      |
+    pres| Apply writes kitbag.toml for all machines, commits, publishes and syncs this machine.                |
+  [found| Commit: chore(kitbag): add claude instance work at ~/.claude_3                                       |
+  /home/| Published directly to main.                                                                          |
+    pres|                                                                                                      |
+        |                                                                    [ Cancel ] > [ Back ]   [ Apply ] |
         +------------------------------------------------------------------------------------------------------+
-                                                                         |
                                                                          |
                                                                          |
                                                                          |

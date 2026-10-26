@@ -9,17 +9,17 @@ claude                                                                   | Sourc
     missing · declared in kitbag.toml · only on laptop · active on this… | Settings         merges shared settings
   [found, not declared]                                                  | Next sync        warns and skips it until the
   /srv/claude                                                            |                  directory exists
-    outside the home directory; cannot be declared · from CLAUDE_CONFIG… |
-codex   + Edit claude/second: Configuration directory ---------------------------------------------------------+
+    outs+------------------------------------------------------------------------------------------------------+
+codex   | Edit claude/second: Configuration directory                                                      esc |
   codex | Step 1/5                                                                                             |fresh
-    pres| The agent's configuration directory below your home directory, for example ~/.claude_2.              |d:
+    pres|                                                                                                      |d:
+        | The agent's configuration directory below your home directory, for example ~/.claude_2.              |
         | Configuration directory: >                                                                           |
         | Now /home/user/.claude_2; leave empty to keep it.                                                    |
         | Directories found on this machine:                                                                   |
         |   ( ) /srv/claude · from CLAUDE_CONFIG_DIR, outside the home directory; cannot be declared           |
-        |   [ Cancel ]  [ Back ] (unavailable)  [ Next ]                                                       |
-        | Tab/↑/↓: focus · Enter: confirm · Esc/outside click: cancel · Space/Enter/click: choose · ←/→:       |
-        | previous/next choice                                                                                 |
+        |                                                                                                      |
+        |                                                       [ Cancel ]   [ Back (unavailable) ]   [ Next ] |
         +------------------------------------------------------------------------------------------------------+
                                                                          |
                                                                          |

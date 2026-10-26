@@ -7,17 +7,17 @@ claude                                                    | Source           dec
     present · declared in kitbag.toml · all hosts · acti… | Hosts            all hosts
   claude/second  /home/user/.claude_2                     | On this host     active on this host
     missing · declared in kitbag.toml · only on laptop ·… | Settings         merges shared settings
-  claude/work  /home/user/.claude_3                       | Next sync        installs the shared
-  + Add an agent instance: Result ---------------------------------------------------------------+
-  | Step 7/7                                                                                     |
-  | What happened to the change.                                                                 |
-  | ✓ Published add claude instance work at ~/.claude_3 as 9b8c7d6e5f4a.                         |
-co| Sync succeeded, 2 changed                                                                    |
-  | The agents list was reloaded.                                                                |:
-  |   [ Cancel ]  [ Back ] (unavailable)> [ Close ]                                              |
-  | Tab/↑/↓: focus · Enter: confirm · Esc/outside click: cancel                                  |
   +----------------------------------------------------------------------------------------------+
-                                                          |
+  | Add an agent instance: Result                                                            esc |
+  | Step 7/7                                                                                     |
+  |                                                                                              |
+  | What happened to the change.                                                                 |
+co| ✓ Published add claude instance work at ~/.claude_3 as 9b8c7d6e5f4a.                         |
+  | Sync succeeded, 2 changed                                                                    |:
+  | The agents list was reloaded.                                                                |
+  |                                                                                              |
+  |                                              [ Cancel ]   [ Back (unavailable) ] > [ Close ] |
+  +----------------------------------------------------------------------------------------------+
                                                           |
                                                           |
                                                           |

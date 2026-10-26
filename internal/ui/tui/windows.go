@@ -17,11 +17,11 @@ type WindowStack struct{ windows []*dialogWindow }
 // reprojection of the same step keeps it; scroll is the first content line
 // shown while a button has the focus.
 type dialogWindow struct {
-	inputs []textinput.Model
-	view   model.DialogView
-	focus  int
-	scroll int
-	moved  bool
+	inputs                  []textinput.Model
+	view                    model.DialogView
+	focus                   int
+	scroll, rows, maxScroll int
+	moved, followFocus      bool
 }
 
 // Push opens a dialog above the current one, preserving underlying focus.
@@ -111,6 +111,7 @@ func (w *dialogWindow) enabled(index int) bool {
 func (w *dialogWindow) setFocus(index, delta int) {
 	count := w.buttons() + len(w.view.Buttons)
 	w.focus = -1
+	w.followFocus = true
 	for range count {
 		index = (index%count + count) % count
 		if w.enabled(index) {
@@ -136,7 +137,10 @@ func (s *WindowStack) Key(msg tea.KeyMsg) model.Msg {
 	if w == nil {
 		return nil
 	}
-	switch name := msg.String(); name {
+	if w.scrollKey(msg.String()) {
+		return nil
+	}
+	switch msg.String() {
 	case keyEscape:
 		s.Pop()
 		return w.view.Cancel
@@ -147,11 +151,7 @@ func (s *WindowStack) Key(msg tea.KeyMsg) model.Msg {
 		w.moved = true
 		w.setFocus(w.focus-1, -1)
 	case keyLeft, keyRight:
-		delta := 1
-		if name == keyLeft {
-			delta = -1
-		}
-		return w.step(msg, delta)
+		return w.horizontalKey(msg)
 	case keyEnter:
 		return s.activate(w)
 	default:
@@ -167,6 +167,7 @@ func (w *dialogWindow) step(msg tea.KeyMsg, delta int) model.Msg {
 		return w.edit(msg)
 	}
 	w.moved = true
+	w.followFocus = true
 	if option := w.option(); option >= 0 {
 		option = min(max(option+delta, 0), len(w.view.Options)-1)
 		w.focus = len(w.view.Fields) + option
@@ -246,5 +247,54 @@ func (s *WindowStack) Remove(id string) {
 			s.windows = s.windows[:len(s.windows)-1]
 			return
 		}
+	}
+}
+
+// scrollKey reserves page/control arrows for body scrolling. Read-only windows
+// also accept plain arrows when their body is taller than the viewport.
+func (w *dialogWindow) scrollKey(name string) bool {
+	delta := 0
+	switch name {
+	case keyPageUp:
+		delta = -max(w.rows, 1)
+	case keyPageDown:
+		delta = max(w.rows, 1)
+	case "ctrl+up":
+		delta = -1
+	case "ctrl+down":
+		delta = 1
+	default:
+		if w.buttons() == 0 && w.maxScroll > 0 {
+			delta = bodyArrow(name)
+		}
+	}
+	if delta == 0 {
+		return false
+	}
+	w.scrollBody(delta)
+	return true
+}
+
+func (w *dialogWindow) scrollBody(delta int) {
+	w.followFocus = false
+	w.scroll = min(max(w.scroll+delta, 0), w.maxScroll)
+}
+
+func (w *dialogWindow) horizontalKey(msg tea.KeyMsg) model.Msg {
+	delta := 1
+	if msg.String() == keyLeft {
+		delta = -1
+	}
+	return w.step(msg, delta)
+}
+
+func bodyArrow(name string) int {
+	switch name {
+	case keyUp, keyVimUp:
+		return -1
+	case keyDown, keyVimDown:
+		return 1
+	default:
+		return 0
 	}
 }

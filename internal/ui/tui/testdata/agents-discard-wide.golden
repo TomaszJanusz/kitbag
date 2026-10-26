@@ -11,15 +11,15 @@ claude                                                                   | Sourc
   /srv/claude                                                            |                  configuration here
     outside the home directory; cannot be declared · from CLAUDE_CONFIG… |
 codex                                                                    | [a] Add agent  [e] Edit  [d] Remove
-  codex (default directory)  /home/user/.codex                           | [p] Look for more directories  [r] Refresh
-    pres+ Add an agent instance: Instance name ----------------------------------------------------------------+d:
-        | Step 2/7      + Discard this change? ------------------------------------------------+               |
+  codex +------------------------------------------------------------------------------------------------------+fresh
+    pres| Add an agent i+----------------------------------------------------------------------+           esc |d:
+        | Step 2/7      | Discard this change?                                             esc |               |
+        |               |                                                                      |               |
         | A short name f| Nothing has been written. Discard the draft and close the wizard?    |               |
-        | Instance name:|   [ Yes ]> [ No ]                                                    |               |
-        |   [ Cancel ]  | Tab/↑/↓: focus · Enter: confirm · Esc/outside click: cancel          |               |
-        | Tab/↑/↓: focus+----------------------------------------------------------------------+               |
+        | Instance name:|                                                                      |               |
+        |               |                                                     [ Yes ] > [ No ] |               |
+        |               +----------------------------------------------------------------------+k ]   [ Next ] |
         +------------------------------------------------------------------------------------------------------+
-                                                                         |
                                                                          |
                                                                          |
                                                                          |

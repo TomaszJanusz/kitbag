@@ -7,16 +7,16 @@ claude                                                    | Source           dec
     present · declared in kitbag.toml · all hosts · acti… | Hosts            all hosts
   claude/second  /home/user/.claude_2                     | On this host     active on this host
     missing · declared in kitbag.toml · only on laptop ·… | Settings         merges shared settings
-  [found, not declared]                                   | Next sync        installs the shared
-  + Add an agent instance: Merge shared settings ------------------------------------------------+
+  +----------------------------------------------------------------------------------------------+
+  | Add an agent instance: Merge shared settings                                             esc |
   | Step 4/7                                                                                     |
+  |                                                                                              |
   | Whether this instance receives the target's shared settings fragment.                        |
-  | > (*) Default (merge shared settings)                                                        |
-co|   ( ) Merge shared settings                                                                  |
-  |   ( ) Do not merge shared settings                                                           |:
-  |   [ Cancel ]  [ Back ]  [ Next ]                                                             |
-  | Tab/↑/↓: focus · Enter: confirm · Esc/outside click: cancel · Space/Enter/click: choose ·    |
-  | ←/→: previous/next choice                                                                    |
+co| > (*) Default (merge shared settings)                                                        |
+  |   ( ) Merge shared settings                                                                  |:
+  |   ( ) Do not merge shared settings                                                           |
+  |                                                                                              |
+  |                                                             [ Cancel ]   [ Back ]   [ Next ] |
   +----------------------------------------------------------------------------------------------+
                                                           |
                                                           |

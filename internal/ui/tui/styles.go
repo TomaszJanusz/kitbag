@@ -7,19 +7,18 @@ import (
 	"github.com/muesli/termenv"
 )
 
-// Basic ANSI colours follow the terminal's own palette and theme.
+// Semantic errors retain the terminal palette; surfaces use explicit fallbacks.
 const (
-	colourRed    = lipgloss.Color("1")
-	colourGreen  = lipgloss.Color("2")
-	colourYellow = lipgloss.Color("3")
-	colourBlue   = lipgloss.Color("4")
-	colourGrey   = lipgloss.Color("8")
+	colourRed   = lipgloss.Color("1")
+	colourGreen = lipgloss.Color("2")
 )
 
 // styles never depend on colour alone: emphasis, markers and labels carry
 // the same information on a monochrome (NO_COLOR) terminal.
 type styles struct {
 	tab, active, heading, faint, warning, failure, success, selected lipgloss.Style
+	primary, secondary, panel, screen                                lipgloss.Style
+	mono                                                             bool
 }
 
 // newStyles uses a private renderer with an explicit profile: no terminal
@@ -28,14 +27,24 @@ func newStyles(profile termenv.Profile) styles {
 	r := lipgloss.NewRenderer(io.Discard)
 	r.SetColorProfile(profile)
 	r.SetHasDarkBackground(true)
+	accent := lipgloss.CompleteColor{TrueColor: "#e9b872", ANSI256: "180", ANSI: "3"}
+	background := lipgloss.CompleteColor{TrueColor: "#181818", ANSI256: "234", ANSI: "0"}
+	panel := lipgloss.CompleteColor{TrueColor: "#242424", ANSI256: "235", ANSI: "0"}
+	foreground := lipgloss.CompleteColor{TrueColor: "#dedbd4", ANSI256: "253", ANSI: "7"}
+	muted := lipgloss.CompleteColor{TrueColor: "#99958e", ANSI256: "246", ANSI: "8"}
 	return styles{
-		tab:      r.NewStyle(),
-		active:   r.NewStyle().Bold(true).Reverse(true),
-		heading:  r.NewStyle().Bold(true).Foreground(colourBlue),
-		faint:    r.NewStyle().Faint(true).Foreground(colourGrey),
-		warning:  r.NewStyle().Foreground(colourYellow),
-		failure:  r.NewStyle().Bold(true).Foreground(colourRed),
-		success:  r.NewStyle().Foreground(colourGreen),
-		selected: r.NewStyle().Bold(true),
+		mono:      profile == termenv.Ascii,
+		primary:   r.NewStyle().Background(accent).Foreground(background).Bold(true),
+		secondary: r.NewStyle().Foreground(muted),
+		panel:     r.NewStyle().Background(panel).Foreground(foreground),
+		screen:    r.NewStyle().Background(background).Foreground(foreground),
+		tab:       r.NewStyle(),
+		active:    r.NewStyle().Bold(true).Reverse(true),
+		heading:   r.NewStyle().Bold(true).Foreground(accent),
+		faint:     r.NewStyle().Foreground(muted),
+		warning:   r.NewStyle().Foreground(accent),
+		failure:   r.NewStyle().Bold(true).Foreground(colourRed),
+		success:   r.NewStyle().Foreground(colourGreen),
+		selected:  r.NewStyle().Bold(true),
 	}
 }

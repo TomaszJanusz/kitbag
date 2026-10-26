@@ -2,17 +2,17 @@
 
 2 declared instances, 3 other directories found
 
-cl+ Add an agent instance: Merge shared settings --------+
-> | Step 4/7                                             |
-  | Whether this instance receives the target's shared   | …
+cl+------------------------------------------------------+
+> | Add an agent instance: Merge shared settings     esc |
+  | Step 4/7                                             | …
+  |                                                      |
+  | Whether this instance receives the target's shared   |c…
   | settings fragment.                                   |
-  | > (*) Default (merge shared settings)                |c…
-  |   ( ) Merge shared settings                          |
-  |   ( ) Do not merge shared settings                   |
-cl|   [ Cancel ]  [ Back ]  [ Next ]                     |
-[a| Tab/↑/↓: focus · Enter: confirm · Esc/outside click: |
-[p| cancel · Space/Enter/click: choose · ←/→:            |
-Di| previous/next choice                                 |
+  | > (*) Default (merge shared settings)                |
+cl|   ( ) Merge shared settings                          |
+[a|   ( ) Do not merge shared settings                   |
+[p|                                                      |
+Di|                     [ Cancel ]   [ Back ]   [ Next ] |
 So+------------------------------------------------------+
 Directory state  present
 Hosts            all hosts

@@ -7,17 +7,17 @@ claude                                                    | Source           dec
     present · declared in kitbag.toml · all hosts · acti… | Hosts            all hosts
   claude/second  /home/user/.claude_2                     | On this host     active on this host
     missing · declared in kitbag.toml · only on laptop ·… | Settings         merges shared settings
-  [found, not declared]                                   | Next sync        installs the shared
-  + Add an agent instance: Instance name --------------------------------------------------------+
-  | Step 2/7                                                                                     |
-co| A short name for this instance, unique within its target.                                    |
-  | Instance name: > Work                                                                        |
-  | ✗ Use up to 64 lowercase letters, digits, dots, underscores or hyphens, starting with a      |
-  | letter or digit.                                                                             |:
-  |   [ Cancel ]  [ Back ]  [ Next ] (unavailable)                                               |
-  | Tab/↑/↓: focus · Enter: confirm · Esc/outside click: cancel                                  |
   +----------------------------------------------------------------------------------------------+
-                                                          |
+  | Add an agent instance: Instance name                                                     esc |
+  | Step 2/7                                                                                     |
+co|                                                                                              |
+  | A short name for this instance, unique within its target.                                    |
+  | Instance name: > Work                                                                        |
+  | ✗ Use up to 64 lowercase letters, digits, dots, underscores or hyphens, starting with a      |:
+  | letter or digit.                                                                             |
+  |                                                                                              |
+  |                                               [ Cancel ]   [ Back ]   [ Next (unavailable) ] |
+  +----------------------------------------------------------------------------------------------+
                                                           |
                                                           |
                                                           |

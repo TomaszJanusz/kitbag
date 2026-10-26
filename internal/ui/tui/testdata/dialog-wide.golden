@@ -11,14 +11,14 @@ Targets       5 in sync, 1 to update, 2 changed locally, 0 conflicts, 0 obstacle
 Connection    Daemon, live updates
 
 Warnings
-- kitbag.toml: unknown agent "zed" ignored
-                        + Add agent -----------------------------------------------------------+
+- kitbag.toml: unknown a+----------------------------------------------------------------------+
+                        | Add agent                                                        esc |
 [s] Sync now  [r] Refres| Step 2/5                                                             |
+                        |                                                                      |
                         | Directory:   ~/.agent draft                                          |
-                        | > [ Back ]  [ Next ]                                                 |
-                        | Tab/↑/↓: focus · Enter: confirm · Esc/outside click: cancel          |
+                        |                                                                      |
+                        |                                                > [ Back ]   [ Next ] |
                         +----------------------------------------------------------------------+
-
 
 
 

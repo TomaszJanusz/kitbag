@@ -8,6 +8,205 @@ own: keys become model intents, every text comes from the catalog in
 Lip Gloss and the Bubbles line editor); the `terminal-renderer` depguard rule
 keeps these libraries out of every other package.
 
+## Visual design v2
+
+The home screen is a quiet starting point: a compact pixel wordmark, one status
+headline and one menu. Repository identity, version and help sit on the edges.
+Details appear only after opening a screen or dialog. Space is intentional;
+there are no dashboard cards or persistent tab bar. This section is the design
+contract for the staged implementation below.
+
+### Principles and palette
+
+- One warm accent identifies the primary action and selection. Normal status is
+  muted grey; existing warning and failure semantics remain explicit in words.
+- Buttons have a filled rectangular surface (primary) or muted outline
+  (secondary), a visible focus marker, and an explicit unavailable label.
+- Dialog titles align left, a small `esc` hint aligns right. Body text is muted;
+  buttons align right at the bottom. Colour panels have no heavy frame.
+- Keyboard and mouse use the same geometry and model intents. Resizing preserves
+  selection, drafts and dialog focus. Nothing can draw beyond the viewport.
+- All labels, hints and state summaries come from the catalog and shared view
+  models. The renderer owns layout, focus, scrolling and decorative logo pixels.
+
+| Role | Truecolor | 256 colours | 16 colours | NO_COLOR / monochrome |
+| --- | --- | --- | --- | --- |
+| Screen | `#181818` | 234 | black (0) | terminal background |
+| Dialog panel | `#242424` | 235 | black (0) | ASCII frame `+--+`, vertical sides |
+| Text | `#dedbd4` | 253 | white (7) | plain text |
+| Muted | `#99958e` | 246 | bright black (8) | plain text, positional hierarchy |
+| Accent / primary | `#e9b872` | 180 | yellow (3) | `[ Label ]` |
+| Primary text | `#181818` | 234 | black (0) | plain text |
+| Warning | `#e9b872` | 180 | yellow (3) | explicit warning text |
+| Failure | terminal red | red (1) | red (1) | explicit error text |
+| Focus | `> ` + emphasis | same | same | `> [ Label ]` |
+| Disabled | muted + unavailable label | same | same | `[ Label (unavailable) ]` |
+
+Profiles are selected from TERM/COLORTERM without terminal queries. NO_COLOR
+and ui.color=never suppress **all** ANSI styling and use the plain wordmark.
+ANSI fallback colours use the terminal palette; the two dark surfaces can be
+identical on 16-colour terminals, so spacing and focus markers still carry the
+hierarchy. No capability depends on colour alone.
+
+### Home mockups
+
+These ASCII layouts show placement in the stated viewport (blank space is
+abbreviated above and below the centered content). The implementation uses
+block pixels for the wordmark when colour is available and the viewport has
+space; ASCII/plain mode uses `kitbag`. Values are examples, never renderer text.
+The status line is focusable above the menu; its Enter action opens Status.
+
+120×35:
+
+```text
+
+                                                 kitbag [pixel wordmark]
+
+                                    Everything is in sync · checked 2 min ago
+
+                                         +------------------------------------+
+                                         | > Sync now                       s |
+                                         |   Agents                 4       a |
+                                         |   Drift                          d |
+                                         |   Settings                       c |
+                                         |   Activity                       l |
+                                         +------------------------------------+
+
+ /repo/kitbag · main                                  ? help · q quit                                      kitbag 0.1.2
+```
+
+80×24:
+
+```text
+
+                             kitbag [pixel wordmark]
+
+                  Everything is in sync · checked 2 min ago
+
+                     +------------------------------------+
+                     | > Sync now                       s |
+                     |   Agents                 4       a |
+                     |   Drift                          d |
+                     |   Settings                       c |
+                     |   Activity                       l |
+                     +------------------------------------+
+
+ /repo/kitbag · main              ? help · q quit                     kitbag 0.1.2
+```
+
+60×20 (plain logo below the pixel breakpoint):
+
+```text
+
+                           kitbag
+
+        Everything is in sync · checked 2 min ago
+
+           +------------------------------------+
+           | > Sync now                       s |
+           |   Agents                 4       a |
+           |   Drift                          d |
+           |   Settings                       c |
+           |   Activity                       l |
+           +------------------------------------+
+
+ /repo · main         ? help · q quit          kitbag 0.1.2
+```
+
+At 40×10 the plain logo, one truncated headline and five menu rows fit; the
+secondary status line and decorative menu padding disappear. Below 40×10 only
+the catalog's enlarge-terminal notice appears. Edge fields truncate independently
+and never overwrite help. A problem replaces the normal headline; at most one
+secondary line shows stale-check/service/version warnings or the latest outcome.
+Status retains the complete repository, branch/upstream, working copy, last
+sync/check, next check, targets, connection and warning details.
+
+### Dialog presets
+
+The following ASCII frames illustrate the monochrome fallback. In colour, a
+slightly lighter panel replaces the frame, with the same padding and geometry.
+`[ Yes ]`, `[ Next ]`, `[ Finish ]` and `[ OK ]` are filled accent blocks;
+No/Back are secondary. The focused control also carries `> `.
+
+Confirmation (Yes/No, No initially focused):
+
+```text
++------------------------------------------------------+
+| Remove stored setting?                           esc |
+|                                                      |
+| Remove host from config.toml? The effective value     |
+| will be resolved again using the normal precedence.  |
+|                                                      |
+|                                 [ Yes ]   > [ No ]   |
++------------------------------------------------------+
+```
+
+Form (Back/Next; final step uses Finish):
+
+```text
++------------------------------------------------------+
+| Add agent                                        esc |
+| Step 2/5                                             |
+|                                                      |
+| Directory: > ~/.agent                                |
+| Choose a directory for this instance.                |
+|                                                      |
+|                                  [ Back ] [ Next ]   |
++------------------------------------------------------+
+```
+
+Scrollable information (Help, Status or target details):
+
+```text
++------------------------------------------------------+
+| Keyboard                                         esc |
+|                                                      |
+| Up/Down or k/j: move the selection                    |
+| Enter: open the selected item                        |
+| ...                                                  |
+|                                                      |
+| scroll ↑/↓                              > [ OK ]     |
++------------------------------------------------------+
+```
+
+Long confirm messages and forms use the same scroll hint and fixed button row.
+At 80×24 the panel caps at 72 columns; at 60×20 it has 56 columns; at the minimum
+40×10 it has 36 columns. The body scrolls, long labels truncate, and focus brings
+a field into view. Many buttons wrap into right-aligned rows; the focused row
+stays visible. Esc and outside click cancel only the top dialog. Scroll wheel,
+PgUp/PgDn and Ctrl-Up/Ctrl-Down scroll the body; Up/Down also scroll read-only
+bodies, while Tab/Shift-Tab traverse enabled controls. No disabled button acts.
+
+### Navigation and key map
+
+Home opens Screens, each with a small top-edge breadcrumb `kitbag › Settings`.
+Esc or q returns home; Esc first closes a dialog, editor or target detail.
+Ctrl-C quits everywhere; q quits on home. A dialog traps input until dismissed.
+Settings retains responsive master/detail panes, Drift shows list/detail and
+Activity retains its bounded scroll/follow log. Agents migrates only after the
+independent Agents TUI branch merges; its files are not edited before then.
+
+| Context | Keys / mouse | Result |
+| --- | --- | --- |
+| Home | ↑/↓, k/j, Tab/Shift-Tab | Select status or menu row |
+| Home | Enter or click row | Open selected screen; Sync now starts sync |
+| Home | s / a / d / c / l | Sync / Agents / Drift / Settings / Activity |
+| Anywhere outside an editor/dialog | i / 1 | Status details |
+| Anywhere outside an editor/dialog | 2 / 3 / 4 / 5 | Drift / Settings / Activity / Agents |
+| Screen | Esc / q; click breadcrumb | Return home |
+| Everywhere outside an editor/dialog | r / s / ? | Refresh / sync / help |
+| Settings | a / Enter / w / u | Advanced / edit / save draft / confirm unset |
+| Editor | Enter / Esc; ←/→/Space or option click | Save / cancel / choose |
+| Activity | f / ↑/↓ / PgUp/PgDn; wheel | Follow / scroll |
+| Dialog | Tab/Shift-Tab, arrows; click button | Focus / activate enabled button |
+| Dialog | Enter / Esc; outside click | Activate / cancel top dialog |
+| Scrollable dialog | wheel / PgUp/PgDn / Ctrl-↑/↓ | Scroll body |
+| Home / anywhere | q / Ctrl-C | Quit / quit |
+
+Delivery is three focused PRs: (1) this design and isolated buttons/dialogs,
+(2) home and screen navigation, (3) post-merge Agents navigation/style migration.
+No model-side dialog contract from PR #85 changes.
+
 ## Connection
 
 Like `kitbag status`, the interface uses the [local API](api/README.md) when the

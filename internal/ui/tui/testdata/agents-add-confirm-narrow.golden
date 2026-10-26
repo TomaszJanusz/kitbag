@@ -2,18 +2,18 @@
 
 2 declared instances, 3 other directories found
 
-cl+ Add an agent instance: Confirm ----------------------+
-> | Step 6/7                                             |
-  | Apply writes kitbag.toml for all machines, commits,  | …
+cl+------------------------------------------------------+
+> | Add an agent instance: Confirm                   esc |
+  | Step 6/7                                             | …
+  |                                                      |
+  | Apply writes kitbag.toml for all machines, commits,  |c…
   | publishes and syncs this machine.                    |
-  | Commit: chore(kitbag): add claude instance work at   |c…
-  | ~/.claude_3                                          |
-  | Published directly to main.                          |
-cl|   [ Cancel ]> [ Back ]  [ Apply ]                    |
-[a| Tab/↑/↓: focus · Enter: confirm · Esc/outside click: |
-[p| cancel                                               |
-Di+------------------------------------------------------+
-Source           declared in kitbag.toml
+  | Commit: chore(kitbag): add claude instance work at   |
+cl| ~/.claude_3                                          |
+[a| Published directly to main.                          |
+[p|                                                      |
+Di|                    [ Cancel ] > [ Back ]   [ Apply ] |
+So+------------------------------------------------------+
 Directory state  present
 Hosts            all hosts
 On this host     active on this host
