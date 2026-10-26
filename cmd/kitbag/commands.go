@@ -43,7 +43,7 @@ type commandLine struct {
 func (c *commandLine) root() *cobra.Command {
 	root := &cobra.Command{
 		Use: "kitbag", Short: "Synchronize coding-agent configuration", SilenceUsage: true, SilenceErrors: true, DisableAutoGenTag: true,
-		RunE:              func(*cobra.Command, []string) error { return fmt.Errorf("%s", usage) },
+		RunE:              func(*cobra.Command, []string) error { return fmt.Errorf("%s\n%s", usage, firstRun) },
 		PersistentPreRunE: c.prepare,
 	}
 	root.SetOut(c.stdout)

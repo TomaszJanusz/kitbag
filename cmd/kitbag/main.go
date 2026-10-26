@@ -21,6 +21,7 @@ var version = "dev"
 
 const (
 	usage             = "usage: kitbag [flags] <agent|config|service|daemon|init|sync|plan|status|tui|doctor|adopt|unmanage|revert|self-update|version>"
+	firstRun          = "first time here? run kitbag init to create or connect your configuration repository"
 	exitFailure       = int(apply.Warnings)
 	exitUsage         = int(apply.Usage)
 	exitUnsupportedOS = int(apply.UnsupportedOS)
