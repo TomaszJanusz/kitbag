@@ -2,14 +2,15 @@ package model
 
 import (
 	"strconv"
-	"time"
 
+	"github.com/TomaszJanusz/kitbag/internal/timefmt"
 	"github.com/TomaszJanusz/kitbag/internal/ui/model/text"
 )
 
 // Status tracks the status snapshot, this renderer's sync and live hints.
 // Results carry sequence numbers: an older load never overwrites a newer one.
 type Status struct {
+	clock       timefmt.Clock
 	problem     *Error
 	syncProblem *Error
 	outcome     *SyncOutcome
@@ -220,7 +221,7 @@ func (m *Status) rows() []Row {
 	}
 	last := text.New(text.StatusNeverSynced)
 	if s.LastSync != nil {
-		last = text.New(text.StatusLastSyncValue, text.Plain(s.LastSync.At.UTC().Format(time.RFC3339)), ResultText(s.LastSync.ExitCode), number(s.LastSync.Changed))
+		last = text.New(text.StatusLastSyncValue, WhenText(m.clock, s.LastSync.At), ResultText(s.LastSync.ExitCode), number(s.LastSync.Changed))
 	}
 	d := s.Drift
 	return []Row{

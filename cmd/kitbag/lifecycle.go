@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -225,7 +224,7 @@ func (c *commandLine) printHistory(history []undo.Applied, asJSON bool) error {
 		if applied.Adopted {
 			kind = "adopted"
 		}
-		if _, err := fmt.Fprintf(c.stdout, "%d  %s  %s %d path(s)  %s\n", applied.Number, applied.AppliedAt.Format(time.RFC3339), kind, len(applied.Paths), applied.ID); err != nil {
+		if _, err := fmt.Fprintf(c.stdout, "%d  %s  %s %d path(s)  %s\n", applied.Number, c.clock.Stamp(applied.AppliedAt), kind, len(applied.Paths), applied.ID); err != nil {
 			return err
 		}
 	}

@@ -181,12 +181,18 @@ const (
 	LogSettingFailed Key = "log.setting_failed"
 	LogEventUnknown  Key = "log.event_unknown"
 	LogEmpty         Key = "log.empty"
-	LogDropped       Key = "log.dropped"
-	LogFollowing     Key = "log.following"
-	LogPaused        Key = "log.paused"
-	LogLevelInfo     Key = "log.level_info"
-	LogLevelWarning  Key = "log.level_warning"
-	LogLevelFailure  Key = "log.level_failure"
+
+	TimeWithAgo     Key = "time.with_ago"
+	TimeJustNow     Key = "time.just_now"
+	TimeMinutesAgo  Key = "time.minutes_ago"
+	TimeHoursAgo    Key = "time.hours_ago"
+	TimeDaysAgo     Key = "time.days_ago"
+	LogDropped      Key = "log.dropped"
+	LogFollowing    Key = "log.following"
+	LogPaused       Key = "log.paused"
+	LogLevelInfo    Key = "log.level_info"
+	LogLevelWarning Key = "log.level_warning"
+	LogLevelFailure Key = "log.level_failure"
 
 	// Terminal renderer chrome: tabs, help and layout notices.
 	TerminalTooSmall Key = "terminal.too_small"
@@ -367,6 +373,11 @@ func formText() []entry {
 		{LogSettingFailed, "Could not save %s: %s"},
 		{LogEventUnknown, "Unrecognized event %s"},
 		{LogEmpty, "No activity yet"},
+		{TimeWithAgo, "%s (%s)"},
+		{TimeJustNow, "just now"},
+		{TimeMinutesAgo, "%s min ago"},
+		{TimeHoursAgo, "%s h ago"},
+		{TimeDaysAgo, "%s d ago"},
 		{LogDropped, "%s older entries dropped"},
 		{LogFollowing, "Following new entries"},
 		{LogPaused, "Scrolling; press f to follow new entries"},

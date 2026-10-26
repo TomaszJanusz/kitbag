@@ -9,12 +9,8 @@ import (
 	"github.com/TomaszJanusz/kitbag/internal/ui/model/text"
 )
 
-const (
-	// logTime is the activity timestamp layout (local time of day).
-	logTime = "15:04:05"
-	// settingsSpacing counts the blank lines around the settings list.
-	settingsSpacing = 2
-)
+// settingsSpacing counts the blank lines around the settings list.
+const settingsSpacing = 2
 
 func (m *Model) statusView() []string {
 	view := m.app.Status.View()
@@ -210,5 +206,5 @@ func (m *Model) logLine(entry model.LogEntry) string {
 		level, style = text.New(text.LogLevelFailure), m.styles.failure
 	case model.Info:
 	}
-	return m.styles.faint.Render(entry.At.Format(logTime)) + " " + style.Render(m.say(level)+" "+m.say(entry.Text))
+	return m.styles.faint.Render(entry.Time) + " " + style.Render(m.say(level)+" "+m.say(entry.Text))
 }

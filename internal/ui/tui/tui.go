@@ -18,6 +18,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/muesli/termenv"
 
+	"github.com/TomaszJanusz/kitbag/internal/timefmt"
 	"github.com/TomaszJanusz/kitbag/internal/ui/model"
 	"github.com/TomaszJanusz/kitbag/internal/ui/model/text"
 )
@@ -34,6 +35,8 @@ type Profile = termenv.Profile
 // Options configures a renderer. Profile is the terminal's colour capability;
 // NoColour (NO_COLOR or ui.color=never) forces monochrome output.
 type Options struct {
+	// Clock sets the zone and relative hints of displayed times (zero: UTC, no hints).
+	Clock       timefmt.Clock
 	Runner      model.Runner
 	Catalog     text.Catalog
 	Profile     Profile
@@ -100,7 +103,7 @@ func New(opts Options) *Model {
 	// A static cursor avoids a blink timer redrawing the screen.
 	input.Cursor.SetMode(cursor.CursorStatic)
 	return &Model{
-		ctx: ctx, cancel: cancel, app: model.NewApp(opts.LogCapacity), runner: opts.Runner, catalog: catalog,
+		ctx: ctx, cancel: cancel, app: model.NewApp(opts.LogCapacity, opts.Clock), runner: opts.Runner, catalog: catalog,
 		results: make(chan any), workers: &sync.WaitGroup{}, queue: newQueue(), styles: newStyles(profile), input: input, follow: true,
 	}
 }
