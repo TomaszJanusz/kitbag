@@ -147,6 +147,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			panic(result.value)
 		case model.Msg:
 			m.dispatch(result)
+			m.editResult(result)
 			m.settle()
 		}
 		return m, m.listen()
@@ -156,7 +157,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		return m, m.key(msg)
 	case tea.MouseMsg:
-		m.mouse(msg)
+		return m, m.mouse(msg)
 	}
 	return m, nil
 }
@@ -187,5 +188,11 @@ func Run(ctx context.Context, opts Options, input io.Reader, output io.Writer) e
 		return ctx.Err()
 	default:
 		return fmt.Errorf("terminal interface: %w", err)
+	}
+}
+
+func (m *Model) editResult(result model.Msg) {
+	if written, ok := result.(model.SettingWritten); ok && m.editing && written.Key == m.field().Path && written.Err == nil {
+		m.stopEdit()
 	}
 }

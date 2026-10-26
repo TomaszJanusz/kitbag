@@ -51,8 +51,8 @@ func TestEveryKeyHasAnEnglishDefault(t *testing.T) {
 	}
 	for _, setting := range settingskey.Registry() {
 		key := SettingDescription(setting.Path)
-		if catalog[key] != setting.Description || keys[key] != "" {
-			t.Errorf("%s description not taken from the registry", setting.Path)
+		if strings.TrimSpace(catalog[key]) == "" || keys[key] != "" {
+			t.Errorf("%s description missing from the catalog", setting.Path)
 		}
 		keys[key] = setting.Path
 	}

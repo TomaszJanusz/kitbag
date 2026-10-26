@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/TomaszJanusz/kitbag/internal/core/settings"
 	"github.com/TomaszJanusz/kitbag/internal/ui/model"
 )
 
@@ -15,6 +16,7 @@ import (
 type fakeClient struct {
 	statusErr    error
 	settingErr   error
+	configData   string
 	phases       chan string
 	events       chan model.Event
 	writes       chan [2]string
@@ -49,10 +51,13 @@ func newFake() *fakeClient {
 			}},
 		}},
 		settings: []model.SettingValue{
-			{Key: "host", Value: "laptop", Source: model.SourceFile},
+			{Key: "host", Value: "laptop", Source: model.SourceFile, Hosts: []string{"laptop", "mac"}},
 			{Key: "repo.url", Source: model.SourceDefault},
 			{Key: "git.backend", Value: "auto", Source: model.SourceDefault},
 			{Key: "sync.poll_interval", Value: "60s", Source: model.SourceDefault},
+			{Key: "daemon.update_check", Value: "true", Source: model.SourceDefault},
+			{Key: "daemon.debounce", Value: "500ms", Source: model.SourceDefault},
+			{Key: "ui.color", Value: "auto", Source: model.SourceDefault},
 			{Key: "sync.mode", Value: "copy", Name: "KITBAG_MODE", Source: model.SourceEnvironment},
 		},
 	}
@@ -110,6 +115,11 @@ func (f *fakeClient) Settings(context.Context) ([]model.SettingValue, error) {
 func (f *fakeClient) SetSetting(_ context.Context, key, value string) error {
 	defer f.enter()()
 	f.writes <- [2]string{key, value}
+	if f.configData != "" {
+		if _, err := settings.Changed([]byte(f.configData), key, value, false); err != nil {
+			return &model.Error{Kind: model.ErrInvalid, Err: err}
+		}
+	}
 	if f.settingErr != nil {
 		return f.settingErr
 	}

@@ -128,7 +128,11 @@ const (
 // SettingValue is one effective setting; Name is the flag or variable name.
 type SettingValue struct {
 	Key, Value, Name string
-	Source           SourceKind
+	// Hosts, GitValue and LegacyDetected are optional local presentation context.
+	GitValue       string
+	Source         SourceKind
+	Hosts          []string
+	LegacyDetected bool
 }
 
 // EventKind identifies a lifecycle hint.

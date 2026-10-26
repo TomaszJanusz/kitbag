@@ -8,12 +8,19 @@ import (
 
 // mouse turns a mouse event into the same intents and view state changes as
 // the keyboard: tabs switch, lists select and the wheel scrolls. The overlay
-// and the settings editor swallow the mouse like they swallow keys, and
-// nothing runs before the first size is known.
-func (m *Model) mouse(msg tea.MouseMsg) {
-	if m.help || m.editing || m.width < MinWidth || m.height < MinHeight {
-		return
+// swallows the mouse; the settings editor accepts only option clicks.
+// Nothing runs before the first size is known.
+func (m *Model) mouse(msg tea.MouseMsg) tea.Cmd {
+	if m.mouseUnavailable() {
+		return nil
 	}
+	if m.outsideScreen(msg.X, msg.Y) {
+		return nil
+	}
+	if m.editing {
+		return m.editorMouse(msg)
+	}
+
 	switch {
 	case msg.Action != tea.MouseActionPress:
 	case msg.Button == tea.MouseButtonLeft:
@@ -23,6 +30,7 @@ func (m *Model) mouse(msg tea.MouseMsg) {
 	case msg.Button == tea.MouseButtonWheelDown:
 		m.wheel(1)
 	}
+	return nil
 }
 
 func (m *Model) click(x, y int) {
@@ -81,4 +89,37 @@ func (m *Model) wheel(direction int) {
 	case m.tab == logTab:
 		m.scrollLog(direction, m.logRows())
 	}
+}
+
+// clickOption uses the same rendered option geometry as the screen.
+func (m *Model) clickOption(x, y int) tea.Cmd {
+	field := m.field()
+	if field.Saving {
+		return nil
+	}
+	layout, detail := m.settingsLayout(m.height - chromeLines)
+	_, options := m.optionLayout(field)
+	// Options end the detail, followed by optional text input and one hint.
+	top := layout.top() + layout.rows + 1 + len(detail) - len(options.lines) - len(m.editorHint(field))
+	if field.TextEntry {
+		top--
+	}
+	for _, hit := range options.hits {
+		if y == top+hit.y && x >= hit.start && x < hit.end {
+			m.dispatch(model.ChooseSetting{Key: field.Path, Index: hit.index})
+			return m.syncInput()
+		}
+	}
+	return nil
+}
+
+func (m *Model) mouseUnavailable() bool { return m.help || m.width < MinWidth || m.height < MinHeight }
+
+func (m *Model) outsideScreen(x, y int) bool { return x < 0 || y < 0 || x >= m.width || y >= m.height }
+
+func (m *Model) editorMouse(msg tea.MouseMsg) tea.Cmd {
+	if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft {
+		return m.clickOption(msg.X, msg.Y)
+	}
+	return nil
 }

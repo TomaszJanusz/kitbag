@@ -34,3 +34,9 @@ type CommitConfig struct {
 	Signing    bool
 	SigningKey bool
 }
+
+// IdentityReader is an optional read-only capability for settings hints. Only
+// user.name and user.email are returned; no signing keys or credentials.
+type IdentityReader interface {
+	ReadIdentity(ctx context.Context, dir string) (Identity, error)
+}

@@ -122,6 +122,7 @@ func (m *Model) settingsLayout(height int) (listLayout, []string) {
 	view := m.app.Settings.View()
 	head := m.wrap(m.styles.heading, m.say(view.Headline))
 	head = append(head, m.problem(view.Problem, view.Headline)...)
+	head = append(head, m.say(view.Advanced.Label))
 	if len(view.Fields) == 0 {
 		return listLayout{head: head}, nil
 	}
@@ -141,6 +142,9 @@ func (m *Model) settingsView(height int) []string {
 	lines = append(lines, "")
 	for i, field := range view.Fields[layout.first : layout.first+layout.rows] {
 		name := field.Path
+		if field.Advanced {
+			name = indent + name
+		}
 		if control(field.Actions, model.RevertSetting{Key: field.Path}).Enabled {
 			name += " *"
 		}
@@ -158,12 +162,23 @@ func (m *Model) fieldDetail(field model.FieldView) []string {
 		lines = append(lines, m.wrap(m.styles.warning, m.say(*field.Override))...)
 	}
 	lines = append(lines, m.wrap(m.styles.faint, m.say(field.Default))...)
+	if field.Hint != nil {
+		lines = append(lines, m.wrap(m.styles.faint, m.say(*field.Hint))...)
+	}
 	if len(field.Choices) > 0 {
 		lines = append(lines, m.wrap(m.styles.faint, m.say(text.New(text.SettingChoices, text.Plain(strings.Join(field.Choices, ", ")))))...)
 	}
 	lines = append(lines, m.problem(field.Problem, text.Message{})...)
 	if m.editing {
-		return append(lines, m.input.View(), m.styles.faint.Render(m.say(text.New(text.SettingEditing))))
+		options, _ := m.optionLayout(field)
+		lines = append(lines, options...)
+		if field.TextEntry {
+			lines = append(lines, m.input.View())
+		}
+		return append(lines, m.editorHint(field)...)
+	}
+	if field.Editor == model.SettingReadOnly {
+		return append(lines, m.controls(field.Actions))
 	}
 	return append(lines, m.styles.faint.Render(m.say(text.New(text.SettingListHint))), m.controls(field.Actions))
 }
@@ -207,4 +222,12 @@ func (m *Model) logLine(entry model.LogEntry) string {
 	case model.Info:
 	}
 	return m.styles.faint.Render(entry.Time) + " " + style.Render(m.say(level)+" "+m.say(entry.Text))
+}
+
+func (m *Model) editorHint(field model.FieldView) []string {
+	key := text.SettingPickerHint
+	if field.TextEntry {
+		key = text.SettingEditing
+	}
+	return m.wrap(m.styles.faint, m.say(text.New(key)))
 }

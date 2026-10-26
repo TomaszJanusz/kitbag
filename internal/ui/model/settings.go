@@ -9,12 +9,13 @@ import (
 // registry's own rules on every edit; only a valid, changed draft is saved.
 // The complete file is validated again when it is written.
 type Settings struct {
-	problem *Error
-	fields  []field
-	issued  uint64
-	applied uint64
-	phase   Phase
-	known   bool
+	problem  *Error
+	fields   []field
+	issued   uint64
+	applied  uint64
+	phase    Phase
+	known    bool
+	advanced bool
 }
 
 type field struct {
@@ -24,6 +25,7 @@ type field struct {
 	draft   string
 	key     settingskey.Key
 	saving  bool
+	custom  bool
 }
 
 // NewSettings returns a loading form with one field per registry key.
@@ -57,12 +59,10 @@ func (m *Settings) Update(msg Msg) []Cmd {
 		return m.save(msg.Key)
 	case UnsetSetting:
 		return m.unset(msg.Key)
-	case RevertSetting:
-		if f := m.field(msg.Key); f != nil && !f.saving {
-			f.draft, f.invalid, f.failed = f.current.Value, nil, nil
-		}
 	case SettingWritten:
 		return m.written(msg)
+	default:
+		m.updateControl(msg)
 	}
 	return nil
 }
@@ -149,10 +149,12 @@ func (m *Settings) written(msg SettingWritten) []Cmd {
 	return m.load()
 }
 
-// FieldView is one form row. Choices lists closed value sets for pickers.
+// FieldView is one form row. Options describes the shared picker; Choices
+// retains the registry constraints for display.
 type FieldView struct {
 	Problem     *text.Message
 	Override    *text.Message
+	Hint        *text.Message
 	Path        string
 	Draft       string
 	Type        string
@@ -162,6 +164,10 @@ type FieldView struct {
 	Default     text.Message
 	Choices     []string
 	Actions     []Control
+	Options     []SettingOption
+	Editor      SettingEditor
+	TextEntry   bool
+	Advanced    bool
 	Sensitive   bool
 	Saving      bool
 }
@@ -172,12 +178,20 @@ type SettingsView struct {
 	Title    text.Message
 	Headline text.Message
 	Fields   []FieldView
+	Advanced Control
 	Phase    Phase
+	Expanded bool
 }
 
 // View projects the current state.
 func (m *Settings) View() SettingsView {
 	view := SettingsView{Phase: m.phase, Title: text.New(text.SettingsTitle), Headline: text.New(text.SettingsReady, text.Plain(settingskey.Precedence()))}
+	view.Expanded = m.advanced
+	label := text.SettingsAdvancedClosed
+	if m.advanced {
+		label = text.SettingsAdvancedOpen
+	}
+	view.Advanced = Control{Intent: ToggleAdvancedSettings{}, Label: text.New(label), Enabled: true}
 	switch {
 	case !m.known && m.phase == Failed:
 		view.Headline = ProblemText(m.problem)
@@ -188,8 +202,13 @@ func (m *Settings) View() SettingsView {
 		problem := ProblemText(m.problem)
 		view.Problem = &problem
 	}
-	for i := range m.fields {
-		view.Fields = append(view.Fields, m.fields[i].view(m.known))
+	for _, advanced := range []bool{false, true} {
+		for i := range m.fields {
+			f := &m.fields[i]
+			if f.visible(m.advanced) && advancedSetting(f.key.Path) == advanced {
+				view.Fields = append(view.Fields, f.view(m.known))
+			}
+		}
 	}
 	return view
 }
@@ -200,6 +219,9 @@ func (f *field) view(known bool) FieldView {
 		Description: text.New(text.SettingDescription(f.key.Path)), Value: f.value(), Source: sourceText(f.current),
 		Default: text.New(text.SettingDefault, text.Plain(f.key.DefaultDescription())), Choices: f.key.Allowed, Problem: f.invalid,
 	}
+	v.Editor, v.Options = f.editor(), f.options()
+	v.TextEntry, v.Advanced = v.Editor == SettingText || f.custom, advancedSetting(f.key.Path)
+	v.Hint = f.hint()
 	if f.key.Sensitive && f.draft == f.current.Value {
 		// Never prefill an input with a stored secret; Value shows it redacted.
 		v.Draft = ""
@@ -212,11 +234,7 @@ func (f *field) view(known bool) FieldView {
 		override := text.New(text.SettingOverridden, sourceText(f.current))
 		v.Override = &override
 	}
-	v.Actions = []Control{
-		{Intent: SaveSetting{Key: f.key.Path}, Label: text.New(text.ActionSave), Enabled: known && f.canSave()},
-		{Intent: UnsetSetting{Key: f.key.Path}, Label: text.New(text.ActionUnset), Enabled: known && !f.saving && f.current.Source == SourceFile},
-		{Intent: RevertSetting{Key: f.key.Path}, Label: text.New(text.ActionRevert), Enabled: !f.saving && f.draft != f.current.Value},
-	}
+	v.Actions = f.actions(known)
 	return v
 }
 
@@ -245,5 +263,30 @@ func sourceText(value SettingValue) text.Message {
 		return text.New(text.SourceDefault)
 	default:
 		return text.Plain(string(value.Source))
+	}
+}
+
+func (m *Settings) updateControl(msg Msg) {
+	switch msg := msg.(type) {
+	case ToggleAdvancedSettings:
+		m.advanced = !m.advanced
+	case BeginSetting:
+		m.begin(msg.Key)
+	case StepSetting:
+		m.step(msg.Key, msg.Delta)
+	case ChooseSetting:
+		m.choose(msg.Key, msg.Index)
+	case RevertSetting:
+		if f := m.field(msg.Key); f != nil && !f.saving {
+			f.draft, f.invalid, f.failed, f.custom = f.current.Value, nil, nil, false
+		}
+	}
+}
+
+func (f *field) actions(known bool) []Control {
+	return []Control{
+		{Intent: SaveSetting{Key: f.key.Path}, Label: text.New(text.ActionSave), Enabled: known && f.canSave()},
+		{Intent: UnsetSetting{Key: f.key.Path}, Label: text.New(text.ActionUnset), Enabled: known && !f.saving && f.current.Source == SourceFile},
+		{Intent: RevertSetting{Key: f.key.Path}, Label: text.New(text.ActionRevert), Enabled: !f.saving && f.draft != f.current.Value},
 	}
 }

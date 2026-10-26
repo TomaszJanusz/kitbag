@@ -14,6 +14,7 @@ import (
 	"github.com/TomaszJanusz/kitbag/internal/ui/model"
 	"github.com/TomaszJanusz/kitbag/internal/ui/model/text"
 	"github.com/TomaszJanusz/kitbag/internal/ui/tui"
+	"github.com/TomaszJanusz/kitbag/internal/vcs"
 )
 
 func (c *commandLine) tuiCommand() *cobra.Command {
@@ -46,6 +47,7 @@ func (c *commandLine) tuiOptions(profile tui.Profile) tui.Options {
 	local := *c
 	local.flags.verbose, local.stderr = false, io.Discard
 	adapter := apiclient.Client{
+		Host: c.host, OpenGit: c.settingsGit,
 		Transport: client.Client{Host: c.host}, Env: c.host, Options: c.apiOptions(),
 		Flags: map[string]string{"host": c.flags.host, "mode": c.flags.mode, "git-backend": c.flags.gitBackend},
 		Local: apiclient.Local{Workflow: local.service, Settings: local.settingsService},
@@ -54,4 +56,15 @@ func (c *commandLine) tuiOptions(profile tui.Profile) tui.Options {
 		Runner: model.Runner{Client: adapter, Now: time.Now}, Catalog: text.English(),
 		Profile: profile, NoColour: c.colourDisabled(), LogCapacity: model.DefaultLogCapacity, Clock: c.clock,
 	}
+}
+
+// settingsGit opens the effective backend without KitBag's identity fallback:
+// the settings hint describes Git config, not the value being edited.
+func (c *commandLine) settingsGit(ctx context.Context, kind string) (vcs.Backend, error) {
+	selection, err := vcs.Select("", "", kind)
+	if err != nil {
+		return nil, err
+	}
+	backend, _, err := vcs.Open(ctx, selection, gitFactories(c.host, vcs.Identity{}))
+	return backend, err
 }

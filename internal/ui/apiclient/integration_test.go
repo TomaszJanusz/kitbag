@@ -94,7 +94,7 @@ func TestModelsOverTheLocalAPI(t *testing.T) {
 	if stored, err := host.ReadFile("/home/test/config.toml"); err != nil || len(stored) == 0 {
 		t.Fatalf("config.set did not persist: %v", err)
 	}
-	saved := h.app.Settings.View().Fields[2]
+	saved := h.app.Settings.View().Fields[1]
 	if saved.Path != "repo.url" || saved.Source.Key != text.SourceFile || saved.Problem != nil {
 		t.Fatalf("saved field=%+v", saved)
 	}

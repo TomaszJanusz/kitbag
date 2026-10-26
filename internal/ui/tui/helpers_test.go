@@ -107,7 +107,7 @@ func keyMsg(key string) tea.KeyMsg {
 	named := map[string]tea.KeyType{
 		keyEnter: tea.KeyEnter, keyEscape: tea.KeyEsc, keyUp: tea.KeyUp, keyDown: tea.KeyDown, keyLeft: tea.KeyLeft,
 		keyRight: tea.KeyRight, keyNext: tea.KeyTab, keyPrevious: tea.KeyShiftTab, keyCtrlC: tea.KeyCtrlC,
-		keyPageUp: tea.KeyPgUp, keyPageDown: tea.KeyPgDown, "backspace": tea.KeyBackspace,
+		keyPageUp: tea.KeyPgUp, keyPageDown: tea.KeyPgDown, "backspace": tea.KeyBackspace, "ctrl+a": tea.KeyCtrlA, "ctrl+k": tea.KeyCtrlK,
 	}
 	if kind, ok := named[key]; ok {
 		return tea.KeyMsg{Type: kind}

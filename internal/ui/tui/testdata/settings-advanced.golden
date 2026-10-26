@@ -1,0 +1,24 @@
+ 1 Status   2 Drift  [3 Settings]  4 Activity
+
+Precedence: flag > KITBAG_* environment > config.toml > default
+Advanced [-]
+
+  git.identity.email  unset · default
+  sync.poll_interval  60s · default
+  daemon.update_check  true · default
+  sync.mode  copy · environment KITBAG_MODE
+    repo.branch  unset · default
+>   git.backend  system · config.toml
+    daemon.debounce  500ms · default
+    ui.color  auto · default
+
+git.backend
+Auto uses installed Git when available. Choose system or embedded to require one
+implementation.
+Value: system
+Source: config.toml
+Default: auto
+Values: auto, system, embedded
+↑/↓: select · Enter: edit
+[w] Save (unavailable)  [u] Remove from config.toml  [esc] Revert (unavailable)
+? help · a advanced · q quit · mouse: click, wheel

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -292,7 +293,7 @@ func TestSettingsEntriesMapSources(t *testing.T) {
 		"sync.mode":   {Key: "sync.mode", Value: "copy", Source: model.SourceFlag, Name: "--mode"},
 		"git.backend": {Key: "git.backend", Value: "auto", Source: model.SourceDefault},
 	} {
-		if got[key] != want {
+		if !reflect.DeepEqual(got[key], want) {
 			t.Errorf("%s=%+v want %+v", key, got[key], want)
 		}
 	}
@@ -342,7 +343,7 @@ func TestSettingsLocalFallback(t *testing.T) {
 	for _, value := range values {
 		got[value.Key] = value
 	}
-	expect(t, got["repo.url"] == model.SettingValue{Key: "repo.url", Value: "local", Source: model.SourceFile}, "repo.url=%+v", got["repo.url"])
+	expect(t, reflect.DeepEqual(got["repo.url"], model.SettingValue{Key: "repo.url", Value: "local", Source: model.SourceFile}), "repo.url=%+v", got["repo.url"])
 	expect(t, got["ui.theme"].Source == model.SourceDefault, "ui.theme=%+v", got["ui.theme"])
 	broken := Client{Transport: noDaemonTransport(), Local: Local{Settings: func() (settings.Service, error) { return settings.Service{}, fs.ErrInvalid }}}
 	_, err = broken.Settings(t.Context())

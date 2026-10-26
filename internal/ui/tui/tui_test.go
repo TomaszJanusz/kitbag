@@ -122,26 +122,18 @@ func TestDriftEmptyState(t *testing.T) {
 	}
 }
 
-// view sends keys, waits for fragment and returns the final screen.
-func (s *session) view(key, fragment string) string {
-	s.t.Helper()
-	s.press(key)
-	s.waitFor(fragment)
-	return s.final()
-}
-
 func TestSettingsEditValidateAndSave(t *testing.T) {
 	t.Parallel()
 	s := start(t, newFake())
 	s.press("3")
 	s.waitFor("Precedence:", "host  laptop · config.toml")
-	// git.backend is the sixth registry entry; its values cycle with →.
+	// Polling uses a duration stepper; 60s matches the 1m preset.
 	s.press(keyDown, keyDown, keyDown, keyDown, keyDown, keyEnter, keyRight, keyEnter)
-	if got := <-s.client.writes; got != [2]string{"git.backend", "system"} {
+	if got := <-s.client.writes; got != [2]string{"sync.poll_interval", "5m"} {
 		t.Fatalf("write=%v", got)
 	}
-	s.waitFor("git.backend  system · config.toml")
-	s.press(keyDown, keyDown, keyDown, keyEnter, "backspace", "backspace", "backspace", "soon", keyEnter)
+	s.waitFor("sync.poll_interval  5m · config.toml")
+	s.press(keyEnter, keyRight, keyRight, keyRight, "ctrl+a", "ctrl+k", "soon", keyEnter)
 	s.waitFor("Allowed: duration from 1s to 24h", "Editing: Enter saves")
 	golden(t, "settings-invalid", s.final())
 	select {
@@ -158,10 +150,11 @@ func TestSettingsShowsFailedSaveAndOverride(t *testing.T) {
 	s := start(t, client)
 	s.press("3")
 	s.waitFor("host  laptop · config.toml")
-	s.press(keyDown, keyEnter, "-2", keyEnter)
+	s.press(keyEnter, keyLeft, "-2", keyEnter)
 	<-client.writes
 	s.waitFor("Not saved: Another kitbag operation is running")
-	for range 11 {
+	s.press(keyEscape)
+	for range 7 {
 		s.press(keyDown)
 	}
 	s.waitFor("environment KITBAG_MODE overrides config.toml")
@@ -172,7 +165,7 @@ func TestSettingsUnsetRevertAndMaskSecrets(t *testing.T) {
 	s := start(t, newFake())
 	s.press(keyPrevious, keyPrevious)
 	s.waitFor("host  laptop · config.toml")
-	s.press(keyVimDown, keyUnset)
+	s.press(keyUnset)
 	if got := <-s.client.writes; got != [2]string{"host", ""} {
 		t.Fatalf("unset=%v", got)
 	}
@@ -221,8 +214,8 @@ func TestHelpOverlayToggles(t *testing.T) {
 	s := start(t, newFake())
 	s.waitFor("2 targets changed locally")
 	s.press(keyHelp)
-	s.waitFor("Keyboard", "q or Ctrl-C: quit")
-	golden(t, "help", s.view(keyHelp, "Daemon, live updates"))
+	s.waitFor("Keyboard", "q or Ctrl-C: quit", "a on Settings: expand or collapse Advanced")
+	golden(t, "help", s.final())
 }
 
 func TestResizeShowsMinimumAndRecovers(t *testing.T) {

@@ -1,0 +1,24 @@
+ 1 Status   2 Drift  [3 Settings]  4 Activity
+
+Precedence: flag > KITBAG_* environment > config.toml > default
+Advanced [+]
+
+> host  laptop · config.toml
+  repo.url  unset · default
+  repo.path  unset · default
+  git.identity.name  unset · default
+  git.identity.email  unset · default
+  sync.poll_interval  60s · default
+  daemon.update_check  true · default
+  sync.mode  copy · environment KITBAG_MODE
+
+host
+Choose this machine's instructions from hosts/*.md, or enter another host name.
+Value: laptop
+Source: config.toml
+Default: machine short hostname
+↑/↓: select · Enter: edit
+[w] Save (unavailable)  [u] Remove from config.toml  [esc] Revert (unavailable)
+
+
+? help · a advanced · q quit · mouse: click, wheel

@@ -31,3 +31,28 @@ func (b *Backend) InspectCommit(ctx context.Context, dir string) (vcs.CommitConf
 	_, identityErr := b.identity(configs)
 	return vcs.CommitConfig{Identity: identityErr == nil}, nil
 }
+
+// ReadIdentity returns Git config values only, without KitBag's fallback.
+func (b *Backend) ReadIdentity(ctx context.Context, dir string) (vcs.Identity, error) {
+	r, err := open(ctx, dir)
+	if err != nil {
+		return vcs.Identity{}, err
+	}
+	configs, err := b.configs(r)
+	if err != nil {
+		return vcs.Identity{}, err
+	}
+	if err = checkConfigs(configs, false); err != nil {
+		return vcs.Identity{}, err
+	}
+	id := vcs.Identity{}
+	for _, cfg := range configs {
+		if cfg.User.Name != "" {
+			id.Name = cfg.User.Name
+		}
+		if cfg.User.Email != "" {
+			id.Email = cfg.User.Email
+		}
+	}
+	return id, nil
+}

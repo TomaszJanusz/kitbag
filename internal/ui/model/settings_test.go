@@ -8,16 +8,19 @@ import (
 )
 
 func settingsTexts(v SettingsView) []text.Message {
-	messages := []text.Message{v.Title, v.Headline}
+	messages := []text.Message{v.Title, v.Headline, v.Advanced.Label}
 	if v.Problem != nil {
 		messages = append(messages, *v.Problem)
 	}
 	for _, f := range v.Fields {
 		messages = append(messages, f.Description, f.Value, f.Source, f.Default)
-		for _, optional := range []*text.Message{f.Problem, f.Override} {
+		for _, optional := range []*text.Message{f.Problem, f.Override, f.Hint} {
 			if optional != nil {
 				messages = append(messages, *optional)
 			}
+		}
+		for _, option := range f.Options {
+			messages = append(messages, option.Label)
 		}
 		for _, action := range f.Actions {
 			messages = append(messages, action.Label)
@@ -53,13 +56,12 @@ func TestSettingsFormFollowsRegistry(t *testing.T) {
 	cmds := m.Init()
 	view := m.View()
 	expect(t, view.Phase == Loading && view.Headline.Key == text.SettingsLoading, "loading=%+v", view)
-	expect(t, len(view.Fields) == len(settingskey.Registry()), "fields=%d", len(view.Fields))
-	for i, key := range settingskey.Registry() {
-		f := view.Fields[i]
-		expect(t, f.Path == key.Path && f.Type == key.Type, "field %d=%+v", i, f)
-		expect(t, len(f.Choices) == len(key.Allowed), "%s choices=%v", key.Path, f.Choices)
+	expect(t, len(view.Fields) == 8, "fields=%d", len(view.Fields))
+	for _, f := range view.Fields {
+		key, err := settingskey.Find(f.Path)
+		expect(t, err == nil && f.Type == key.Type, "field=%+v", f)
 		expect(t, !f.Actions[0].Enabled, "%s saveable before loading", key.Path)
-		expect(t, render(f.Description) == key.Description, "%s description=%q", key.Path, render(f.Description))
+		expect(t, render(f.Description) != "", "%s description missing", key.Path)
 	}
 	settle(t, m, &fakeClient{settingsErr: &Error{Kind: ErrInvalid}}, cmds)
 	view = m.View()
@@ -94,6 +96,7 @@ func TestSettingsSensitiveValuesAreRedacted(t *testing.T) {
 func TestSettingsSourcesAndOverrides(t *testing.T) {
 	t.Parallel()
 	m := readySettings(t, &fakeClient{settings: storedSettings()})
+	m.Update(ToggleAdvancedSettings{})
 	mode := fieldView(t, m, "sync.mode")
 	expect(t, render(mode.Value) == "copy" && mode.Draft == "copy", "env field=%+v", mode)
 	expect(t, render(*mode.Override) == "environment KITBAG_MODE overrides config.toml", "override=%q", render(*mode.Override))
@@ -111,6 +114,7 @@ func TestSettingsSourcesAndOverrides(t *testing.T) {
 func TestSettingsValidationBlocksSaving(t *testing.T) {
 	t.Parallel()
 	m := readySettings(t, &fakeClient{settings: storedSettings()})
+	m.Update(ToggleAdvancedSettings{})
 	for _, tc := range []struct{ key, value, problem string }{
 		{"sync.mode", "symlink", "Allowed: link, copy"},
 		{"sync.poll_interval", "500ms", "Allowed: duration from 1s to 24h (ms, s, m, h)"},
@@ -139,7 +143,7 @@ func TestSettingsSave(t *testing.T) {
 	client := &fakeClient{settings: storedSettings()}
 	m := readySettings(t, client)
 	m.Update(EditSetting{Key: "sync.poll_interval", Value: "5m"})
-	m.Update(EditSetting{Key: "ui.theme", Value: "dark"})
+	m.Update(EditSetting{Key: "repo.path", Value: "~/dark"})
 	cmds := m.Update(SaveSetting{Key: "sync.poll_interval"})
 	expect(t, only(t, cmds) == (WriteSetting{Key: "sync.poll_interval", Value: "5m"}), "save cmds=%v", cmds)
 	saving := fieldView(t, m, "sync.poll_interval")
@@ -152,7 +156,7 @@ func TestSettingsSave(t *testing.T) {
 	saved := fieldView(t, m, "sync.poll_interval")
 	expect(t, !saved.Saving && saved.Draft == "5m", "saved=%+v", saved)
 	expect(t, render(saved.Source) == "config.toml" && saved.Actions[1].Enabled, "saved source=%+v", saved)
-	expect(t, fieldView(t, m, "ui.theme").Draft == "dark", "reload discarded another field's draft")
+	expect(t, fieldView(t, m, "repo.path").Draft == "~/dark", "reload discarded another field's draft")
 	checkText(t, settingsTexts(m.View())...)
 }
 
@@ -184,8 +188,8 @@ func TestSettingsDiscardsStaleLoads(t *testing.T) {
 	m := NewSettings()
 	first := as[LoadSettings](t, only(t, m.Init())).Seq
 	second := as[LoadSettings](t, only(t, m.Update(Refresh{}))).Seq
-	m.Update(SettingsLoaded{Seq: second, Values: []SettingValue{{Key: "ui.theme", Value: "light", Source: SourceFile}}})
-	m.Update(SettingsLoaded{Seq: first, Values: []SettingValue{{Key: "ui.theme", Value: "dark", Source: SourceFile}}})
+	m.Update(SettingsLoaded{Seq: second, Values: []SettingValue{{Key: "repo.path", Value: "~/light", Source: SourceFile}}})
+	m.Update(SettingsLoaded{Seq: first, Values: []SettingValue{{Key: "repo.path", Value: "~/dark", Source: SourceFile}}})
 	m.Update(SettingsLoaded{Seq: first, Err: errBoom})
-	expect(t, fieldView(t, m, "ui.theme").Draft == "light" && m.problem == nil, "stale load applied")
+	expect(t, fieldView(t, m, "repo.path").Draft == "~/light" && m.problem == nil, "stale load applied")
 }
