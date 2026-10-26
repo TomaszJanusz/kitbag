@@ -97,7 +97,7 @@ func (c *commandLine) initChoices(cmd *cobra.Command, flags *initFlags) error {
 	if err != nil {
 		return err
 	}
-	detected, err := initialize.Detect(c.host)
+	detected, err := initialize.Detect(c.host, agentHomes())
 	if err != nil {
 		return err
 	}

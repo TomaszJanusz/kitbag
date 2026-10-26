@@ -9,6 +9,7 @@ import (
 	"github.com/TomaszJanusz/kitbag/internal/config"
 	"github.com/TomaszJanusz/kitbag/internal/core/apply"
 	"github.com/TomaszJanusz/kitbag/internal/core/compatibility"
+	"github.com/TomaszJanusz/kitbag/internal/core/discover"
 	"github.com/TomaszJanusz/kitbag/internal/core/state"
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 	"github.com/TomaszJanusz/kitbag/internal/vcs"
@@ -41,9 +42,11 @@ type Report struct {
 
 // Service supplies all host, state and process dependencies. Open and VersionProbe
 // accept contexts and must respect cancellation. Offline disables remote probes.
+// Homes resolves the default directory of a target that lists no instances.
 type Service struct {
 	Emit                                    func(compatibility.Event)
 	Host                                    platform.Host
+	Homes                                   discover.Table
 	Store                                   *state.Store
 	Open                                    func(context.Context) (vcs.Backend, vcs.Resolution, error)
 	VersionProbe                            func(context.Context, string) (string, error)

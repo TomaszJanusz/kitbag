@@ -3,7 +3,6 @@ package doctor
 import (
 	"context"
 	"errors"
-	"fmt"
 	"maps"
 	"path/filepath"
 	"slices"
@@ -92,7 +91,7 @@ func (s Service) instances(m *manifest.Manifest) ([]instance, error) {
 			continue
 		}
 		if len(target.Instances) == 0 {
-			dir, err := s.defaultHome(target.Agent)
+			dir, err := s.Homes.Home(s.Host, target.Agent)
 			if err != nil {
 				return nil, err
 			}
@@ -103,19 +102,6 @@ func (s Service) instances(m *manifest.Manifest) ([]instance, error) {
 		dirs = append(dirs, listedInstances(home, name, target)...)
 	}
 	return dirs, nil
-}
-
-func (s Service) defaultHome(agent string) (string, error) {
-	switch agent {
-	case "claude":
-		return s.Host.AgentHome("CLAUDE_CONFIG_DIR", ".claude")
-	case "codex":
-		return s.Host.AgentHome("CODEX_HOME", ".codex")
-	case "generic":
-		return "", nil
-	default:
-		return "", fmt.Errorf("unsupported agent %s", agent)
-	}
 }
 
 func listedInstances(home, name string, target manifest.Target) []instance {

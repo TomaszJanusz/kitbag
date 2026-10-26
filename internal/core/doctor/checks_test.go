@@ -149,6 +149,21 @@ func manifestInstanceCases() []manifestCase {
 			expects: []expect{{"instance-claude/default", filepath.Join(testHome(), "relocated"), "create or correct", Warn}},
 		},
 		{
+			name:     "every native default",
+			manifest: "schema=1\n[targets.gemini]\nagent=\"gemini\"\n[targets.opencode]\nagent=\"opencode\"\n",
+			env:      map[string]string{"XDG_CONFIG_HOME": filepath.Join(testHome(), "xdg")},
+			dirs:     []string{filepath.Join(testHome(), ".gemini")},
+			order:    []string{"tool-version", "host", "instance-gemini/default", "instance-opencode/default"},
+			expects: []expect{
+				{"instance-gemini/default", filepath.Join(testHome(), ".gemini"), "", OK},
+				{"instance-opencode/default", filepath.Join(testHome(), "xdg", "opencode"), "create or correct", Warn},
+			},
+		},
+		{
+			name: "agent without resolver", manifest: "schema=1\n[targets.cursor]\nagent=\"cursor\"\n",
+			expects: []expect{{"instances", "cannot resolve instance directories", "use absolute", Fail}}, code: apply.Warnings,
+		},
+		{
 			name: "relative override", manifest: codexManifest, env: map[string]string{"CODEX_HOME": "relative"},
 			expects: []expect{{"instances", "cannot resolve instance directories", "use absolute CODEX_HOME/CLAUDE_CONFIG_DIR", Fail}}, code: apply.Warnings,
 		},

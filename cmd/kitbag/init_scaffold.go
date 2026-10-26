@@ -58,7 +58,7 @@ func (c *commandLine) writeScaffold(cmd *cobra.Command, dir string, template ini
 }
 
 func (c *commandLine) scaffoldChoices(cmd *cobra.Command, flags *initFlags) error {
-	detected, err := initialize.Detect(c.host)
+	detected, err := initialize.Detect(c.host, agentHomes())
 	if err != nil {
 		return err
 	}

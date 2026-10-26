@@ -61,3 +61,28 @@ func checkSharedSkillOwners(t *testing.T, declarations []target.Target) {
 		t.Fatalf("OpenCode skill: %+v", native)
 	}
 }
+
+// TestAgentHomesCoverAdapters keeps the injected table in step with the
+// adapter switch: every kind with an adapter resolves, every other kind is
+// unsupported, and resolution follows each adapter's relocation variable.
+func TestAgentHomesCoverAdapters(t *testing.T) {
+	t.Parallel()
+	home := "/home/user"
+	h := fake.New(fake.WithEnv(map[string]string{
+		"HOME": home, "CLAUDE_CONFIG_DIR": "/srv/claude", "CODEX_HOME": "/srv/codex",
+		"GEMINI_CLI_HOME": "/srv/gemini", "XDG_CONFIG_HOME": "/srv/xdg",
+	}))
+	want := map[string]string{
+		"claude": "/srv/claude", "codex": "/srv/codex", "gemini": "/srv/gemini/.gemini",
+		"opencode": "/srv/xdg/opencode", "generic": "",
+	}
+	c := commandLine{host: h}
+	for _, agent := range []string{"claude", "codex", "cursor", "gemini", "opencode", "copilot", "windsurf", "generic"} {
+		_, adapterErr := c.agentAdapter(agent, home, &[]string{})
+		dir, err := agentHomes().Home(h, agent)
+		expected, supported := want[agent]
+		if (adapterErr == nil) != supported || (err == nil) != supported || dir != expected {
+			t.Errorf("%s: dir %q err %v, adapter err %v", agent, dir, err, adapterErr)
+		}
+	}
+}
