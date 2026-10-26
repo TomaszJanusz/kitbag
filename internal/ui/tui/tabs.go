@@ -55,32 +55,51 @@ func (m *Model) rows(rows []model.Row) []string {
 	return lines
 }
 
-func (m *Model) driftView(height int) []string {
+// listLayout places a scrolling list: head lines, a blank separator, the
+// visible rows starting at index first, then tail lines. Drawing and mouse
+// hit-testing both use it.
+type listLayout struct {
+	head, tail  []string
+	first, rows int
+}
+
+// top is the screen line of the first visible row (below the tab bar and its
+// separator, the head lines and the blank line).
+func (l listLayout) top() int { return chromeLines - 1 + len(l.head) + 1 }
+
+func (m *Model) driftLayout(height int) listLayout {
 	view := m.app.Drift.View()
-	if m.detail && view.Detail != nil {
-		return m.driftDetail(*view.Detail)
-	}
-	lines := m.wrap(m.styles.heading, m.say(view.Headline))
-	lines = append(lines, m.problem(view.Problem, view.Headline)...)
+	head := m.wrap(m.styles.heading, m.say(view.Headline))
+	head = append(head, m.problem(view.Problem, view.Headline)...)
 	tail := m.warnings(view.Warnings)
 	if len(view.Rows) > 0 {
 		tail = append(tail, "", m.styles.faint.Render(m.say(text.New(text.DriftListHint))))
 	}
-	space := height - len(lines) - 1 - len(tail)
+	space := height - len(head) - 1 - len(tail)
 	selected := 0
 	for i, row := range view.Rows {
 		if row.Selected {
 			selected = i
 		}
 	}
+	first := window(selected, len(view.Rows), space)
+	return listLayout{head: head, tail: tail, first: first, rows: min(max(space, 1), len(view.Rows)-first)}
+}
+
+func (m *Model) driftView(height int) []string {
+	view := m.app.Drift.View()
+	if m.detail && view.Detail != nil {
+		return m.driftDetail(*view.Detail)
+	}
+	layout := m.driftLayout(height)
+	lines := layout.head
 	if len(view.Rows) > 0 {
 		lines = append(lines, "")
 	}
-	first := window(selected, len(view.Rows), space)
-	for i, row := range view.Rows[first:min(first+max(space, 1), len(view.Rows))] {
-		lines = append(lines, m.listRow(first+i == selected, m.say(row.Path), m.say(row.Classification)))
+	for _, row := range view.Rows[layout.first : layout.first+layout.rows] {
+		lines = append(lines, m.listRow(row.Selected, m.say(row.Path), m.say(row.Classification)))
 	}
-	return append(lines, tail...)
+	return append(lines, layout.tail...)
 }
 
 func (m *Model) listRow(selected bool, name, detail string) string {
@@ -103,24 +122,33 @@ func (m *Model) driftDetail(detail model.DriftDetail) []string {
 	return append(lines, "", m.styles.faint.Render(m.say(text.New(text.DriftDetailHint))))
 }
 
+func (m *Model) settingsLayout(height int) (listLayout, []string) {
+	view := m.app.Settings.View()
+	head := m.wrap(m.styles.heading, m.say(view.Headline))
+	head = append(head, m.problem(view.Problem, view.Headline)...)
+	if len(view.Fields) == 0 {
+		return listLayout{head: head}, nil
+	}
+	detail := m.fieldDetail(m.field())
+	space := height - len(head) - len(detail) - settingsSpacing
+	first := window(m.setting, len(view.Fields), space)
+	return listLayout{head: head, tail: detail, first: first, rows: min(max(space, 1), len(view.Fields)-first)}, detail
+}
+
 func (m *Model) settingsView(height int) []string {
 	view := m.app.Settings.View()
-	lines := m.wrap(m.styles.heading, m.say(view.Headline))
-	lines = append(lines, m.problem(view.Problem, view.Headline)...)
+	layout, detail := m.settingsLayout(height)
+	lines := layout.head
 	if len(view.Fields) == 0 {
 		return lines
 	}
-	current := m.field()
-	detail := m.fieldDetail(current)
-	space := height - len(lines) - len(detail) - settingsSpacing
-	first := window(m.setting, len(view.Fields), space)
 	lines = append(lines, "")
-	for i, field := range view.Fields[first:min(first+max(space, 1), len(view.Fields))] {
+	for i, field := range view.Fields[layout.first : layout.first+layout.rows] {
 		name := field.Path
 		if control(field.Actions, model.RevertSetting{Key: field.Path}).Enabled {
 			name += " *"
 		}
-		lines = append(lines, m.listRow(first+i == m.setting, name, m.say(field.Value)+" · "+m.say(field.Source)))
+		lines = append(lines, m.listRow(layout.first+i == m.setting, name, m.say(field.Value)+" · "+m.say(field.Source)))
 	}
 	return append(append(lines, ""), detail...)
 }

@@ -8,21 +8,41 @@ import (
 	"path/filepath"
 	"slices"
 
+	"github.com/TomaszJanusz/kitbag/internal/adapters/instructions"
 	"github.com/TomaszJanusz/kitbag/internal/config"
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 	"github.com/TomaszJanusz/kitbag/pkg/manifest"
 )
 
 func (s Service) intent() (*manifest.Manifest, error) {
+	m, _, err := s.selection()
+	return m, err
+}
+
+// selection returns the host-resolved manifest and the host check: which host
+// was selected and from where, warning when a host taken from the system
+// hostname misses its instructions addition while other hosts have one.
+func (s Service) selection() (*manifest.Manifest, Check, error) {
 	m, err := manifest.Load(s.Host, filepath.Join(s.Repository, "kitbag.toml"))
 	if err != nil {
-		return nil, err
+		return nil, Check{}, err
 	}
-	host, _, err := config.Resolve(s.Host, config.Values{"host": s.Config.Host}, "host", s.HostFlag)
+	host, source, err := config.Resolve(s.Host, config.Values{"host": s.Config.Host}, "host", s.HostFlag)
 	if err != nil {
-		return nil, err
+		return nil, Check{}, err
 	}
-	return m.ResolveHost(hostEnvironment{s.Host, host}, host)
+	check := Check{ID: "host", Status: OK, Message: "host " + host + " (" + source + ")"}
+	if source == "default" && m.Instructions != nil {
+		mismatch, mismatchErr := instructions.HostMismatch(s.Host, s.Repository, m.Instructions.Hosts, host)
+		if mismatchErr != nil {
+			return nil, Check{}, mismatchErr
+		}
+		if mismatch != "" {
+			check = Check{ID: "host", Status: Warn, Message: mismatch, Fix: "set this machine's host explicitly: kitbag config set host <name>"}
+		}
+	}
+	m, err = m.ResolveHost(hostEnvironment{s.Host, host}, host)
+	return m, check, err
 }
 
 type hostEnvironment struct {
@@ -39,11 +59,11 @@ func (e hostEnvironment) LookupEnv(key string) (string, bool) {
 }
 
 func (s Service) manifestChecks(context.Context) []Check {
-	m, err := s.intent()
+	m, host, err := s.selection()
 	if err != nil {
 		return []Check{result("manifest", "cannot load manifest/host", "configure repo.path and repair kitbag.toml or host selection", err, Fail)}
 	}
-	checks := []Check{result("tool-version", "kitbag "+s.Version+"; min_tool_version "+m.MinToolVersion, "upgrade kitbag to the manifest's min_tool_version", m.CheckVersion(s.Version), Fail)}
+	checks := []Check{result("tool-version", "kitbag "+s.Version+"; min_tool_version "+m.MinToolVersion, "upgrade kitbag to the manifest's min_tool_version", m.CheckVersion(s.Version), Fail), host}
 	dirs, err := s.instances(m)
 	if err != nil {
 		return append(checks, result("instances", "cannot resolve instance directories", "use absolute CODEX_HOME/CLAUDE_CONFIG_DIR or explicit instance dirs", err, Fail))

@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/TomaszJanusz/kitbag/internal/config"
+	"github.com/TomaszJanusz/kitbag/internal/core/state"
 )
 
-func (s Service) legacyChecks(context.Context) []Check {
+func (s Service) legacyChecks(ctx context.Context) []Check {
 	if len(s.Config.Migration.LegacyRoots) == 0 {
 		return []Check{{ID: "legacy", Status: OK, Message: "skipped: migration.legacy_roots is empty"}}
 	}
@@ -47,7 +49,31 @@ func (s Service) legacyChecks(context.Context) []Check {
 			paths = append(paths, filepath.Join(dir, entry.Name()))
 		}
 	}
-	return []Check{s.legacyLinks(paths, roots, err), s.legacyMarkers(paths), s.legacySettingsMarkers(claudeSettings), s.legacyUnits(home)}
+	owned := s.owned()
+	paths = slices.DeleteFunc(paths, func(path string) bool { return owned[path] })
+	return []Check{s.legacyLinks(paths, roots, err), s.legacyMarkers(paths), s.legacySettingsMarkers(claudeSettings), s.legacyUnits(ctx, home)}
+}
+
+// owned returns the destinations KitBag owns. Adopted links into a legacy root
+// and adopted files keeping agent-config-sync's marker are no longer legacy;
+// their drift is plan and status output. Without readable state (busy lock,
+// invalid file) nothing is excluded.
+func (s Service) owned() map[string]bool {
+	owned := map[string]bool{}
+	if s.Store == nil {
+		return owned
+	}
+	err := s.Store.WithLock(func(session *state.Session) error {
+		db, err := session.Load()
+		for _, t := range db.Targets {
+			owned[t.Path] = true
+		}
+		return err
+	})
+	if err != nil {
+		return map[string]bool{}
+	}
+	return owned
 }
 
 func optionalError(err error) error {
@@ -87,22 +113,68 @@ func (s Service) legacyMarkers(paths []string) Check {
 	return result("legacy-markers", "legacy instruction markers", "review legacy managed instructions and migrate them explicitly", err, Warn)
 }
 
-func (s Service) legacyUnits(home string) Check {
+// legacyUnits finds definitions whose names contain agent-config. Those of the
+// host's own manager (systemd user units on Linux, LaunchAgents on macOS) are
+// inspected read-only: one that is neither loaded nor enabled no longer runs
+// and is not reported. Other definitions, or a failed inspection, are reported
+// by presence, as activation cannot be known.
+func (s Service) legacyUnits(ctx context.Context, home string) Check {
 	xdg, _ := s.Host.LookupEnv("XDG_CONFIG_HOME")
 	if !filepath.IsAbs(xdg) {
 		xdg = filepath.Join(home, ".config")
 	}
+	manager := ""
+	if layout, err := s.Host.ServiceLayout(); err == nil {
+		manager = layout.Manager
+	}
 	var err error
-	for _, dir := range []string{filepath.Join(xdg, "systemd/user"), filepath.Join(home, "Library/LaunchAgents")} {
-		entries, readErr := s.Host.ReadDir(dir)
+	disabled := 0
+	for _, dir := range []unitDir{
+		{filepath.Join(xdg, "systemd/user"), "systemd", ""},
+		{filepath.Join(home, "Library/LaunchAgents"), "launchd", ".plist"},
+	} {
+		entries, readErr := s.Host.ReadDir(dir.path)
 		err = errors.Join(err, optionalError(readErr))
 		for _, entry := range entries {
-			if strings.Contains(entry.Name(), "agent-config") {
-				err = errors.Join(err, errors.New(filepath.Join(dir, entry.Name())))
+			if !strings.Contains(entry.Name(), "agent-config") {
+				continue
 			}
+			finding := s.unitFinding(ctx, dir, entry.Name(), manager)
+			if finding == nil {
+				disabled++
+			}
+			err = errors.Join(err, finding)
 		}
 	}
-	return result("legacy-units", "legacy timer/service definitions (activation not queried)", "review and disable old agent-config-sync timers/services manually", err, Warn)
+	message := "legacy timer/service definitions"
+	if disabled > 0 {
+		message += fmt.Sprintf(" (%d disabled and not loaded, ignored)", disabled)
+	}
+	return result("legacy-units", message, "disable and unload old agent-config-sync timers/services (systemctl --user disable --now <unit>; launchctl bootout and launchctl disable gui/<uid>/<label>)", err, Warn)
+}
+
+// unitDir is a unit definition directory of one manager; a definition's name
+// is its filename without suffix.
+type unitDir struct{ path, manager, suffix string }
+
+// unitFinding returns nil for a native unit that is neither loaded nor
+// enabled, and otherwise what is reported for the definition.
+func (s Service) unitFinding(ctx context.Context, dir unitDir, filename, manager string) error {
+	path := filepath.Join(dir.path, filename)
+	name, native := strings.CutSuffix(filename, dir.suffix)
+	if !native || dir.manager != manager {
+		return errors.New(path + " (activation not queried)")
+	}
+	bounded, cancel := context.WithTimeout(ctx, Timeout)
+	defer cancel()
+	unit, err := s.Host.UnitInspect(bounded, name)
+	switch {
+	case err != nil:
+		return fmt.Errorf("%s (state unknown: %w)", path, err)
+	case unit.Loaded || unit.Enabled:
+		return fmt.Errorf("%s (loaded=%t enabled=%t)", path, unit.Loaded, unit.Enabled)
+	}
+	return nil
 }
 
 // settingsScanLimit bounds the bytes inspected in one settings file.
