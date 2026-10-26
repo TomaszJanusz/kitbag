@@ -56,6 +56,16 @@ func number(n int) text.Message { return text.Plain(strconv.Itoa(n)) }
 
 // tabBar names every tab; a narrow terminal shows only the active title.
 func (m *Model) tabBar() string {
+	bar, _ := m.tabLayout()
+	return bar
+}
+
+// tabSpan is the half-open column range [start, end) a tab occupies.
+type tabSpan struct{ start, end int }
+
+// tabLayout renders the tab bar and reports where each tab sits, so clicks
+// hit the same cells that are drawn.
+func (m *Model) tabLayout() (string, []tabSpan) {
 	titles := []text.Message{m.app.Status.View().Title, m.app.Drift.View().Title, m.app.Settings.View().Title, m.app.Log.View().Title}
 	full := make([]string, 0, len(titles))
 	compact := make([]string, 0, len(titles))
@@ -69,10 +79,18 @@ func (m *Model) tabBar() string {
 		full = append(full, m.styles.tab.Render(" "+label+" "))
 		compact = append(compact, m.styles.tab.Render(strconv.Itoa(i+1)))
 	}
-	if bar := strings.Join(full, " "); ansi.StringWidth(bar) <= m.width {
-		return bar
+	parts := full
+	if ansi.StringWidth(strings.Join(full, " ")) > m.width {
+		parts = compact
 	}
-	return strings.Join(compact, " ")
+	spans := make([]tabSpan, len(parts))
+	column := 0
+	for i, part := range parts {
+		width := ansi.StringWidth(part)
+		spans[i] = tabSpan{start: column, end: column + width}
+		column += width + 1
+	}
+	return strings.Join(parts, " "), spans
 }
 
 // wrap word-wraps plain text to the width and styles each resulting line.
@@ -163,7 +181,7 @@ func intentName(intent model.Msg) string {
 func (m *Model) helpView() []string {
 	keys := []text.Key{
 		text.HelpTabs, text.HelpRefresh, text.HelpSync, text.HelpMove, text.HelpDetail, text.HelpEdit,
-		text.HelpSave, text.HelpChoices, text.HelpFollow, text.HelpToggle, text.HelpQuit,
+		text.HelpSave, text.HelpChoices, text.HelpFollow, text.HelpMouse, text.HelpToggle, text.HelpQuit,
 	}
 	lines := make([]string, 0, len(keys)+1)
 	lines = append(lines, m.styles.heading.Render(m.say(text.New(text.HelpTitle))))

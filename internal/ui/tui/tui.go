@@ -152,6 +152,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.input.Width = max(msg.Width-inputMargin, 1)
 	case tea.KeyMsg:
 		return m, m.key(msg)
+	case tea.MouseMsg:
+		m.mouse(msg)
 	}
 	return m, nil
 }
@@ -173,7 +175,7 @@ func TerminalProfile(output io.Writer) Profile {
 func Run(ctx context.Context, opts Options, input io.Reader, output io.Writer) error {
 	m := New(opts)
 	defer m.Close()
-	program := tea.NewProgram(m, tea.WithContext(ctx), tea.WithInput(input), tea.WithOutput(output), tea.WithAltScreen())
+	program := tea.NewProgram(m, tea.WithContext(ctx), tea.WithInput(input), tea.WithOutput(output), tea.WithAltScreen(), tea.WithMouseCellMotion())
 	_, err := program.Run()
 	switch {
 	case err == nil, errors.Is(err, tea.ErrInterrupted):

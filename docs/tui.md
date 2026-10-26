@@ -41,6 +41,26 @@ corrupt the screen.
 keystroke is validated with the registry rules: an invalid draft shows its
 constraint and is never saved; a failed save keeps the draft with the reason.
 
+## Mouse
+
+The mouse is optional; every action keeps its key. The terminal reports clicks
+and the wheel, and the renderer turns them into the same intents as the keys:
+
+- Click a tab title to switch to it (the digits in the narrow tab bar too).
+- Click a row on the Drift tab to select it; click the selected row again to
+  open its details, like Enter. Click a row on the Settings tab to select it;
+  editing stays on Enter, so a stray click never starts a change.
+- The wheel moves the Drift selection and scrolls the Activity log one line per
+  notch, like `↑`/`↓`. Scrolling back to the end resumes following.
+- While a setting is edited, in the help overlay and in an open drift detail
+  the mouse is ignored, like keys that do not apply. Other buttons, releases
+  and drags do nothing. Text selection and copying need the terminal's
+  override (usually Shift-drag).
+
+The renderer asks for cell-motion reporting with SGR coordinates and releases
+both when the program ends: on quit, `Ctrl-C`, `SIGINT`/`SIGTERM` and recovered
+panics, like the alternate screen. The footer and the `?` help mention the mouse.
+
 ## Terminal behavior
 
 - **Interactive only.** stdin and stdout must be terminals; otherwise the command
@@ -80,7 +100,8 @@ constraint and is never saved; a failed save keeps the draft with the reason.
 `internal/ui/tui` tests drive the program with
 [teatest](https://github.com/charmbracelet/x/tree/main/exp/teatest) against a
 scripted `model.Client`: each tab's main flow, sync progress, drift detail,
-settings validation and save, the bounded log, help, resize, `NO_COLOR` output
+settings validation and save, the bounded log, help, mouse clicks and wheel
+(with a negative control for each stray event), resize, `NO_COLOR` output
 and subscription shutdown. Golden screens in `internal/ui/tui/testdata` are
 ANSI-stripped at fixed sizes; after reviewing a change, rewrite them with
 `go test ./internal/ui/tui -args -update-screens`. A testscript covers the

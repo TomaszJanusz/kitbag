@@ -21,4 +21,4 @@ Default: 60s
 Allowed: duration from 1s to 24h (ms, s, m, h)
 > soon
 Editing: Enter saves, Esc cancels
-? help · q quit
+? help · q quit · mouse: click, wheel
