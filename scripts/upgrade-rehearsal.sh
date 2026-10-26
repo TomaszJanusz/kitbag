@@ -14,7 +14,7 @@
 # --help use only Bash 3.2 features so they also work on macOS; launchd is not
 # rehearsed (docs/release.md lists what this cannot prove).
 #
-#   scripts/upgrade-rehearsal.sh                         # latest release -> HEAD
+#   scripts/upgrade-rehearsal.sh                         # latest release -> origin/main
 #   scripts/upgrade-rehearsal.sh --from-version 0.1.2 --from-version 0.1.1
 #   scripts/upgrade-rehearsal.sh --candidate ./kitbag --variant rename
 set -euo pipefail
@@ -25,8 +25,11 @@ Usage: scripts/upgrade-rehearsal.sh [options]
 
   --from-version X.Y.Z  previous release to upgrade from (repeatable; default:
                         the latest GitHub release)
-  --candidate PATH      candidate kitbag executable (default: build the current
-                        checkout with -X main.version=<candidate version>)
+  --candidate PATH      candidate kitbag executable (default: build --ref with
+                        -X main.version=<candidate version>)
+  --ref REF             commit to build the candidate from (default:
+                        origin/main after fetching it); exported with git
+                        archive, so local edits are never part of the build
   --candidate-version V version stamped into the default build (default:
                         <next patch>-rehearsal.<commit>)
   --variant NAME        rename (atomic overwrite of the installed file, as
@@ -56,6 +59,7 @@ die() {
 from_versions=
 candidate=
 candidate_version=
+ref=
 variants=all
 timeout=300
 observe=130
@@ -72,6 +76,11 @@ while [ $# -gt 0 ]; do
   --candidate)
     [ $# -ge 2 ] || die "--candidate needs a path"
     candidate=$2
+    shift 2
+    ;;
+  --ref)
+    [ $# -ge 2 ] || die "--ref needs a commit"
+    ref=$2
     shift 2
     ;;
   --candidate-version)
@@ -199,7 +208,7 @@ sudo -n -iu "$account" true 2>/dev/null || die "cannot run commands as $account 
 sudo -n -l testing-reset >/dev/null 2>&1 || die "sudo -n testing-reset is not permitted"
 
 if $fetch; then
-  git fetch -q origin 'refs/tags/v*:refs/tags/v*'
+  git fetch -q origin main 'refs/tags/v*:refs/tags/v*'
 fi
 release_tags=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=v:refname)
 
@@ -230,20 +239,23 @@ cosign=$(mise which cosign 2>/dev/null) || die "the pinned cosign is not install
 
 started=$(date +%s)
 if [ -z "$candidate" ]; then
-  head=$(git rev-parse --short HEAD)
+  [ -n "$ref" ] || ref=origin/main
+  commit=$(git rev-parse -q --verify "$ref^{commit}") || die "--ref is not a commit: $ref"
+  short=$(git rev-parse --short "$commit")
   if [ -z "$candidate_version" ]; then
     IFS=. read -r major minor patch <<<"${latest#v}"
-    candidate_version=$major.$minor.$((patch + 1))-rehearsal.$head
-    if [ -n "$(git status --porcelain -- '*.go' go.mod go.sum)" ]; then
-      candidate_version=$candidate_version.dirty
-    fi
+    candidate_version=$major.$minor.$((patch + 1))-rehearsal.$short
   fi
+  # Build an exported tree with the pinned Go, exactly like a release build.
+  go=$(mise which go 2>/dev/null) || die "the pinned go is not installed (mise install)"
+  mkdir "$scratch/src"
+  git archive "$commit" | tar -x -C "$scratch/src"
   candidate=$scratch/kitbag
-  printf 'Building candidate %s from %s (origin/main is %s)\n' "$candidate_version" "$head" "$(git rev-parse --short origin/main 2>/dev/null || echo unknown)"
+  printf 'Building candidate %s from %s (%s)\n' "$candidate_version" "$ref" "$short"
   build_started=$(date +%s)
-  CGO_ENABLED=0 mise exec -- go build -trimpath -ldflags "-s -w -X main.version=$candidate_version" -o "$candidate" ./cmd/kitbag
+  CGO_ENABLED=0 "$go" build -C "$scratch/src" -trimpath -ldflags "-s -w -X main.version=$candidate_version" -o "$candidate" ./cmd/kitbag
   printf 'Built in %ss\n' "$(($(date +%s) - build_started))"
-  candidate_source="checkout $(git rev-parse HEAD)"
+  candidate_source="$ref $commit"
 else
   [ -x "$candidate" ] || die "candidate is not an executable: $candidate"
   candidate_source="executable $candidate"
@@ -554,7 +566,7 @@ run_case() {
         "$(printf '%s' "$out" | grep 'Restarted the running daemon' || echo 'no Restarted line')"
       if wait_converged "$timeout" "$old_pid"; then
         check "service runs $candidate_version after one service install" 0 "converged +${t_done}s"
-        outcome="needs one service install (expected); converged ${t_done}s after it"
+        outcome="MANUAL STEP: needs one service install (known gap of $from); converged ${t_done}s after it"
         post_checks "$variant" "$((t0 + t_done))" fallback
       else
         check "service runs $candidate_version after one service install" 1 "last probe: $last_probe"

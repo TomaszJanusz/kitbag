@@ -52,7 +52,7 @@ expectation blocks the release until the change is fixed; a README note or a
 package caveat is not a fix.
 
 ```sh
-scripts/upgrade-rehearsal.sh                      # latest release -> this checkout
+scripts/upgrade-rehearsal.sh                      # latest release -> origin/main
 scripts/upgrade-rehearsal.sh --from-version 0.1.2 --from-version 0.1.1
 scripts/upgrade-rehearsal.sh --candidate ./kitbag --variant rename --timeout 300
 ```
@@ -67,12 +67,14 @@ case and on exit (`--keep` leaves the last case running), refuses to start while
 the account runs anything besides its user manager, and serializes runs with
 `$TMPDIR/kitbag-upgrade-rehearsal.lock`.
 
-The default candidate is built from the current checkout exactly like a release,
+The default candidate is freshly fetched `origin/main`, exported with
+`git archive` (local edits never reach it) and built with the pinned Go exactly
+like a release,
 `CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=<version>"`,
-stamped `<next patch>-rehearsal.<commit>` (`.dirty` when tracked Go sources are
-modified). Build it from the commit you are about to release, normally
-`origin/main`. `--candidate PATH` uses an existing executable instead. The
-default previous version is the latest GitHub release tag.
+stamped `<next patch>-rehearsal.<commit>`. `--ref REF` builds another commit,
+normally the one you are about to release; `--candidate PATH` uses an existing
+executable instead. The default previous version is the latest GitHub release
+tag.
 
 Each case (`--from-version` × `--variant`; the default runs all three variants):
 
@@ -115,11 +117,17 @@ link (not in any release up to 0.1.2). Cases older than that are observed for
 `--observe` seconds (default 130) to confirm they do not self-heal. The script
 then asserts that one `kitbag service install` with the new binary prints
 `Restarted the running daemon (<old> -> <candidate>)` and converges, and runs
-steps 3 and 4. Such a case passes as "needs one service install". It still means
-users of that version have one manual step ([service.md](service.md#refresh-after-upgrades)),
-so mention it in the release notes. The summary lists every case, its
+steps 3 and 4. Such a case passes, but its summary says `MANUAL STEP`: users of
+that version and channel have one manual step
+([service.md](service.md#refresh-after-upgrades)), which the release notes must
+name. The rule forbids new manual steps: a case expected to be hands-off that
+needs one blocks the release. The summary lists every case, its
 expectation, its result and its timings. The exit status is nonzero when any
 case misses its expectation.
+
+The old daemon checks its executable once a minute and needs two matching
+observations, so a hands-off case takes about two minutes; one run of all three
+variants for two versions takes about 16 minutes.
 
 **What it cannot prove.** It covers Linux with systemd only. launchd on macOS
 (`KeepAlive`, bootout/bootstrap during startup repair, the detached refresh
