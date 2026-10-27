@@ -53,7 +53,7 @@ mise exec -- go test ./internal/schemacheck ./internal/config ./cmd/kitbag
 If a reviewed/pinned Taplo version is available, run from the repository root:
 
 ```sh
-taplo check --schema schemas/kitbag.schema.json schemas/examples/kitbag/valid/minimal.toml
+taplo check --schema schemas/kitbag.schema.json schemas/examples/kitbag/v1/valid/minimal.toml
 taplo check --schema schemas/config.schema.json schemas/examples/config/valid/minimal.toml
 ```
 

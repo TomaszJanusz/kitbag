@@ -333,9 +333,9 @@ Link capability is tracked per primitive and operating system in
 
 This manifest reproduces what `bin/agent-config-sync` does for the
 `TomaszJanusz/agent-config` repository without moving a file. It is the fixture
-`schemas/examples/kitbag/valid/agent-config.toml`, validated by the quality gate.
+`schemas/examples/kitbag/v1/valid/agent-config.toml`, validated by the quality gate.
 
-<!-- example: schemas/examples/kitbag/valid/agent-config.toml -->
+<!-- example: schemas/examples/kitbag/v1/valid/agent-config.toml -->
 ```toml
 # kitbag.toml reproducing today's TomaszJanusz/agent-config layout without
 # moving a file. Everything bin/agent-config-sync does is declared here; the
@@ -430,7 +430,7 @@ What each part of today's script maps to:
 
 ## Example: minimal manifest
 
-<!-- example: schemas/examples/kitbag/valid/minimal.toml -->
+<!-- example: schemas/examples/kitbag/v1/valid/minimal.toml -->
 ```toml
 # The smallest useful manifest: one instructions file for Claude Code.
 schema = 1

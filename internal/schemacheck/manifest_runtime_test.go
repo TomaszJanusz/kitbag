@@ -79,7 +79,7 @@ func runtimeGolden(t *testing.T, name, want string, err error) {
 	if err == nil || !strings.Contains(err.Error(), want) {
 		t.Fatalf("expected %q, got %v", want, err)
 	}
-	golden(t, "testdata/manifest/"+name+".golden", err.Error()+"\n")
+	golden(t, "testdata/manifest/v1/"+name+".golden", err.Error()+"\n")
 }
 func runtimeRoot() string { return filepath.Join(string(filepath.Separator), "repo") }
 func writeRuntimeFile(t *testing.T, h *fake.Host, name, body string) {

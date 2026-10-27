@@ -1,0 +1,364 @@
+# host mac
+min_tool_version = "0.4.0"
+mode = "link"
+schema = 1
+
+[instructions]
+  source = "global/AGENTS.md"
+  hosts = "hosts/mac.md"
+  [instructions.per_agent]
+    claude = "global/CLAUDE.md"
+    gemini = "global/GEMINI.md"
+
+[skills]
+  interchange = "skills-lock.json"
+  dirs = ["skills"]
+  [skills.imports]
+    [skills.imports.pdf]
+      source = "https://github.com/anthropics/skills"
+      path = "skills/pdf"
+      ref = "main"
+      dir = "skills"
+
+[commands]
+  dir = "commands"
+  [commands.per_agent]
+    gemini = "gemini/commands"
+
+[agents]
+  dir = ""
+  [agents.per_agent]
+    claude = "claude/agents"
+
+[hooks]
+  dir = "hooks"
+
+[rules]
+  dir = "rules"
+  [rules.per_agent]
+    cursor = "cursor/rules"
+
+[mcp]
+  policy = "merge"
+  [mcp.servers]
+    [mcp.servers.docs]
+      transport = "http"
+      command = ""
+      url = "https://docs.example.com/mcp"
+      args = []
+      secret_env = ["DOCS_TOKEN"]
+      agents = []
+      [mcp.servers.docs.headers]
+        Accept = "application/json"
+    [mcp.servers.linear]
+      transport = ""
+      command = "npx"
+      url = ""
+      args = ["-y", "@linear/mcp-server"]
+      secret_env = ["LINEAR_API_KEY"]
+      agents = ["claude", "codex"]
+      [mcp.servers.linear.env]
+        LOG_LEVEL = "warn"
+
+[git]
+  include = ["git/agent.gitconfig", "git/signing.gitconfig"]
+
+[targets]
+  [targets.amp]
+    agent = "generic"
+    mode = ""
+    settings = ""
+    [targets.amp.instances]
+      [targets.amp.instances.main]
+        dir = "~/.config/amp"
+        mode = ""
+        [targets.amp.instances.main.roots]
+          instructions = "~/.config/amp/AGENTS.md"
+          skills = "~/.config/amp/skills"
+        [targets.amp.instances.main.primitives]
+          [targets.amp.instances.main.primitives.instructions]
+            mode = ""
+            render = "concat"
+  [targets.claude]
+    enabled = true
+    agent = "claude"
+    mode = "link"
+    settings = "claude/settings.json"
+    [targets.claude.primitives]
+      [targets.claude.primitives.instructions]
+        mode = ""
+        render = "import"
+      [targets.claude.primitives.mcp]
+        mode = "copy"
+        render = ""
+    [targets.claude.instances]
+      [targets.claude.instances.main]
+        dir = "~/.claude"
+        mode = ""
+        [targets.claude.instances.main.roots]
+          mcp = "~/.claude.json"
+      [targets.claude.instances.second]
+        settings = false
+        dir = "~/.claude_2"
+        mode = "copy"
+        [targets.claude.instances.second.primitives]
+          [targets.claude.instances.second.primitives.hooks]
+            enabled = false
+            mode = ""
+            render = ""
+  [targets.codex]
+    agent = "codex"
+    mode = ""
+    settings = ""
+    [targets.codex.instances]
+      [targets.codex.instances.main]
+        dir = "~/.codex"
+        mode = ""
+        [targets.codex.instances.main.roots]
+          skills = "~/.agents/skills"
+
+[publish]
+  mode = "direct"
+  branch = ""
+
+[[files]]
+  src = "agent-browser/config.json"
+  dest = "~/.agent-browser/config.json"
+  mode = "copy"
+  hosts = ["mac"]
+# host runner02
+min_tool_version = "0.4.0"
+mode = "copy"
+files = []
+schema = 1
+
+[instructions]
+  source = "global/AGENTS.md"
+  hosts = "hosts/runner02.md"
+  [instructions.per_agent]
+    claude = "global/CLAUDE.md"
+    gemini = "global/GEMINI.md"
+
+[skills]
+  interchange = "skills-lock.json"
+  dirs = ["skills"]
+  [skills.imports]
+    [skills.imports.pdf]
+      source = "https://github.com/anthropics/skills"
+      path = "skills/pdf"
+      ref = "main"
+      dir = "skills"
+
+[commands]
+  dir = "commands"
+  [commands.per_agent]
+    gemini = "gemini/commands"
+
+[agents]
+  dir = ""
+  [agents.per_agent]
+    claude = "claude/agents"
+
+[hooks]
+  dir = "hooks"
+
+[rules]
+  dir = "rules"
+  [rules.per_agent]
+    cursor = "cursor/rules"
+
+[mcp]
+  policy = "merge"
+  [mcp.servers]
+    [mcp.servers.docs]
+      transport = "http"
+      command = ""
+      url = "https://docs.example.com/mcp"
+      args = []
+      secret_env = ["DOCS_TOKEN"]
+      agents = []
+      [mcp.servers.docs.headers]
+        Accept = "application/json"
+    [mcp.servers.linear]
+      transport = ""
+      command = "npx"
+      url = ""
+      args = ["-y", "@linear/mcp-server"]
+      secret_env = ["LINEAR_API_KEY"]
+      agents = ["claude", "codex"]
+      [mcp.servers.linear.env]
+        LOG_LEVEL = "warn"
+
+[git]
+  include = ["git/agent.gitconfig", "git/signing.gitconfig"]
+
+[targets]
+  [targets.amp]
+    enabled = false
+    agent = "generic"
+    mode = ""
+    settings = ""
+    [targets.amp.instances]
+      [targets.amp.instances.main]
+        dir = "~/.config/amp"
+        mode = ""
+        [targets.amp.instances.main.roots]
+          instructions = "~/.config/amp/AGENTS.md"
+          skills = "~/.config/amp/skills"
+        [targets.amp.instances.main.primitives]
+          [targets.amp.instances.main.primitives.instructions]
+            mode = ""
+            render = "concat"
+  [targets.claude]
+    enabled = true
+    agent = "claude"
+    mode = "copy"
+    settings = "claude/settings.json"
+    [targets.claude.primitives]
+      [targets.claude.primitives.instructions]
+        mode = ""
+        render = "import"
+      [targets.claude.primitives.mcp]
+        mode = "copy"
+        render = ""
+    [targets.claude.instances]
+      [targets.claude.instances.only]
+        dir = "~/.claude"
+        mode = ""
+  [targets.codex]
+    agent = "codex"
+    mode = ""
+    settings = ""
+    [targets.codex.instances]
+      [targets.codex.instances.main]
+        dir = "~/.codex"
+        mode = ""
+        [targets.codex.instances.main.roots]
+          skills = "~/.agents/skills"
+
+[publish]
+  mode = "pr"
+  branch = "main"
+# host undeclared-host
+min_tool_version = "0.4.0"
+mode = "link"
+files = []
+schema = 1
+
+[instructions]
+  source = "global/AGENTS.md"
+  hosts = "hosts/undeclared-host.md"
+  [instructions.per_agent]
+    claude = "global/CLAUDE.md"
+    gemini = "global/GEMINI.md"
+
+[skills]
+  interchange = "skills-lock.json"
+  dirs = ["skills"]
+  [skills.imports]
+    [skills.imports.pdf]
+      source = "https://github.com/anthropics/skills"
+      path = "skills/pdf"
+      ref = "main"
+      dir = "skills"
+
+[commands]
+  dir = "commands"
+  [commands.per_agent]
+    gemini = "gemini/commands"
+
+[agents]
+  dir = ""
+  [agents.per_agent]
+    claude = "claude/agents"
+
+[hooks]
+  dir = "hooks"
+
+[rules]
+  dir = "rules"
+  [rules.per_agent]
+    cursor = "cursor/rules"
+
+[mcp]
+  policy = "merge"
+  [mcp.servers]
+    [mcp.servers.docs]
+      transport = "http"
+      command = ""
+      url = "https://docs.example.com/mcp"
+      args = []
+      secret_env = ["DOCS_TOKEN"]
+      agents = []
+      [mcp.servers.docs.headers]
+        Accept = "application/json"
+    [mcp.servers.linear]
+      transport = ""
+      command = "npx"
+      url = ""
+      args = ["-y", "@linear/mcp-server"]
+      secret_env = ["LINEAR_API_KEY"]
+      agents = ["claude", "codex"]
+      [mcp.servers.linear.env]
+        LOG_LEVEL = "warn"
+
+[git]
+  include = ["git/agent.gitconfig", "git/signing.gitconfig"]
+
+[targets]
+  [targets.amp]
+    agent = "generic"
+    mode = ""
+    settings = ""
+    [targets.amp.instances]
+      [targets.amp.instances.main]
+        dir = "~/.config/amp"
+        mode = ""
+        [targets.amp.instances.main.roots]
+          instructions = "~/.config/amp/AGENTS.md"
+          skills = "~/.config/amp/skills"
+        [targets.amp.instances.main.primitives]
+          [targets.amp.instances.main.primitives.instructions]
+            mode = ""
+            render = "concat"
+  [targets.claude]
+    enabled = true
+    agent = "claude"
+    mode = "link"
+    settings = "claude/settings.json"
+    [targets.claude.primitives]
+      [targets.claude.primitives.instructions]
+        mode = ""
+        render = "import"
+      [targets.claude.primitives.mcp]
+        mode = "copy"
+        render = ""
+    [targets.claude.instances]
+      [targets.claude.instances.main]
+        dir = "~/.claude"
+        mode = ""
+        [targets.claude.instances.main.roots]
+          mcp = "~/.claude.json"
+      [targets.claude.instances.second]
+        settings = false
+        dir = "~/.claude_2"
+        mode = "copy"
+        [targets.claude.instances.second.primitives]
+          [targets.claude.instances.second.primitives.hooks]
+            enabled = false
+            mode = ""
+            render = ""
+  [targets.codex]
+    agent = "codex"
+    mode = ""
+    settings = ""
+    [targets.codex.instances]
+      [targets.codex.instances.main]
+        dir = "~/.codex"
+        mode = ""
+        [targets.codex.instances.main.roots]
+          skills = "~/.agents/skills"
+
+[publish]
+  mode = "direct"
+  branch = "main"

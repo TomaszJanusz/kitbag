@@ -21,6 +21,6 @@ it is meant to produce. `internal/schemacheck` enforces both as part of
 `docs/manifest.md` under an `<!-- example: path -->` marker are byte-identical
 to the fixture at that path.
 
-`examples/kitbag/valid/agent-config.toml` reproduces today's
+`examples/kitbag/v1/valid/agent-config.toml` reproduces today's
 `TomaszJanusz/agent-config` layout; `full.toml` exercises every key once and is
 a fixture, not a recommendation.

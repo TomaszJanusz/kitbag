@@ -23,16 +23,18 @@ const (
 	fence        = "```"
 )
 
-// kind pairs one schema file with the directory of its TOML examples.
+// kind pairs one schema file with the directories of the TOML examples it
+// must judge; each directory holds valid/ and invalid/.
 type kind struct {
 	name   string
 	schema string
+	dirs   []string
 }
 
 func kinds() []kind {
 	return []kind{
-		{name: "kitbag", schema: "kitbag.schema.json"},
-		{name: "config", schema: "config.schema.json"},
+		{name: "kitbag", schema: "kitbag.schema.json", dirs: []string{"examples/kitbag/v1"}},
+		{name: "config", schema: "config.schema.json", dirs: []string{"examples/config"}},
 	}
 }
 
@@ -45,7 +47,7 @@ func TestValidExamples(t *testing.T) {
 
 			fsys := os.DirFS(schemasDir)
 			schema := compile(t, fsys, k.schema)
-			for _, name := range examples(t, fsys, path.Join("examples", k.name, "valid")) {
+			for _, name := range kindExamples(t, fsys, k, "valid") {
 				t.Run(path.Base(name), func(t *testing.T) {
 					t.Parallel()
 
@@ -67,7 +69,7 @@ func TestInvalidExamples(t *testing.T) {
 
 			fsys := os.DirFS(schemasDir)
 			schema := compile(t, fsys, k.schema)
-			for _, name := range examples(t, fsys, path.Join("examples", k.name, "invalid")) {
+			for _, name := range kindExamples(t, fsys, k, "invalid") {
 				t.Run(path.Base(name), func(t *testing.T) {
 					t.Parallel()
 
@@ -187,6 +189,17 @@ func examples(t *testing.T, fsys fs.FS, dir string) []string {
 	}
 	if len(names) == 0 {
 		t.Fatalf("%s: no .toml examples", dir)
+	}
+	return names
+}
+
+// kindExamples lists the examples of status ("valid" or "invalid") in every
+// directory of k.
+func kindExamples(t *testing.T, fsys fs.FS, k kind, status string) []string {
+	t.Helper()
+	names := make([]string, 0, len(k.dirs))
+	for _, dir := range k.dirs {
+		names = append(names, examples(t, fsys, path.Join(dir, status))...)
 	}
 	return names
 }

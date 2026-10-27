@@ -14,7 +14,7 @@ reach the host only through `platform.FS`.
    With a separate working copy (the one a plain `kitbag init` creates), adoption cannot keep links or renderings that name the old clone;
    the next sync replaces them in place instead (see below). Either way use a
    `kitbag.toml` that declares the same layout
-   ([example](../schemas/examples/kitbag/valid/agent-config.toml)), and pass
+   ([example](../schemas/examples/kitbag/v1/valid/agent-config.toml)), and pass
    `--no-service` to init (or answer no): the background service syncs as soon
    as it starts, which must not happen before adoption.
 2. **Declare the legacy roots.** Adoption refuses to run without explicit

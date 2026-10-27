@@ -27,7 +27,7 @@ func TestManifestSchemaParity(t *testing.T) {
 	fsys := os.DirFS(schemasDir)
 	schema := compile(t, fsys, "kitbag.schema.json")
 	for _, status := range []string{"valid", "invalid"} {
-		for _, name := range examples(t, fsys, path.Join("examples/kitbag", status)) {
+		for _, name := range examples(t, fsys, path.Join("examples/kitbag/v1", status)) {
 			t.Run(status+"/"+path.Base(name), func(t *testing.T) {
 				t.Parallel()
 				raw := read(t, fsys, name)
@@ -61,7 +61,7 @@ func assertManifestError(t *testing.T, name string, raw []byte, err error) {
 	if !errors.As(err, &diagnostic) || diagnostic.Line < 1 || diagnostic.Column < 1 {
 		t.Fatalf("missing position: %v", err)
 	}
-	golden(t, "testdata/manifest/"+path.Base(name)+".golden", err.Error()+"\n")
+	golden(t, "testdata/manifest/"+path.Base(path.Dir(path.Dir(name)))+"/"+path.Base(name)+".golden", err.Error()+"\n")
 }
 
 func golden(t *testing.T, name, got string) {
@@ -87,7 +87,7 @@ func TestManifestSchemaMutations(t *testing.T) {
 	t.Parallel()
 	fsys := os.DirFS(schemasDir)
 	schema := compile(t, fsys, "kitbag.schema.json")
-	raw := read(t, fsys, "examples/kitbag/valid/full.toml")
+	raw := read(t, fsys, "examples/kitbag/v1/valid/full.toml")
 	for i, mutation := range manifestMutations(t, raw) {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			t.Parallel()

@@ -9,7 +9,7 @@ manages, without rewriting a file. This guide is the short path; the contract is
 You need a working `kitbag` ([install](../README.md#install)) and a repository
 that kitbag can read: your existing agent-config repository plus a `kitbag.toml`
 declaring the same layout as the script produces
-([example](../schemas/examples/kitbag/valid/agent-config.toml)). Commit and push that
+([example](../schemas/examples/kitbag/v1/valid/agent-config.toml)). Commit and push that
 manifest first.
 
 1. **Stop the old timer.** Both tools running would fight over a file once

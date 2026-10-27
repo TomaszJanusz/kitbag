@@ -1,0 +1,186 @@
+# host mac
+min_tool_version = "0.1.0"
+mode = ""
+schema = 1
+
+[instructions]
+  source = "global/AGENTS.md"
+  hosts = "hosts/mac.md"
+
+[skills]
+  interchange = "skills-lock.json"
+  dirs = ["skills", ".agents/skills"]
+  [skills.imports]
+    [skills.imports.agent-browser]
+      source = "vercel-labs/agent-browser"
+      path = "skills/agent-browser"
+      ref = ""
+      dir = ".agents/skills"
+    [skills.imports.gh-stack]
+      source = "github/gh-stack"
+      path = "skills/gh-stack"
+      ref = ""
+      dir = ""
+    [skills.imports.notion-cli]
+      source = "makenotion/skills"
+      path = "skills/notion-cli"
+      ref = ""
+      dir = ""
+
+[git]
+  include = ["git/agent.gitconfig"]
+
+[targets]
+  [targets.claude]
+    agent = "claude"
+    mode = ""
+    settings = "claude/settings.json"
+    [targets.claude.instances]
+      [targets.claude.instances.main]
+        dir = "~/.claude"
+        mode = ""
+      [targets.claude.instances.second]
+        dir = "~/.claude_2"
+        mode = ""
+  [targets.codex]
+    agent = "codex"
+    mode = ""
+    settings = ""
+    [targets.codex.instances]
+      [targets.codex.instances.main]
+        dir = "~/.codex"
+        mode = ""
+
+[publish]
+  mode = "direct"
+  branch = ""
+
+[[files]]
+  src = "agent-browser/config.json"
+  dest = "~/.agent-browser/config.json"
+  mode = ""
+  hosts = []
+# host runner02
+min_tool_version = "0.1.0"
+mode = ""
+schema = 1
+
+[instructions]
+  source = "global/AGENTS.md"
+  hosts = "hosts/runner02.md"
+
+[skills]
+  interchange = "skills-lock.json"
+  dirs = ["skills", ".agents/skills"]
+  [skills.imports]
+    [skills.imports.agent-browser]
+      source = "vercel-labs/agent-browser"
+      path = "skills/agent-browser"
+      ref = ""
+      dir = ".agents/skills"
+    [skills.imports.gh-stack]
+      source = "github/gh-stack"
+      path = "skills/gh-stack"
+      ref = ""
+      dir = ""
+    [skills.imports.notion-cli]
+      source = "makenotion/skills"
+      path = "skills/notion-cli"
+      ref = ""
+      dir = ""
+
+[git]
+  include = ["git/agent.gitconfig"]
+
+[targets]
+  [targets.claude]
+    agent = "claude"
+    mode = ""
+    settings = "claude/settings.json"
+    [targets.claude.instances]
+      [targets.claude.instances.main]
+        dir = "~/.claude"
+        mode = ""
+      [targets.claude.instances.second]
+        dir = "~/.claude_2"
+        mode = ""
+  [targets.codex]
+    agent = "codex"
+    mode = ""
+    settings = ""
+    [targets.codex.instances]
+      [targets.codex.instances.main]
+        dir = "~/.codex"
+        mode = ""
+
+[publish]
+  mode = "pr"
+  branch = ""
+
+[[files]]
+  src = "agent-browser/config.json"
+  dest = "~/.agent-browser/config.json"
+  mode = ""
+  hosts = []
+# host undeclared-host
+min_tool_version = "0.1.0"
+mode = ""
+schema = 1
+
+[instructions]
+  source = "global/AGENTS.md"
+  hosts = "hosts/undeclared-host.md"
+
+[skills]
+  interchange = "skills-lock.json"
+  dirs = ["skills", ".agents/skills"]
+  [skills.imports]
+    [skills.imports.agent-browser]
+      source = "vercel-labs/agent-browser"
+      path = "skills/agent-browser"
+      ref = ""
+      dir = ".agents/skills"
+    [skills.imports.gh-stack]
+      source = "github/gh-stack"
+      path = "skills/gh-stack"
+      ref = ""
+      dir = ""
+    [skills.imports.notion-cli]
+      source = "makenotion/skills"
+      path = "skills/notion-cli"
+      ref = ""
+      dir = ""
+
+[git]
+  include = ["git/agent.gitconfig"]
+
+[targets]
+  [targets.claude]
+    agent = "claude"
+    mode = ""
+    settings = "claude/settings.json"
+    [targets.claude.instances]
+      [targets.claude.instances.main]
+        dir = "~/.claude"
+        mode = ""
+      [targets.claude.instances.second]
+        dir = "~/.claude_2"
+        mode = ""
+  [targets.codex]
+    agent = "codex"
+    mode = ""
+    settings = ""
+    [targets.codex.instances]
+      [targets.codex.instances.main]
+        dir = "~/.codex"
+        mode = ""
+
+[publish]
+  mode = "direct"
+  branch = ""
+
+[[files]]
+  src = "agent-browser/config.json"
+  dest = "~/.agent-browser/config.json"
+  mode = ""
+  hosts = []

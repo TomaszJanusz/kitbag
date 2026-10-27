@@ -104,7 +104,7 @@ kitbag init --scaffold ./agent-config --yes --git-backend=embedded \
   --instance=codex.main=~/.codex
 ```
 
-The scaffold matches `schemas/examples/kitbag/valid/minimal.toml`: schema 1,
+The scaffold matches `schemas/examples/kitbag/v1/valid/minimal.toml`: schema 1,
 `instructions.source = "AGENTS.md"`, and selected supported targets. It creates:
 
 - `kitbag.toml`, with optional named instances using the manifest home-path grammar.
