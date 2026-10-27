@@ -37,11 +37,11 @@ func TestGeneratedAPIContracts(t *testing.T) {
 	})
 	t.Run("agents.add", func(t *testing.T) {
 		t.Parallel()
-		testAPIContract(t, "agents.add", "{\"agent\":{\"kind\":\"claude\",\"name\":\"third\",\"dir\":\"~/.claude_3\"},\"dry_run\":true}", "{\"agent\":5}", -32602, "agents_addRequest", "agentChangeResult")
+		testAPIContract(t, "agents.add", "{\"agent\":{\"kind\":\"claude\",\"name\":\"third\",\"dir\":\"~/.claude_3\",\"hosts\":[\"mac\"]},\"dry_run\":true}", "{\"agent\":5}", -32602, "agents_addRequest", "agentChangeResult")
 	})
 	t.Run("agents.edit", func(t *testing.T) {
 		t.Parallel()
-		testAPIContract(t, "agents.edit", "{\"agent\":{\"target\":\"claude\",\"name\":\"second\",\"dir\":\"~/.claude-work\"},\"dry_run\":true}", "{\"agent\":{\"name\":5}}", -32602, "agents_editRequest", "agentChangeResult")
+		testAPIContract(t, "agents.edit", "{\"agent\":{\"target\":\"claude\",\"name\":\"second\",\"dir\":\"~/.claude-work\",\"hosts\":[\"mac\",\"runner02\"]},\"dry_run\":true}", "{\"agent\":{\"name\":5}}", -32602, "agents_editRequest", "agentChangeResult")
 	})
 	t.Run("agents.remove", func(t *testing.T) {
 		t.Parallel()

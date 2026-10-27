@@ -1,6 +1,10 @@
 package model
 
-import "github.com/TomaszJanusz/kitbag/internal/ui/model/text"
+import (
+	"strings"
+
+	"github.com/TomaszJanusz/kitbag/internal/ui/model/text"
+)
 
 func previewSummary(p AgentPreview) []text.Message {
 	var summary []text.Message
@@ -8,6 +12,7 @@ func previewSummary(p AgentPreview) []text.Message {
 		summary = append(summary, text.New(text.WizardManifestPath, text.Plain(p.Manifest)))
 	}
 	summary = append(summary, previewRoute(p))
+	summary = append(summary, previewHosts(p.Change)...)
 	if p.Directory != "" {
 		summary = append(summary, text.New(text.WizardLocalDirectory, text.Plain(p.Directory)))
 	}
@@ -63,4 +68,17 @@ func previewRoute(p AgentPreview) text.Message {
 	default:
 		return text.New(text.WizardPublicationUnavailable)
 	}
+}
+
+func previewHosts(change AgentChange) []text.Message {
+	var summary []text.Message
+	switch hosts := SplitHosts(change.Hosts); {
+	case len(hosts) > 0:
+		summary = append(summary, text.New(text.WizardPreviewHosts, text.Plain(strings.Join(hosts, ", "))))
+	case change.AllHosts:
+		summary = append(summary, text.New(text.WizardPreviewAllHosts))
+	case change.Op == AgentAdd || change.Op == AgentEdit:
+		summary = append(summary, text.New(text.WizardPreviewEveryHost))
+	}
+	return summary
 }

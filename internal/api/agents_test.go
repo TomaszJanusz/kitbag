@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -118,5 +119,24 @@ func TestAgentErrorHidesOtherDiagnostics(t *testing.T) {
 	}
 	if agentError(nil) != nil {
 		t.Fatal("nil error")
+	}
+}
+
+// TestAgentHostsThroughAPI previews an add limited to hosts: the plan and
+// its diff carry the list, and an invalid name is refused with its detail.
+func TestAgentHostsThroughAPI(t *testing.T) {
+	t.Parallel()
+	h := agentHandlers(t)
+	data, problem := h.call(t.Context(), "agents.add", Params{DryRun: true, Agent: &agents.Change{Kind: "claude", Name: "second", Dir: "~/.claude_2", Hosts: []string{"test", "mac"}}}, nil, func(Event) {})
+	if problem != nil {
+		t.Fatal(problem)
+	}
+	result, ok := data.(workflow.AgentResult)
+	if !ok || strings.Join(result.Plan.Change.Hosts, ",") != "test,mac" || !slices.Contains(result.Plan.Diff, `+hosts = ["test", "mac"]`) {
+		t.Fatalf("preview: %+v", data)
+	}
+	_, problem = h.call(t.Context(), "agents.add", Params{DryRun: true, Agent: &agents.Change{Kind: "claude", Name: "second", Dir: "~/.claude_2", Hosts: []string{"my mac"}}}, nil, func(Event) {})
+	if problem == nil || problem.Data.ExitCode != apply.Usage || !strings.Contains(problem.Data.Detail, `host "my mac"`) {
+		t.Fatalf("invalid host: %+v", problem)
 	}
 }

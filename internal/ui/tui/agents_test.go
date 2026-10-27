@@ -34,27 +34,29 @@ func TestAgentsAddWizardFlow(t *testing.T) {
 	s.press("5")
 	s.waitFor("claude/main")
 	s.press(keyAdd)
-	s.waitFor("Step 1/7", "> [ Next ]")
+	s.waitFor("Step 1/8", "> [ Next ]")
 	s.press(keyEnter)
-	s.waitFor("Step 2/7", "Instance name: >")
+	s.waitFor("Step 2/8", "Instance name: >")
 	s.press("new")
 	s.waitFor("Instance name: > new")
 	s.press(keyEnter)
-	s.waitFor("Step 3/7")
+	s.waitFor("Step 3/8")
 	s.press("~/.claude-new")
 	s.waitFor("Configuration directory: > ~/.claude-new")
 	s.press(keyEnter)
-	s.waitFor("Step 4/7")
+	s.waitFor("Step 4/8", "(*) This machine only (laptop)", "( ) All machines")
+	s.press(keyEnter)
+	s.waitFor("Step 5/8")
 	s.press("shift+tab", "shift+tab", "shift+tab", keyEnter)
 	s.waitFor("(*) Do not merge shared settings")
 	s.press(keyEnter)
-	s.waitFor("Step 5/7", "Local configuration directory")
+	s.waitFor("Step 6/8", "Local configuration directory")
 	s.press(keyPageDown)
 	s.waitFor("+dir = \"~/.claude-new\"")
 	s.press(keyEnter)
-	s.waitFor("Step 6/7", "> [ Apply ]")
+	s.waitFor("Step 7/8", "> [ Apply ]")
 	s.press(keyEnter)
-	s.waitFor("Step 7/7", "Sync succeeded, 2 changed")
+	s.waitFor("Step 8/8", "Sync succeeded, 2 changed")
 	s.press(keyEnter)
 	s.waitFor("claude/new  /home/user/.claude-new")
 	if screen := s.final(); !strings.Contains(screen, "3 declared instances") || s.m.windows.Len() != 0 {
@@ -62,7 +64,7 @@ func TestAgentsAddWizardFlow(t *testing.T) {
 	}
 	_, previews, applies := s.client.agents.calls()
 	off := false
-	want := model.AgentChange{Op: model.AgentAdd, Kind: "claude", Name: "new", Dir: "~/.claude-new", Settings: &off}
+	want := model.AgentChange{Op: model.AgentAdd, Kind: "claude", Name: "new", Dir: "~/.claude-new", Settings: &off, Hosts: "laptop"}
 	if len(previews) != 1 || len(applies) != 1 || !sameChange(previews[0], want) {
 		t.Fatalf("previews=%+v applies=%v", previews, applies)
 	}
@@ -89,7 +91,7 @@ func TestAgentsCancelAsksBeforeDiscarding(t *testing.T) {
 	s.press(keyLeft, keyEnter)
 	screen := s.final()
 	_, previews, applies := s.client.agents.calls()
-	if s.m.windows.Len() != 0 || s.m.app.AgentForm.Open() || len(previews) != 0 || len(applies) != 0 || strings.Contains(screen, "Step 2/7") {
+	if s.m.windows.Len() != 0 || s.m.app.AgentForm.Open() || len(previews) != 0 || len(applies) != 0 || strings.Contains(screen, "Step 2/8") {
 		t.Fatalf("windows=%d previews=%v applies=%v\n%s", s.m.windows.Len(), previews, applies, screen)
 	}
 }
@@ -148,7 +150,7 @@ func TestAgentsResizeWithWizardOpen(t *testing.T) {
 	s.waitFor("Instance name: > kept!", "Use up to 64 lowercase letters")
 	screen := s.final()
 	assertScreenFits(t, screen, 120, 35)
-	if !strings.Contains(screen, "Step 2/7") {
+	if !strings.Contains(screen, "Step 2/8") {
 		t.Fatal(screen)
 	}
 }
@@ -164,14 +166,14 @@ func TestAgentsValidationErrors(t *testing.T) {
 	d.press(keyEnter, keyEnter, "main")
 	d.expect("Target claude already has an instance named main.", "[ Next (unavailable) ]")
 	d.press(keyEnter)
-	d.expect("Step 2/7")
+	d.expect("Step 2/8")
 	d.press("backspace", "backspace", "backspace", "backspace", "Work")
 	d.expect("Use up to 64 lowercase letters")
 	d.golden("agents-invalid-name-medium")
 	d.press("backspace", "backspace", "backspace", "backspace", "work", keyEnter, "/srv/claude")
 	d.expect("/srv/claude is outside the home directory; it cannot be declared.")
 	d.press(keyEnter)
-	d.expect("Step 3/7")
+	d.expect("Step 3/8")
 	for range len("/srv/claude") {
 		d.press("backspace")
 	}
@@ -188,18 +190,21 @@ func TestAgentsEditDirectory(t *testing.T) {
 	t.Parallel()
 	d := drive(t, withAgents(newFake()), 120, 35)
 	d.press("5", keyDown, keyEnter)
-	d.expect("Edit claude/second: Configuration directory", "Step 1/5", "Now /home/user/.claude_2; leave empty to keep it.")
+	d.expect("Edit claude/second: Configuration directory", "Step 1/6", "Now /home/user/.claude_2; leave empty to keep it.")
 	d.golden("agents-edit-dir-wide")
 	d.press(keyNext, "~/.claude_9", keyEnter)
-	d.expect("Step 2/5", "(*) Keep the current setting")
+	d.expect("Step 2/6", "(*) Keep the current machines")
+	d.golden("agents-edit-hosts-wide")
 	d.press(keyEnter)
-	d.expect("Step 3/5", `-dir = "~/.claude_2"`, `+dir = "~/.claude_9"`, "~/.claude_2 is handed back")
+	d.expect("Step 3/6", "(*) Keep the current setting")
+	d.press(keyEnter)
+	d.expect("Step 4/6", `-dir = "~/.claude_2"`, `+dir = "~/.claude_9"`, "~/.claude_2 is handed back")
 	d.golden("agents-edit-preview-wide")
 	d.press(keyEnter, keyEnter)
-	d.expect("Step 5/5", "Handed back ~/.claude_2", "discard ~/.claude_2/CLAUDE.md")
+	d.expect("Step 6/6", "Handed back ~/.claude_2", "discard ~/.claude_2/CLAUDE.md")
 	d.press(keyEnter)
 	d.expect("claude/second  /home/user/.claude_9")
-	if _, previews, _ := d.client.agents.calls(); previews[0].Op != model.AgentEdit || previews[0].Target != "claude" || previews[0].Name != "second" || previews[0].Settings != nil {
+	if _, previews, _ := d.client.agents.calls(); previews[0].Op != model.AgentEdit || previews[0].Target != "claude" || previews[0].Name != "second" || previews[0].Settings != nil || previews[0].Hosts != "" || previews[0].AllHosts {
 		t.Fatalf("edit change %+v", previews[0])
 	}
 }
@@ -232,10 +237,10 @@ func TestAgentsRemoveNeedsConfirmation(t *testing.T) {
 // step with the Apply button focused.
 func addToConfirm(d *driver) {
 	d.t.Helper()
-	d.press("5", keyAdd, keyEnter, "extra", keyEnter, "~/.claude_3", keyEnter, keyEnter)
-	d.expect("Step 5/7")
+	d.press("5", keyAdd, keyEnter, "extra", keyEnter, "~/.claude_3", keyEnter, keyEnter, keyEnter)
+	d.expect("Step 6/8")
 	d.press(keyEnter)
-	d.expect("Step 6/7", "> [ Apply ]")
+	d.expect("Step 7/8", "> [ Apply ]")
 }
 
 func TestAgentsPullRequestModeWritesNothing(t *testing.T) {
@@ -274,23 +279,23 @@ func TestAgentsFailedApplyStaysOnConfirm(t *testing.T) {
 	d := drive(t, client, 100, 30)
 	addToConfirm(d)
 	d.press(keyEnter)
-	d.expect("Step 6/7", "✗ Another kitbag operation is running; try again shortly: another kitbag")
+	d.expect("Step 7/8", "✗ Another kitbag operation is running; try again shortly: another kitbag")
 	d.client.agents.set(func(a *agentFake) { a.applyErr = nil })
 	d.press(keyEnter)
-	d.expect("Step 7/7", "Published add claude instance extra")
+	d.expect("Step 8/8", "Published add claude instance extra")
 }
 
 func TestAgentsRefusedChangeShowsDetail(t *testing.T) {
 	t.Parallel()
 	d := drive(t, withAgents(newFake()), 120, 35)
-	d.press("5", keyAdd, keyDown, keyDown, keyEnter, keyEnter, "work", keyEnter, "~/.codex-work", keyEnter, "shift+tab", "shift+tab", "shift+tab", keyLeft, keyEnter)
+	d.press("5", keyAdd, keyDown, keyDown, keyEnter, keyEnter, "work", keyEnter, "~/.codex-work", keyEnter, keyEnter, "shift+tab", "shift+tab", "shift+tab", keyLeft, keyEnter)
 	d.expect("(*) Merge shared settings")
 	d.press(keyEnter)
-	d.expect("Step 5/7", "✗ The configuration or request is invalid: target codex declares no settings fragment", "[ Next (unavailable) ]")
+	d.expect("Step 6/8", "✗ The configuration or request is invalid: target codex declares no settings fragment", "[ Next (unavailable) ]")
 	d.golden("agents-refused-wide")
 	// With Next unavailable the focus rests on Back: Enter returns to fix it.
 	d.press(keyEnter)
-	d.expect("Step 4/7")
+	d.expect("Step 5/8")
 	d.refuse("declares no settings fragment")
 	if _, _, applies := d.client.agents.calls(); len(applies) != 0 {
 		t.Fatalf("refused change applied: %v", applies)
@@ -306,10 +311,10 @@ func TestAgentsStalePreviewIsNotApplied(t *testing.T) {
 	addToConfirm(d)
 	d.client.agents.bump()
 	d.press(keyEnter)
-	d.expect("Step 5/7", "kitbag.toml changed since the preview. Review the new preview.")
+	d.expect("Step 6/8", "kitbag.toml changed since the preview. Review the new preview.")
 	d.golden("agents-stale-wide")
 	d.press(keyEnter, keyEnter)
-	d.expect("Step 7/7")
+	d.expect("Step 8/8")
 	if _, previews, applies := d.client.agents.calls(); len(previews) != 2 || strings.Join(applies, ",") != "r0,r1" {
 		t.Fatalf("previews=%d applies=%v", len(previews), applies)
 	}
@@ -332,11 +337,11 @@ func TestAgentsMouse(t *testing.T) {
 	d.clickText("Agents")
 	d.clickText("claude/second  /home")
 	d.expect("Directory state  missing")
-	d.refuse("Step 1/5")
+	d.refuse("Step 1/6")
 	d.clickText("claude/second  /home")
-	d.expect("Step 1/5", "Edit claude/second")
+	d.expect("Step 1/6", "Edit claude/second")
 	d.clickText("[ Cancel ]")
-	d.refuse("Step 1/5")
+	d.refuse("Step 1/6")
 	d.send(tea.MouseMsg{X: 3, Y: 6, Button: tea.MouseButtonWheelDown, Action: tea.MouseActionPress})
 	d.expect("Directory state  outside the home directory")
 	d.refuse("[ Remove (unavailable) ]", "[ Edit (unavailable) ]")
@@ -345,15 +350,15 @@ func TestAgentsMouse(t *testing.T) {
 	d.clickText("[ Look for more directories ]")
 	d.expect("/home/user/.claude_3")
 	d.clickText("[ Add this directory ]")
-	d.expect("Step 1/7")
+	d.expect("Step 1/8")
 	d.clickText("( ) codex")
 	d.expect("(*) codex")
 	d.clickText("[ Next ]")
-	d.expect("Step 2/7")
+	d.expect("Step 2/8")
 	d.click(0, 0)
 	d.expect("Discard this change?")
 	d.clickText("[ Yes ]")
-	d.refuse("Step 2/7", "Discard this change?")
+	d.refuse("Step 2/8", "Discard this change?")
 	d.clickText("claude/main  /home")
 	d.clickText("[ Remove ]")
 	d.expect("Step 1/3", "Remove claude/main")
@@ -369,10 +374,10 @@ func TestAgentsWindowScrollsLongPreview(t *testing.T) {
 	t.Parallel()
 	client := withAgents(newFake())
 	d := drive(t, client, 60, 15)
-	d.press("5", keyDown, keyEnter, keyNext, "~/.claude_9", keyEnter, keyEnter)
-	d.expect("Step 3/5", "scroll ↑/↓")
+	d.press("5", keyDown, keyEnter, keyNext, "~/.claude_9", keyEnter, keyEnter, keyEnter)
+	d.expect("Step 4/6", "scroll ↑/↓")
 	d.refuse(`+dir = "~/.claude_9"`)
-	d.press(keyPageDown, keyPageDown, keyPageDown)
+	d.press(keyPageDown, keyPageDown, keyPageDown, keyPageDown)
 	d.expect(`+dir = "~/.claude_9"`)
 	d.send(tea.MouseMsg{X: 30, Y: 10, Button: tea.MouseButtonWheelUp, Action: tea.MouseActionPress})
 	d.press(keyPageUp)
@@ -384,7 +389,7 @@ func TestAgentWizardReadyStepsFocusPrimaryButton(t *testing.T) {
 	d := drive(t, withAgents(newFake()), 120, 35)
 	d.m.dispatch(model.OpenAgentForm{Op: model.AgentAdd, Kind: "claude", Name: "ready", Dir: "~/.claude-ready"})
 	d.settle()
-	for _, step := range []model.AgentStep{model.AgentStepKind, model.AgentStepName, model.AgentStepDir, model.AgentStepSettings, model.AgentStepPreview, model.AgentStepConfirm, model.AgentStepResult} {
+	for _, step := range []model.AgentStep{model.AgentStepKind, model.AgentStepName, model.AgentStepDir, model.AgentStepHosts, model.AgentStepSettings, model.AgentStepPreview, model.AgentStepConfirm, model.AgentStepResult} {
 		w := d.m.windows.top()
 		if d.step() != step || w == nil {
 			t.Fatalf("step %s, want %s", d.step(), step)
@@ -415,13 +420,13 @@ func TestAgentWizardTypingKeepsFocusAndCursorWhenNextBecomesValid(t *testing.T) 
 		t.Fatalf("typing lost field/cursor: focus %d position %d", w.focus, w.inputs[0].Position())
 	}
 	d.press(keyEnter)
-	d.expect("Step 3/7")
+	d.expect("Step 3/8")
 	d.press("~", "/", ".", "w", "o", "k", keyLeft, "r")
 	d.expect("Configuration directory: > ~/.work")
 	// Enter a valid prefilled step again, explicitly choose its field, edit,
 	// and verify subsequent projections preserve that choice too.
 	d.clickText("[ Back ]")
-	d.expect("Step 2/7", "> [ Next ]")
+	d.expect("Step 2/8", "> [ Next ]")
 	d.press(keyNext, "s")
 	d.expect("Instance name: > works")
 }
@@ -443,9 +448,9 @@ func TestAgentsAdoptFoundDirectory(t *testing.T) {
 			case "button":
 				d.clickText("[ Add this directory ]")
 			}
-			d.expect("Adopt claude at /home/user/.claude_3", "Step 1/5", "Instance name")
+			d.expect("Adopt claude at /home/user/.claude_3", "Step 1/6", "Instance name")
 			d.walkAdoptToPreview()
-			d.expect("Step 3/5", "+dir = \"~/.claude_3\"")
+			d.expect("Step 4/6", "+dir = \"~/.claude_3\"")
 			d.golden("agents-adopt-preview-" + trigger)
 			_, previews, applies := d.client.agents.calls()
 			if len(previews) != 1 || previews[0].Kind != "claude" || previews[0].Dir != "/home/user/.claude_3" || len(applies) != 0 {
@@ -476,6 +481,7 @@ func (d *driver) expectPrimaryFocus(step model.AgentStep) {
 func (d *driver) walkAdoptToPreview() {
 	d.t.Helper()
 	d.press("work")
+	d.advanceToPrimary(model.AgentStepHosts)
 	d.advanceToPrimary(model.AgentStepSettings)
 	d.advanceToPrimary(model.AgentStepPreview)
 }

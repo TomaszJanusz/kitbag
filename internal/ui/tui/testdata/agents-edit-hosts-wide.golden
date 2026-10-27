@@ -1,0 +1,24 @@
+
+
+
+
+
+
+
+
+
+
+        +------------------------------------------------------------------------------------------------------+
+        | Edit claude/second: Machines                                                                     esc |
+        | Step 2/6                                                                                             |
+        |                                                                                                      |
+        | Which machines use this instance. Other machines ignore it and never warn about its directory.       |
+        | Machines:                                                                                            |
+        | Host names separated by commas, for example mac, runner02.                                           |
+        |   (*) Keep the current machines (only on laptop)                                                     |
+        |   ( ) This machine only (laptop)                                                                     |
+        |   ( ) All machines                                                                                   |
+        |   ( ) Choose machines… · Machines named in kitbag.toml: laptop, mac                                  |
+        |                                                                                                      |
+        |                                                                     [ Cancel ]   [ Back ] > [ Next ] |
+        +------------------------------------------------------------------------------------------------------+

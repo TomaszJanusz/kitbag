@@ -146,7 +146,7 @@ kind and the shared exit code.
 ## Agents and instances
 
 The [v1 slice of ADR 12](adr/0012-agent-instance-discovery.md#v1-slice-shipped-first):
-changes apply to all hosts, there is no publication queue, and publication
+instances can optionally select hosts in schema 1, there is no publication queue, and publication
 follows the host's publish mode ([agent edits](agents.md#add-edit-and-remove-instances)).
 
 `Client` methods, backed by the additive local API methods `agents.list`,
@@ -174,7 +174,7 @@ daemon's environment, like sync. Commands are `LoadAgents{Seq, Probe}`,
 | `AgentCandidate` | `Kind`, `Dir` (absolute), `Variable`, `Source` (`default`, `environment`, `declared`, `probe`), `Presence` (`present`, `missing`, `not_directory`, `symlink`, `outside_home`, `unreadable`) |
 | `AgentInstance` | `AgentCandidate` plus `Target`, `Name`, `Hosts`, `ExcludedHosts`, `Implicit`, `Enabled`, `Settings`, `ActiveHere` |
 | `AgentsSnapshot` | `Host`, `KnownHosts`, `Kinds`, `Instances`, `Candidates`, `Warnings`, `Schema`, `Daemon` |
-| `AgentChange` | `Op` (`add`, `edit`, `remove`), `Kind`, `Target`, `Name`, `Dir`, `Settings` (nil: default or unchanged) |
+| `AgentChange` | `Op` (`add`, `edit`, `remove`), `Kind`, `Target`, `Name`, `Dir`, `Settings` (nil: default or unchanged), `Hosts` (comma-separated), `AllHosts` (edit: remove the restriction) |
 | `AgentPreview` | `Change` (normalized), `Revision`, `Title`, `Message`, `Dropped`, `Diff`, `Warnings`, `Publication` (`State`, `Mode`, `Branch`, `Commit`, `Reason`, `Next`, `Attempts`) |
 | `AgentApplied` | `AgentPreview` plus `Released` (dropped directory: `Dir`, `Changed`, `Warnings`), `Sync` (`ExitCode`, `Changed`, `Warnings`), `ExitCode` |
 
@@ -190,16 +190,17 @@ words, never colour alone. `SelectAgent{Index}` and `MoveAgent{Delta}` select.
 
 **`AgentForm`** (`NewAgentForm`, `Open`, `Update`, `View`). `OpenAgentForm{Op,
 Kind, Target, Name, Dir, Adopt}` starts it. Adoption retains Kind and Dir and
-skips their steps when both pass validation; it starts at name, then settings,
-preview, confirm and result. Back follows this shortened sequence and retains
-the draft. Invalid prefilled paths retain the full sequence for correction. Steps: add — kind, name, directory,
-settings, preview, confirm, result; edit — directory, settings, preview,
-confirm, result; remove — preview, confirm, result.
+skips their steps when both pass validation; it starts at name, then machines,
+settings, preview, confirm and result. Back follows this shortened sequence and
+retains the draft. Invalid prefilled paths retain the full sequence for correction.
+Steps: add — kind, name, directory, machines, settings, preview, confirm, result;
+edit — directory, machines, settings, preview, confirm, result;
+remove — preview, confirm, result.
 
-- `EditAgentField{Value}` edits the name or directory; `ChooseAgentOption{Index}`
-  picks a kind, a directory hint (undeclared candidates of the kind with their
-  source and presence) or a settings choice (0 unchanged or default, 1 on,
-  2 off).
+- `EditAgentField{Value}` edits the name, directory or picked host list;
+  `ChooseAgentOption{Index}` picks a kind, a directory hint (undeclared
+  candidates of the kind with their source and presence), a machine scope or
+  a settings choice (0 unchanged or default, 1 on, 2 off).
 - Every draft change is validated at once with `manifest.CheckName` and
   `manifest.CheckHomePath` (`~/...` or an absolute path), the name not taken in
   the target, the directory not declared by another instance of the kind, and
@@ -239,6 +240,19 @@ confirm, result; remove — preview, confirm, result.
   dropped directory, warnings), `Result` (headline, commit, next commands,
   released outputs, sync line, warnings) and the `Back`, `Next`, `Cancel` and
   (on confirm) `Confirm` controls.
+
+The **Machines** step is always available for add and edit, including adoption,
+on schema 1. Add defaults to **This machine only** when the host is known,
+otherwise **All machines**; edit defaults to **Keep the current machines**.
+**Choose machines…** accepts a comma-separated list; empty, duplicate and invalid
+host names disable Next, while undeclared names warn about spelling. All machines
+on edit sends `AllHosts`; keep sends neither field. Preview and confirm explain
+the effective hosts returned by the server, including the warnings on machines
+without the directory when all machines are selected. The adapter refuses a
+preview from an older daemon that drops a requested hosts list.
+
+Every instance's detail always includes **Hosts**: its allow-list, all hosts,
+or the legacy host replacement scope, including inactive and implicit instances.
 
 The selected row's detail ends with **Next sync**: what a sync does with the
 directory (installs the shared configuration, skips it on this host, warns and

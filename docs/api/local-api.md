@@ -192,7 +192,7 @@ workflow in-process, as it does when no daemon listens. They implement the
   unset, uses them for this request only and stores nothing. Without `env`
   the daemon's own environment applies.
 - `agents.add`, `agents.edit` and `agents.remove` take `agent` (`kind`,
-  `target`, `name`, `dir`, `settings`; the method sets the operation) and
+  `target`, `name`, `dir`, `settings`, `hosts`, `all_hosts`; the method sets the operation) and
   return `agent_change_schema: 1` exactly like `kitbag agent <op> --json`.
   `dry_run: true` previews (diff, generated commit title and message,
   publication route, `revision`) without writing. Otherwise the change is
@@ -213,3 +213,17 @@ machine). Each effect carries `kind`, `path`, `existing`, and optional `backup`
 and `warning`. Missing/null effects from older daemons mean unavailable, not
 an empty plan. Apply recalculates file operations; the revision guard protects
 the manifest bytes, not the filesystem snapshot.
+
+`agent.hosts` is an optional nonempty array of unique valid host names in
+manifest schema 1. Omit it to add on every host or keep the current list on edit;
+`agent.all_hosts: true` removes the restriction on edit. A hosts list and
+`all_hosts` cannot be combined. `agents.list` always returns each instance's
+`hosts` (empty means every host) and legacy `excluded_hosts`; `active_here` is
+false outside its scope. An excluded instance's directory is not checked by sync
+or doctor. Host replacement tables retain their existing meaning and cannot be
+combined with per-instance lists on the same target.
+
+The normalized preview's `change.hosts` reports the effective list even when an
+edit keeps it; `change.all_hosts` reports a removed restriction. Callers should
+check the echoed list before applying: older daemons can ignore unknown fields.
+The TUI refuses a preview that drops a requested hosts list.

@@ -6,15 +6,15 @@
 
 
 
-
         +------------------------------------------------------------------------------------------------------+
         | Add an agent instance: Confirm                                                                   esc |
-        | Step 6/7                                                                                             |
+        | Step 7/8                                                                                             |
         |                                                                                                      |
         | Review the proposal below, then Apply using this host's publication policy.                          |
         | Edit the shared manifest at /home/user/.local/share/kitbag/repo/kitbag.toml.                         |
-        | Apply will attempt to commit and push this change to branch main. The declaration affects all hosts  |
-        | on their next sync; Apply also syncs this machine.                                                   |
+        | Apply will attempt to commit and push this change to branch main. Every host reads it on its next    |
+        | sync; Apply also syncs this machine.                                                                 |
+        | Used only on laptop; other machines ignore this instance.                                            |
         | Local configuration directory: /home/user/.claude_3.                                                 |
         | These file effects describe this machine now. Apply rechecks the files; other hosts plan from their  |
         | own files.                                                                                           |

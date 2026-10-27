@@ -9,7 +9,7 @@
 
   +----------------------------------------------------------------------------------------------+
   | Add an agent instance: Merge shared settings                                             esc |
-  | Step 4/7                                                                                     |
+  | Step 5/8                                                                                     |
   |                                                                                              |
   | Whether this instance receives the target's shared settings fragment.                        |
   |   (*) Default (merge shared settings)                                                        |

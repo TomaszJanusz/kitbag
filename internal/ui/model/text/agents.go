@@ -118,7 +118,7 @@ func previewText() []entry {
 		{WizardPreviewSnapshot, "These file effects describe this machine now. Apply rechecks the files; other hosts plan from their own files."},
 		{WizardEffectForget, "Stop tracking missing %s."},
 		{WizardManifestPath, "Edit the shared manifest at %s."},
-		{WizardPublishDirect, "Apply will attempt to commit and push this change to branch %s. The declaration affects all hosts on their next sync; Apply also syncs this machine."},
+		{WizardPublishDirect, "Apply will attempt to commit and push this change to branch %s. Every host reads it on its next sync; Apply also syncs this machine."},
 		{WizardPublishManual, "This host uses pull request publication: Apply writes no manifest, makes no commit and does not sync. The following effects describe the proposal if published."},
 		{WizardLocalDirectory, "Local configuration directory: %s."},
 		{WizardRetainedDirectory, "Keep directory %s and files KitBag does not own. Tracked outputs are handed back as listed below."},

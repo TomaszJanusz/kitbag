@@ -91,26 +91,26 @@ Example method arguments (add `token` and `api_version`):
 
 ## `agents.add`
 
-Declare an instance for all hosts. With dry_run, preview the manifest diff, commit title and route; otherwise publish like kitbag agent add --yes (revision guards a confirmed preview) and sync.
+Declare an instance, optionally limited to hosts (default every host). With dry_run, preview the manifest diff, commit title and route; otherwise publish like kitbag agent add --yes (revision guards a confirmed preview) and sync.
 
 Request: `$defs/agents_addRequest`; result data: `$defs/agentChangeResult`.
 
 Example method arguments (add `token` and `api_version`):
 
 ```json
-{"agent":{"kind":"claude","name":"third","dir":"~/.claude_3"},"dry_run":true}
+{"agent":{"kind":"claude","name":"third","dir":"~/.claude_3","hosts":["mac"]},"dry_run":true}
 ```
 
 ## `agents.edit`
 
-Change an instance's directory or settings switch; dry_run previews, otherwise publishes and syncs like kitbag agent edit --yes.
+Change an instance's directory, settings switch or hosts; dry_run previews, otherwise publishes and syncs like kitbag agent edit --yes.
 
 Request: `$defs/agents_editRequest`; result data: `$defs/agentChangeResult`.
 
 Example method arguments (add `token` and `api_version`):
 
 ```json
-{"agent":{"target":"claude","name":"second","dir":"~/.claude-work"},"dry_run":true}
+{"agent":{"target":"claude","name":"second","dir":"~/.claude-work","hosts":["mac","runner02"]},"dry_run":true}
 ```
 
 ## `agents.remove`

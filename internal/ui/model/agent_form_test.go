@@ -71,6 +71,8 @@ func toSettings(t *testing.T) *AgentForm {
 	m.Update(AgentFormNext{})
 	m.Update(ChooseAgentOption{Index: 0})
 	m.Update(AgentFormNext{})
+	expect(t, m.View().Step == AgentStepHosts, "step=%s", m.View().Step)
+	m.Update(AgentFormNext{})
 	expect(t, m.View().Step == AgentStepSettings, "step=%s", m.View().Step)
 	return m
 }
@@ -82,7 +84,7 @@ func TestAgentFormAddPath(t *testing.T) {
 	m.Update(ChooseAgentOption{Index: settingsOff})
 	preview := as[PreviewAgent](t, only(t, m.Update(AgentFormNext{})))
 	c := preview.Change
-	expect(t, c.Op == AgentAdd && c.Kind == "claude" && c.Name == "work" && c.Dir == "/home/u/.claude-work" && c.Settings != nil && !*c.Settings, "change=%+v", c)
+	expect(t, c.Op == AgentAdd && c.Kind == "claude" && c.Name == "work" && c.Dir == "/home/u/.claude-work" && c.Settings != nil && !*c.Settings && c.Hosts == "mac" && !c.AllHosts, "change=%+v", c)
 	expect(t, m.View().Busy && !m.View().Next.Enabled, "previewing must disable next")
 	m.Update(AgentPreviewed{Seq: preview.Seq, Preview: AgentPreview{Revision: "r1", Title: "chore(kitbag): add", Diff: []string{"+x"}, Dropped: "~/.old", Publication: AgentPublication{Mode: "direct", Branch: "main"}}})
 	expect(t, render(m.View().Preview.Route) == "Publication route: direct push to main.", "route")
@@ -247,36 +249,41 @@ func TestAgentFormEdit(t *testing.T) {
 	m, cmds := openForm(t, OpenAgentForm{Op: AgentEdit, Kind: "claude", Target: "claude", Name: "second", Dir: "/home/u/.claude_2"})
 	view := m.View()
 	expect(t, len(cmds) == 0 && view.Step == AgentStepDir && view.TextEntry && view.Placeholder == "/home/u/.claude_2" && view.Invalid == nil, "edit start %+v", view)
-	expect(t, len(view.Steps) == 5 && render(view.Heading) == "Edit claude/second", "edit steps")
+	expect(t, len(view.Steps) == 6 && render(view.Heading) == "Edit claude/second", "edit steps")
 	m.Update(EditAgentField{Value: "~/.claude_2"})
 	expect(t, invalidText(m) == "", "own directory is not a duplicate")
 	m.Update(EditAgentField{Value: "~/.claude"})
 	expect(t, invalidText(m) == "~/.claude is already declared as claude/main.", "dup=%q", invalidText(m))
 	m.Update(EditAgentField{Value: ""})
 	m.Update(AgentFormNext{})
+	expect(t, m.View().Step == AgentStepHosts && m.View().Options[0].Selected, "hosts keeps the current machines")
+	m.Update(AgentFormNext{})
 	expect(t, render(m.View().Options[0].Label) == "Keep the current setting", "keep option")
 	m.Update(ChooseAgentOption{Index: settingsOn})
 	preview := as[PreviewAgent](t, only(t, m.Update(AgentFormNext{})))
 	expect(t, preview.Change.Op == AgentEdit && preview.Change.Dir == "" && *preview.Change.Settings, "edit change=%+v", preview.Change)
+	expect(t, preview.Change.Hosts == "" && !preview.Change.AllHosts, "keep current hosts=%+v", preview.Change)
 	checkForm(t, m)
 }
 
 func TestAgentFormAdoptionSkipsKnownStepsAndBack(t *testing.T) {
 	t.Parallel()
 	m, _ := openForm(t, OpenAgentForm{Op: AgentAdd, Adopt: true, Kind: "claude", Dir: "/home/u/.claude-work"})
-	expect(t, m.View().Step == AgentStepName && len(m.View().Steps) == 5, "adoption steps %+v", m.View().Steps)
+	expect(t, m.View().Step == AgentStepName && len(m.View().Steps) == 6, "adoption steps %+v", m.View().Steps)
 	m.Update(EditAgentField{Value: "work"})
 	m.Update(AgentFormNext{})
-	expect(t, m.View().Step == AgentStepSettings, "known directory was not skipped")
+	// The hosts step stays: adopting must not choose the machines unseen.
+	expect(t, m.View().Step == AgentStepHosts, "known directory was not skipped")
 	m.Update(AgentFormBack{})
 	expect(t, m.View().Step == AgentStepName && m.View().Field == "work", "back lost name")
 	m.Update(AgentFormNext{})
+	m.Update(AgentFormNext{})
 	cmd := as[PreviewAgent](t, only(t, m.Update(AgentFormNext{})))
-	expect(t, cmd.Change.Kind == "claude" && cmd.Change.Dir == "/home/u/.claude-work", "lost candidate %+v", cmd.Change)
+	expect(t, cmd.Change.Kind == "claude" && cmd.Change.Dir == "/home/u/.claude-work" && cmd.Change.Hosts == "mac", "lost candidate %+v", cmd.Change)
 }
 
 func TestAgentFormAdoptionDoesNotSkipInvalidDirectory(t *testing.T) {
 	t.Parallel()
 	m, _ := openForm(t, OpenAgentForm{Op: AgentAdd, Adopt: true, Kind: "claude", Dir: "/srv/claude"})
-	expect(t, m.View().Step == AgentStepKind && len(m.View().Steps) == 7, "invalid directory skipped validation")
+	expect(t, m.View().Step == AgentStepKind && len(m.View().Steps) == 8, "invalid directory skipped validation")
 }
