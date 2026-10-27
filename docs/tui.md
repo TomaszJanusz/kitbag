@@ -301,8 +301,10 @@ While editing, typed keys go to the editor; Ctrl-C still quits.
 Left/Right/Space cycle picker options; letters cannot change an enum or toggle.
 An invalid draft is never saved; failed saves retain the editor and its draft.
 Save/Remove/Revert buttons emit the same intents as their keys, and Remove
-always asks for confirmation. At short sizes unavailable screen actions are
-omitted to reserve room for the editor; dialog disabled controls stay explicit.
+always asks for confirmation. Unchanged settings omit Save and Revert; inherited
+or default values omit Remove. Loading and saving settings show no action row.
+Invalid changed drafts retain disabled Save beside their validation message.
+At short sizes unavailable screen actions are omitted to reserve editor space.
 
 Help opens a scrollable dialog with the title left, Esc right and a primary
 OK button. An open dialog clears the visible background while preserving the
@@ -338,7 +340,7 @@ and borders carry focus and selection with `NO_COLOR` too.
 
 Removing a stored setting with `u` opens a Yes/No confirmation, initially on
 **No**. Yes sends the existing unset intent; No, Esc and outside clicks leave
-configuration untouched. Unset remains unavailable for values supplied by flags,
+configuration untouched. Remove is hidden for values supplied by flags,
 environment or defaults. Saving, reverting drafts and sync keep their existing
 behavior; this adds no new persistence semantics.
 
@@ -373,8 +375,8 @@ The shared contract is in `internal/ui/model/dialog.go`, with all labels in
   model-closed window. Call these only on the renderer loop. Replacements
   preserve focus and the text cursor of unchanged drafts. Distinct IDs stack;
   closing the top restores the window beneath it. A replacement keeps the
-  focus only if the user moved it on the same step; a new step, or a step the
-  user has not touched, starts at its initial focus. A disabled initial button
+  focus only if the user moved it, typed or moved the text cursor on the same
+  step; a new step, or a step the user has not touched, starts at its initial focus. A disabled initial button
   falls back to the one before it (Back), never around to Cancel. PgUp/PgDn and
   the wheel scroll a window whose content does not fit while a button has the
   focus; a focused field or option keeps itself visible.
@@ -436,16 +438,29 @@ The preview step shows the commit title, how it will be published (directly to
 the branch, or for `pr` publish mode that nothing is written and the commands to
 propose it follow in the result), a directory that is handed back, warnings and
 the `kitbag.toml` diff; PgUp/PgDn or the wheel scroll a long preview. A refused
-preview shows the server's detail and focuses Back. The confirm step starts on
-**Back**, so a stray Enter never applies; **Apply** must be chosen. While the
-daemon applies, the window says so, every button is unavailable and Esc or an
+preview shows the server's detail and focuses Back. Every ready, valid step
+starts on its primary action: **Next**, **Apply**, or **Close**, including a
+known agent and prefilled name or directory. Invalid text or an unselected agent
+starts on the field or option while Next is disabled. Tab or a click returns
+to fields and options; typing and cursor movement retain editor focus through
+validation updates. The first step omits Back; the result offers only Close.
+While the daemon applies, busy text replaces the action row and Esc or an
 outside click is refused. A preview made stale by another change to
 `kitbag.toml` is not applied: the window returns to the preview, says it changed
 and shows the new one. The result says published (with the short commit),
 committed but not published (with the reason and the `git pull --rebase` and
 `git push` commands), not written in `pr` mode (with the commands to propose it)
 or not applied; it reports handed-back outputs and the sync that ran, and notes
-that the list was reloaded. Close (or Cancel) returns to the refreshed list.
+that the list was reloaded. Close returns to the refreshed list. Disabled Next
+remains visible during preview loading or validation to explain the restriction.
+
+All screen and dialog action rows follow the same usefulness policy: empty
+Drift omits Details; undeclared candidates and implicit agents omit Edit/Remove.
+Confirmation Yes/No, information/help OK, and Activity Follow remain usable.
+Status and Home retain disabled Sync during sync/service refresh activity or
+an unmet tool version, and disabled service refresh during sync/refresh activity: their
+status messages explain the temporary restriction. These controls communicate
+availability; actions with no operation in the current state are hidden.
 
 Cancel, Esc and an outside click close the wizard at once while nothing was
 chosen or typed; otherwise a **Discard this change?** window asks first,

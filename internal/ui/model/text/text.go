@@ -414,7 +414,8 @@ func statusText() []entry {
 	return []entry{
 		{ActionServiceRefresh, "Repair service"},
 		{StatusVersions, "daemon %s, binary %s"},
-		{StatusVersionMismatch, "Daemon/binary version mismatch; run kitbag service refresh."},
+		{StatusServiceRecovering, "Service upgrade recovery requested; waiting for the supervisor."},
+		{StatusVersionMismatch, "Daemon/binary version mismatch persists or automatic recovery is unavailable; inspect daemon logs or Repair service."},
 		{StatusServiceStale, "Service definition is stale; run kitbag service refresh."},
 		{ServiceRefreshConfirm, "Refresh service and restart if needed? y confirm · n/Esc cancel"},
 		{ServiceRefreshing, "Refreshing service…"},
@@ -669,3 +670,6 @@ func homeText() []entry {
 		{ActionRemoveShort, "Remove"},
 	}
 }
+
+// StatusServiceRecovering identifies the bounded supervisor recovery notice.
+const StatusServiceRecovering Key = "status.service_recovering"

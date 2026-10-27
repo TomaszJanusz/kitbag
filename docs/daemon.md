@@ -91,11 +91,11 @@ The daemon notices when its own executable file is replaced, for example by
 `brew upgrade`, a package manager, `install.sh` or `kitbag self-update`, and
 restarts onto the new version without user action. It watches the executable
 path that `kitbag service install` writes into the service definition
-([service.md](service.md)): the resolved running executable, or on macOS the
-stable Homebrew link. The path is followed through links, so a link that moves to
+([service.md](service.md)): the resolved running executable, or a validated
+stable Homebrew link on macOS and Linux. The path is followed through links, so a link that moves to
 a new version counts.
 
-Every minute it compares the file's size, modification time and mode with the
+Every five seconds it compares the file's size, modification time and mode with the
 file it started from. A changed identity must be seen unchanged by two
 consecutive checks, so a file still being written is not used, and its SHA-256
 content digest (streamed, not held in memory) must differ from the starting
@@ -108,15 +108,17 @@ start it again.
 
 It never loops. Identical content (a reinstall of the same version) becomes the
 new baseline without a restart. A missing, unreadable or non-executable file is
-logged as a failed `executable` check every minute and the daemon keeps running
+logged as a failed `executable` check every five seconds and the daemon keeps running
 the old version, because a restart could not start anything. A restarted daemon
 records its own baseline, so one replacement restarts it once. Only an actual
 new binary triggers the next restart.
 
-A Linux Homebrew installation, whose unit names the versioned keg path, and a
-macOS service installed by 0.1.0 still name an executable that `brew cleanup`
-deletes. The daemon then keeps running, and `kitbag service status` and
-`doctor` report the missing executable; run `kitbag service install` once.
+Legacy service definitions can still name a versioned Cellar executable that
+cleanup removes. A running process may survive deletion, but its supervisor
+cannot relaunch that missing path. New installed clients automatically reconcile
+an eligible saved service when status observes a version mismatch, including a
+loaded launchd job with a missing keg path. See the
+[upgrade investigation and limits](service-upgrades.md).
 Status and doctor report exit status 75 as a restart, not a failure: launchd
 keeps showing it as the last exit code while the new daemon runs.
 
@@ -268,6 +270,18 @@ to existing `version.get` for older v1 daemons. Missing version metadata or an
 unavailable version handshake identifies an active supervised daemon as older.
 Both service install and refresh restart that process even if the definition
 has not changed. `kitbag status`, doctor and the
-TUI show `daemon X, binary Y` and warn on a mismatch; they never restart a service
-implicitly. A daemon predating executable watching still needs the first explicit
-refresh/confirmed TUI action after upgrading.
+TUI show `daemon X, binary Y`. A newer installed client now requests recovery
+through the existing local refresh path for its own enabled daemon installation.
+It preserves saved configuration, environment and mode, refuses downgrades and
+leaves stopped/disabled services and timer installations alone. No new daemon
+RPC is required, so older daemon versions can be recovered too.
+
+A private `<state>/service-version-recovery.json` records the attempt before any
+supervisor operation, sharing the refresh mutation lock across clients. Each
+binary version gets at most one attempt per ten minutes. A successful request
+shows a transient notice for at most 150 seconds; failed or persistent recovery
+is reported immediately or after that window, with logs/repair diagnostics.
+Status polling cannot hide a mismatch indefinitely or repeatedly restart the
+same version. Matching versions and identical-content executable reinstalls do
+not trigger recovery. No manual refresh is part of the ordinary upgrade path.
+See [evidence and unverified behavior](service-upgrades.md).

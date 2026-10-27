@@ -60,7 +60,7 @@ func TestSettingsFormFollowsRegistry(t *testing.T) {
 	for _, f := range view.Fields {
 		key, err := settingskey.Find(f.Path)
 		expect(t, err == nil && f.Type == key.Type, "field=%+v", f)
-		expect(t, !f.Actions[0].Enabled, "%s saveable before loading", key.Path)
+		expect(t, len(f.Actions) == 0, "%s has actions before loading", key.Path)
 		expect(t, render(f.Description) != "", "%s description missing", key.Path)
 	}
 	settle(t, m, &fakeClient{settingsErr: &Error{Kind: ErrInvalid}}, cmds)
@@ -124,7 +124,7 @@ func TestSettingsValidationBlocksSaving(t *testing.T) {
 		m.Update(EditSetting{Key: tc.key, Value: tc.value})
 		f := fieldView(t, m, tc.key)
 		expect(t, f.Problem != nil && render(*f.Problem) == tc.problem, "%s=%q problem=%v", tc.key, tc.value, f.Problem)
-		expect(t, !f.Actions[0].Enabled, "invalid %s offered for saving", tc.key)
+		expect(t, !controlEnabled(f.Actions, SaveSetting{Key: tc.key}), "invalid %s offered for saving", tc.key)
 		expect(t, m.Update(SaveSetting{Key: tc.key}) == nil, "invalid %s saved", tc.key)
 	}
 	// Bypassing the edit path still cannot save an invalid draft.
@@ -132,7 +132,7 @@ func TestSettingsValidationBlocksSaving(t *testing.T) {
 	expect(t, m.Update(SaveSetting{Key: "sync.mode"}) == nil, "saved without validation")
 	m.Update(RevertSetting{Key: "sync.mode"})
 	f := fieldView(t, m, "sync.mode")
-	expect(t, f.Draft == "copy" && f.Problem == nil && !f.Actions[2].Enabled, "revert=%+v", f)
+	expect(t, f.Draft == "copy" && f.Problem == nil && len(f.Actions) == 0, "revert=%+v", f)
 	expect(t, m.Update(SaveSetting{Key: "sync.mode"}) == nil, "unchanged setting saved")
 	expect(t, m.Update(SaveSetting{Key: "unknown"}) == nil, "unknown setting saved")
 	checkText(t, settingsTexts(m.View())...)
@@ -155,7 +155,7 @@ func TestSettingsSave(t *testing.T) {
 	expect(t, len(client.writes) == 1 && client.writes[0].Value == "5m", "writes=%+v (edits while saving must be ignored)", client.writes)
 	saved := fieldView(t, m, "sync.poll_interval")
 	expect(t, !saved.Saving && saved.Draft == "5m", "saved=%+v", saved)
-	expect(t, render(saved.Source) == "config.toml" && saved.Actions[1].Enabled, "saved source=%+v", saved)
+	expect(t, render(saved.Source) == "config.toml" && controlEnabled(saved.Actions, UnsetSetting{Key: "sync.poll_interval"}), "saved source=%+v", saved)
 	expect(t, fieldView(t, m, "repo.path").Draft == "~/dark", "reload discarded another field's draft")
 	checkText(t, settingsTexts(m.View())...)
 }
@@ -192,4 +192,21 @@ func TestSettingsDiscardsStaleLoads(t *testing.T) {
 	m.Update(SettingsLoaded{Seq: first, Values: []SettingValue{{Key: "repo.path", Value: "~/dark", Source: SourceFile}}})
 	m.Update(SettingsLoaded{Seq: first, Err: errBoom})
 	expect(t, fieldView(t, m, "repo.path").Draft == "~/light" && m.problem == nil, "stale load applied")
+}
+
+func TestSettingsOnlyUsefulActions(t *testing.T) {
+	t.Parallel()
+	m := readySettings(t, &fakeClient{settings: storedSettings()})
+	m.Update(ToggleAdvancedSettings{})
+	for _, key := range []string{"sync.mode", "host", "sync.poll_interval"} {
+		expect(t, len(fieldView(t, m, key).Actions) == 0, "%s has unchanged/inherited actions", key)
+	}
+	actions := fieldView(t, m, "repo.url").Actions
+	expect(t, len(actions) == 1 && actions[0].Intent == (UnsetSetting{Key: "repo.url"}), "stored actions %+v", actions)
+	m.Update(EditSetting{Key: "host", Value: "-bad"})
+	actions = fieldView(t, m, "host").Actions
+	expect(t, len(actions) == 2 && !actions[0].Enabled && actions[1].Enabled, "validation actions %+v", actions)
+	m.Update(EditSetting{Key: "host", Value: "new-host"})
+	m.Update(SaveSetting{Key: "host"})
+	expect(t, len(fieldView(t, m, "host").Actions) == 0, "actions while saving")
 }

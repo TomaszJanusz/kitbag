@@ -4,7 +4,7 @@ Explain synchronization problems and suggest fixes
 
 ### Synopsis
 
-Check local sync prerequisites and remote reachability without applying changes. --report writes redacted local JSON and skips network probes. WARN exits 0 unless --strict; FAIL exits 1, or 4 when min_tool_version is unmet.
+Check local sync prerequisites and remote reachability without applying a sync plan. An eligible older daemon is automatically refreshed after an upgrade. --report writes redacted local JSON and skips network probes. WARN exits 0 unless --strict; FAIL exits 1, or 4 when min_tool_version is unmet.
 
 ```
 kitbag doctor [flags]

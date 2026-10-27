@@ -21,5 +21,5 @@
         |   -[targets.claude.instances.second]                                                                 |
         |   -dir = "~/.claude_2"                                                                               |
         |                                                                                                      |
-        |                                                       [ Cancel ]   [ Back (unavailable) ] > [ Next ] |
+        |                                                                                [ Cancel ] > [ Next ] |
         +------------------------------------------------------------------------------------------------------+
