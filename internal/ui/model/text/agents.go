@@ -31,6 +31,7 @@ func agentsText() []entry {
 		{AgentsDetailScope, "Hosts"},
 		{AgentsDetailState, "On this host"},
 		{AgentsDetailSettings, "Settings"},
+		{ActionAdoptAgent, "Add this directory"},
 		{ActionAddAgent, "Add agent"},
 		{ActionEditAgent, "Edit"},
 		{ActionRemoveAgent, "Remove"},
@@ -52,12 +53,13 @@ func agentsText() []entry {
 		{AgentsSyncUndeclared, "leaves it alone until it is added"},
 		{AgentsSyncCannot, "leaves it alone; it cannot be declared"},
 		{AgentsSectionFound, "found, not declared"},
-		{AgentsListHint, "↑/↓: select · Enter: edit · a: add · d: remove · p: look for more"},
+		{AgentsListHint, "↑/↓: select · Enter: edit/adopt · a: add/adopt · d: remove · p: look for more"},
 	}
 }
 
 func wizardText() []entry {
 	return []entry{
+		{WizardTitleAdopt, "Adopt %s at %s"},
 		{WizardTitleAdd, "Add an agent instance"},
 		{WizardTitleEdit, "Edit %s"},
 		{WizardTitleRemove, "Remove %s"},
@@ -73,7 +75,7 @@ func wizardText() []entry {
 		{WizardExplainDir, "The agent's configuration directory below your home directory, for example ~/.claude_2."},
 		{WizardExplainSettings, "Whether this instance receives the target's shared settings fragment."},
 		{WizardExplainPreview, "The change to kitbag.toml, its commit title and how it will be published."},
-		{WizardExplainConfirm, "Apply writes kitbag.toml for all machines, commits, publishes and syncs this machine."},
+		{WizardExplainConfirm, "Review the proposal below, then Apply using this host's publication policy."},
 		{WizardExplainResult, "What happened to the change."},
 		{WizardSettingsDefault, "Default (merge shared settings)"},
 		{WizardSettingsKeep, "Keep the current setting"},
@@ -90,8 +92,8 @@ func wizardText() []entry {
 		{WizardPreviewing, "Preparing the preview…"},
 		{WizardApplying, "Applying and publishing…"},
 		{WizardCommit, "Commit: %s"},
-		{WizardDropped, "%s is handed back: KitBag removes only what it created there and restores what it replaced."},
-		{PublishRouteDirect, "Published directly to %s."},
+		{WizardDropped, "%s is handed back according to the file effects above."},
+		{PublishRouteDirect, "Publication route: direct push to %s."},
 		{PublishRouteManual, "Not written: publish mode is pull request; the commands to propose it are shown."},
 		{AgentResultPublished, "Published %s as %s."},
 		{AgentResultLocal, "Committed %s on this machine but not published: %s"},
@@ -107,5 +109,31 @@ func wizardText() []entry {
 		{WizardRefreshed, "The agents list was reloaded."},
 		{WizardDiscardTitle, "Discard this change?"},
 		{WizardDiscardConfirm, "Nothing has been written. Discard the draft and close the wizard?"},
+	}
+}
+
+func previewText() []entry {
+	return []entry{
+		{WizardPublicationUnavailable, "This daemon did not provide publication details."},
+		{WizardPreviewSnapshot, "These file effects describe this machine now. Apply rechecks the files; other hosts plan from their own files."},
+		{WizardEffectForget, "Stop tracking missing %s."},
+		{WizardManifestPath, "Edit the shared manifest at %s."},
+		{WizardPublishDirect, "Apply will attempt to commit and push this change to branch %s. The declaration affects all hosts on their next sync; Apply also syncs this machine."},
+		{WizardPublishManual, "This host uses pull request publication: Apply writes no manifest, makes no commit and does not sync. The following effects describe the proposal if published."},
+		{WizardLocalDirectory, "Local configuration directory: %s."},
+		{WizardRetainedDirectory, "Keep directory %s and files KitBag does not own. Tracked outputs are handed back as listed below."},
+		{WizardEffectsUnavailable, "This daemon did not provide a file preview; local file effects are unavailable."},
+		{WizardNoEffects, "No local file changes are currently planned."},
+		{WizardEffectBackup, "Back up existing %s to a file starting with %s."},
+		{WizardEffectCreate, "Create shared configuration at %s."},
+		{WizardEffectReplace, "Replace existing %s with shared configuration."},
+		{WizardEffectMerge, "Merge shared settings into %s."},
+		{WizardEffectDelete, "Delete the owned output %s."},
+		{WizardEffectRestore, "Restore the original entry at %s."},
+		{WizardEffectUnmerge, "Remove KitBag settings from %s and retain the other settings."},
+		{WizardEffectRelease, "Leave %s in place and stop managing it."},
+		{WizardEffectSkip, "Leave %s alone. %s"},
+		{WizardEffectUnchanged, "Leave %s unchanged."},
+		{WizardEffectUnknown, "Planned action for %s: %s."},
 	}
 }

@@ -216,6 +216,41 @@
           }
         }
       ]
+    },
+    "effects": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "kind",
+          "existing"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "backup": {
+            "type": "string"
+          },
+          "warning": {
+            "type": "string"
+          },
+          "existing": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "directory": {
+      "type": "string"
     }
   },
   "$defs": {

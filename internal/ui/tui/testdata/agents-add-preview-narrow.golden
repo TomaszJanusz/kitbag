@@ -1,18 +1,20 @@
-
   +------------------------------------------------------+
   | Add an agent instance: What will change          esc |
   | Step 5/7                                             |
   |                                                      |
-  | The change to kitbag.toml, its commit title and how  |
-  | it will be published.                                |
+  | These file effects describe this machine now. Apply  |
+  | rechecks the files; other hosts plan from their own  |
+  | files.                                               |
+  | Create shared configuration at                       |
+  | /home/user/.claude_3/CLAUDE.md.                      |
   | Commit: chore(kitbag): add claude instance work at   |
   | ~/.claude_3                                          |
-  | Published directly to main.                          |
+  | Publication route: direct push to main.              |
   |                                                      |
   | Changes to kitbag.toml:                              |
   |   @@ kitbag.toml @@                                  |
   |   +[targets.claude.instances.work]                   |
   |   +dir = "~/.claude_3"                               |
-  |                                                      |
+  | scroll ↑/↓                                           |
   |                     [ Cancel ]   [ Back ] > [ Next ] |
   +------------------------------------------------------+

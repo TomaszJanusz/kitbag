@@ -184,12 +184,15 @@ has `Title`, `Headline`, `Problem`, `Phase`, `Rows`, `Warnings`, `Detail` and
 `Kind`, `Target`, `Name`, `Label`, `Dir`, `Source`, `Presence`, `Scope`,
 `Declared`, `Implicit`, `ActiveHere` and `Selected`; source and presence are
 words, never colour alone. `SelectAgent{Index}` and `MoveAgent{Delta}` select.
-`Actions` are, in order: **Add** (prefilled from a selected candidate),
-**Edit** and **Remove** (only for a declared, non-implicit instance),
+`Actions` are, in order: **Add**, or **Add this directory** for a selected candidate,
+**Edit** and **Remove** (shown only for a declared, non-implicit instance),
 **Look for more directories** (`ProbeAgents`) and **Refresh**.
 
 **`AgentForm`** (`NewAgentForm`, `Open`, `Update`, `View`). `OpenAgentForm{Op,
-Kind, Target, Name, Dir}` starts it. Steps: add — kind, name, directory,
+Kind, Target, Name, Dir, Adopt}` starts it. Adoption retains Kind and Dir and
+skips their steps when both pass validation; it starts at name, then settings,
+preview, confirm and result. Back follows this shortened sequence and retains
+the draft. Invalid prefilled paths retain the full sequence for correction. Steps: add — kind, name, directory,
 settings, preview, confirm, result; edit — directory, settings, preview,
 confirm, result; remove — preview, confirm, result.
 
@@ -255,3 +258,12 @@ disabled Sync during sync/service refresh activity or an unmet tool version.
 Status retains disabled service refresh during sync/refresh activity, with
 status messages explaining availability. Confirmation and information dialogs
 keep their usable Yes/No or OK actions.
+
+Agent previews retain the response's exact `manifest` path and expanded
+`directory`. Optional `effects` list the current machine's proposed sync actions
+and dry-run unmanage actions for dropped outputs (kind, path, existing entry,
+backup path and warning). The workflow plans against the proposed manifest
+without writing it; release planning uses the same ownership and backup rules
+as apply. The adapter forwards these facts to the form's sentence summary,
+above the raw diff. Older daemons omitting effects are labelled unavailable.
+Other hosts plan from their own files; Apply rechecks the local filesystem.
