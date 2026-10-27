@@ -1,6 +1,7 @@
 package manifestedit
 
 import (
+	"bytes"
 	"fmt"
 	"slices"
 	"strconv"
@@ -31,6 +32,9 @@ func (l *layout) addInstance(e Edit) ([]byte, error) {
 	if e.Settings != nil {
 		lines = append(lines, line("settings", strconv.FormatBool(*e.Settings)))
 	}
+	if len(e.Hosts) > 0 {
+		lines = append(lines, line("hosts", hostList(e.Hosts)))
+	}
 	at := l.contentEnd(related[len(related)-1])
 	return l.insert(at, header("targets", e.Target, instancesKey, e.Name), lines...), nil
 }
@@ -60,6 +64,59 @@ func (l *layout) editInstance(e Edit) ([]byte, error) {
 		out = slices.Concat(out[:s.from], []byte(s.text), out[s.to:])
 	}
 	return out, nil
+}
+
+// setInstanceHosts rewrites the instance's hosts list in place, adds it after
+// the dir line, or deletes its line; a comment on that line stays as its own
+// line. A list spanning lines or holding comments is left to a hand edit.
+func (l *layout) setInstanceHosts(e Edit) ([]byte, error) {
+	i, err := l.instance(e)
+	if err != nil {
+		return nil, err
+	}
+	s, err := l.hostsSplice(l.tables[i], e.Hosts)
+	if err != nil {
+		return nil, err
+	}
+	return slices.Concat(l.data[:s.from], []byte(s.text), l.data[s.to:]), nil
+}
+
+// hostsSplice is the one change that sets an instance table's hosts list; an
+// empty splice when there is nothing to change.
+func (l *layout) hostsSplice(t table, hosts []string) (splice, error) {
+	dir, current := l.key(t.keys, "dir"), l.key(t.keys, "hosts")
+	switch {
+	case current >= 0 && t.keys[current].from < 0:
+		return splice{}, layoutError(append(slices.Clone(t.path), "hosts"))
+	case current >= 0 && len(hosts) > 0:
+		return splice{hostList(hosts), t.keys[current].from, t.keys[current].to}, nil
+	case current >= 0:
+		return l.deleteKey(t.keys[current]), nil
+	case len(hosts) == 0:
+		return splice{}, nil
+	case dir < 0 || t.keys[dir].from < 0:
+		return splice{}, layoutError(append(slices.Clone(t.path), "dir"))
+	}
+	at := t.keys[dir].end
+	return splice{l.lineBreak(at) + line("hosts", hostList(hosts)) + l.newline, at, at}, nil
+}
+
+// deleteKey removes a key's line; a comment on it stays as its own line.
+func (l *layout) deleteKey(kv keyValue) splice {
+	kept := ""
+	if c := bytes.IndexByte(l.data[kv.to:kv.end], '#'); c >= 0 {
+		kept = string(bytes.TrimRight(l.data[kv.to+c:kv.end], "\r\n")) + l.newline
+	}
+	return splice{kept, l.lineStart(kv.key), kv.end}
+}
+
+// hostList encodes host names as a one-line TOML array.
+func hostList(hosts []string) string {
+	quoted := make([]string, len(hosts))
+	for i, host := range hosts {
+		quoted[i] = quote(host)
+	}
+	return "[" + strings.Join(quoted, ", ") + "]"
 }
 
 // settingsSplice rewrites an existing switch, or adds settings = false after

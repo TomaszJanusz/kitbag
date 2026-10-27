@@ -1,13 +1,13 @@
 ## kitbag agent edit
 
-Change an instance's directory or settings merge and publish it
+Change an instance's directory, settings merge or hosts and publish it
 
 ### Synopsis
 
-Change the directory or the settings switch of a declared instance. The instance is named by its target, or by an agent kind used by exactly one target, and its name.
+Change the directory, the settings switch or the hosts of a declared instance. --hosts replaces its hosts list and --all-hosts removes it. The instance is named by its target, or by an agent kind used by exactly one target, and its name.
 
-Changes are written to the shared kitbag.toml in the working copy and apply
-to every host (per-host instances need manifest schema 2). The working copy must
+Changes are written to the shared kitbag.toml in the working copy. An instance
+applies to every host unless --hosts restricts it. The working copy must
 be clean, on its configured branch and without unpublished commits. KitBag
 fast-forwards it, edits only the affected lines (comments and layout stay),
 commits with a generated Conventional Commit message (Kitbag-Host and Kitbag-Op
@@ -24,9 +24,11 @@ kitbag agent edit <target-or-kind>/<name> [flags]
 ### Options
 
 ```
+      --all-hosts         Use the instance on every host
       --dir string        New configuration directory below HOME (~/... or absolute)
       --dry-run           Show the change, diff and commit message without writing
   -h, --help              help for edit
+      --hosts strings     Use the instance only on these hosts (comma-separated)
       --json              Print stable agent_change_schema=1 JSON (needs --yes or --dry-run)
       --settings string   Merge the target's settings fragment into this instance: on or off
       --yes               Apply without asking for confirmation

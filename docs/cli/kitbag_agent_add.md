@@ -6,8 +6,8 @@ Declare an agent instance in kitbag.toml and publish it
 
 Add an instance (a configuration directory) of a native agent kind. Without --target the kind's only target is used, or a target named after the kind is created. Adding the first listed instance also declares the kind's default directory, because listing instances replaces the implicit default. A directory that does not exist yet is allowed with a warning.
 
-Changes are written to the shared kitbag.toml in the working copy and apply
-to every host (per-host instances need manifest schema 2). The working copy must
+Changes are written to the shared kitbag.toml in the working copy. An instance
+applies to every host unless --hosts restricts it. The working copy must
 be clean, on its configured branch and without unpublished commits. KitBag
 fast-forwards it, edits only the affected lines (comments and layout stay),
 commits with a generated Conventional Commit message (Kitbag-Host and Kitbag-Op
@@ -25,9 +25,11 @@ kitbag agent add [flags]
 
 ```
       --agent string      Agent kind: claude, codex, gemini or opencode
+      --all-hosts         Use the instance on every host
       --dir string        Configuration directory below HOME (~/... or absolute)
       --dry-run           Show the change, diff and commit message without writing
   -h, --help              help for add
+      --hosts strings     Use the instance only on these hosts (comma-separated); default all hosts
       --json              Print stable agent_change_schema=1 JSON (needs --yes or --dry-run)
       --name string       Instance name (lowercase letters, digits, dots, underscores, hyphens)
       --settings string   Merge the target's settings fragment into this instance: on or off

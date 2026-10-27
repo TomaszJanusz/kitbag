@@ -11,6 +11,7 @@ import (
 
 	"github.com/TomaszJanusz/kitbag/internal/adapters/instructions"
 	"github.com/TomaszJanusz/kitbag/internal/config"
+	"github.com/TomaszJanusz/kitbag/internal/core/agents"
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 	"github.com/TomaszJanusz/kitbag/pkg/manifest"
 )
@@ -106,12 +107,18 @@ func (s Service) manifestChecks(context.Context) []Check {
 		if statErr == nil && !info.IsDir() {
 			statErr = errors.New("not a directory")
 		}
-		checks = append(checks, result("instance-"+dir.name, dir.path, "create or correct instance directory "+dir.path, statErr, Warn))
+		fix := "create or correct instance directory " + dir.path
+		if dir.listed != "" {
+			fix += "; " + agents.RestrictHint(dir.listed, dir.instance)
+		}
+		checks = append(checks, result("instance-"+dir.name, dir.path, fix, statErr, Warn))
 	}
 	return checks
 }
 
-type instance struct{ name, path, agent string }
+// instance is a directory doctor checks; listed and instance name a declared
+// instance's target and name (empty for an implicit default).
+type instance struct{ name, path, agent, listed, instance string }
 
 func (s Service) instances(m *manifest.Manifest) ([]instance, error) {
 	home, err := s.Host.HomeDir()
@@ -130,7 +137,7 @@ func (s Service) instances(m *manifest.Manifest) ([]instance, error) {
 				return nil, err
 			}
 			if dir != "" {
-				dirs = append(dirs, instance{name + "/default", dir, target.Agent})
+				dirs = append(dirs, instance{name: name + "/default", path: dir, agent: target.Agent})
 			}
 		}
 		dirs = append(dirs, listedInstances(home, name, target)...)
@@ -143,7 +150,7 @@ func listedInstances(home, name string, target manifest.Target) []instance {
 	for _, key := range slices.Sorted(maps.Keys(target.Instances)) {
 		in := target.Instances[key]
 		if in.Enabled == nil || *in.Enabled {
-			dirs = append(dirs, instance{name + "/" + key, config.Expand(home, in.Dir), target.Agent})
+			dirs = append(dirs, instance{name + "/" + key, config.Expand(home, in.Dir), target.Agent, name, key})
 		}
 	}
 	return dirs

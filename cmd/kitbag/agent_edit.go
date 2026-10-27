@@ -20,8 +20,8 @@ import (
 // because kitbag.toml moved upstream between preview and confirmation.
 const previewRounds = 3
 
-const agentEditLong = `Changes are written to the shared kitbag.toml in the working copy and apply
-to every host (per-host instances need manifest schema 2). The working copy must
+const agentEditLong = `Changes are written to the shared kitbag.toml in the working copy. An instance
+applies to every host unless --hosts restricts it. The working copy must
 be clean, on its configured branch and without unpublished commits. KitBag
 fast-forwards it, edits only the affected lines (comments and layout stay),
 commits with a generated Conventional Commit message (Kitbag-Host and Kitbag-Op
@@ -33,7 +33,9 @@ pass --yes, or --dry-run to only preview.`
 
 type agentEditFlags struct {
 	settings                        string
+	hosts                           []string
 	asJSON, dryRun, yes, changedDir bool
+	allHosts                        bool
 }
 
 func (c *commandLine) agentEditCommands() []*cobra.Command {
@@ -51,13 +53,14 @@ func (c *commandLine) agentEditCommands() []*cobra.Command {
 	addCmd.Flags().StringVar(&change.Dir, "dir", "", "Configuration directory below HOME (~/... or absolute)")
 	addCmd.Flags().StringVar(&change.Target, "target", "", "Target to add to when several use the kind")
 	c.agentEditFlags(addCmd, &add)
+	c.agentHostsFlags(addCmd, &add, "Use the instance only on these hosts (comma-separated); default all hosts")
 	return []*cobra.Command{addCmd, c.agentEditCommand(), c.agentRemoveCommand()}
 }
 
 func (c *commandLine) agentEditCommand() *cobra.Command {
 	var flags agentEditFlags
 	var dir string
-	cmd := &cobra.Command{Use: "edit <target-or-kind>/<name>", Short: "Change an instance's directory or settings merge and publish it", Long: "Change the directory or the settings switch of a declared instance. The instance is named by its target, or by an agent kind used by exactly one target, and its name.\n\n" + agentEditLong, Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
+	cmd := &cobra.Command{Use: "edit <target-or-kind>/<name>", Short: "Change an instance's directory, settings merge or hosts and publish it", Long: "Change the directory, the settings switch or the hosts of a declared instance. --hosts replaces its hosts list and --all-hosts removes it. The instance is named by its target, or by an agent kind used by exactly one target, and its name.\n\n" + agentEditLong, Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 		change, err := instanceRef(agents.Edit, args[0])
 		if err != nil {
 			return &commandError{err: err, code: apply.Usage}
@@ -68,6 +71,7 @@ func (c *commandLine) agentEditCommand() *cobra.Command {
 	}}
 	cmd.Flags().StringVar(&dir, "dir", "", "New configuration directory below HOME (~/... or absolute)")
 	c.agentEditFlags(cmd, &flags)
+	c.agentHostsFlags(cmd, &flags, "Use the instance only on these hosts (comma-separated)")
 	return cmd
 }
 
@@ -87,6 +91,12 @@ func (c *commandLine) agentRemoveCommand() *cobra.Command {
 func (c *commandLine) agentEditFlags(cmd *cobra.Command, flags *agentEditFlags) {
 	cmd.Flags().StringVar(&flags.settings, "settings", "", "Merge the target's settings fragment into this instance: on or off")
 	c.agentCommonFlags(cmd, flags)
+}
+
+func (c *commandLine) agentHostsFlags(cmd *cobra.Command, flags *agentEditFlags, usage string) {
+	cmd.Flags().StringSliceVar(&flags.hosts, "hosts", nil, usage)
+	cmd.Flags().BoolVar(&flags.allHosts, "all-hosts", false, "Use the instance on every host")
+	cmd.MarkFlagsMutuallyExclusive("hosts", "all-hosts")
 }
 
 func (c *commandLine) agentCommonFlags(cmd *cobra.Command, flags *agentEditFlags) {
@@ -124,7 +134,10 @@ func (c *commandLine) runAgentChange(cmd *cobra.Command, change agents.Change, f
 // agentChangeUsage rejects flag combinations outside the v1 slice.
 func (c *commandLine) agentChangeUsage(change *agents.Change, flags agentEditFlags) error {
 	if c.flags.host != "" {
-		return errors.New("--host is not supported by agent add/edit/remove: changes apply to all hosts until per-host instances arrive with manifest schema 2 (docs/adr/0012-agent-instance-discovery.md)")
+		return errors.New("--host is not supported by agent add/edit/remove: kitbag.toml is shared by every host; restrict an instance with --hosts instead")
+	}
+	if err := hostsFlags(change, flags); err != nil {
+		return err
 	}
 	if flags.asJSON && !flags.yes && !flags.dryRun {
 		return errors.New("--json needs --yes or --dry-run")
@@ -132,9 +145,23 @@ func (c *commandLine) agentChangeUsage(change *agents.Change, flags agentEditFla
 	if err := settingsFlag(change, flags.settings); err != nil {
 		return err
 	}
-	if change.Op == agents.Edit && change.Settings == nil && !flags.changedDir {
-		return errors.New("nothing to change: pass --dir or --settings")
+	if change.Op == agents.Edit && !requestsEdit(*change, flags) {
+		return errors.New("nothing to change: pass --dir, --settings, --hosts or --all-hosts")
 	}
+	return nil
+}
+
+// requestsEdit reports whether edit was given anything to change.
+func requestsEdit(change agents.Change, flags agentEditFlags) bool {
+	return change.Settings != nil || flags.changedDir || change.Hosts != nil || change.AllHosts
+}
+
+// hostsFlags copies --hosts and --all-hosts; an empty list is a mistake.
+func hostsFlags(change *agents.Change, flags agentEditFlags) error {
+	if flags.hosts != nil && len(flags.hosts) == 0 {
+		return errors.New("--hosts needs at least one host name; use --all-hosts for every host")
+	}
+	change.Hosts, change.AllHosts = flags.hosts, flags.allHosts
 	return nil
 }
 

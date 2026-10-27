@@ -40,7 +40,7 @@ stderr '--json needs --yes or --dry-run'
 stderr 'needs a terminal; pass --yes or --dry-run'
 execstatus 2 kitbag agent add --agent claude --name second --dir '~/.claude_2'
 execstatus 2 kitbag --host other agent add --agent claude --name second --dir '~/.claude_2' --yes
-stderr 'manifest schema 2'
+stderr 'restrict an instance with --hosts instead'
 execstatus 2 kitbag agent add --agent claude --name Second --dir '~/.claude_2' --yes
 stderr 'instance name'
 execstatus 2 kitbag agent add --agent cursor --name second --dir '~/.claude_2' --yes
