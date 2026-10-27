@@ -22,9 +22,12 @@ type fakeClient struct {
 	syncErr     error
 	subErr      error
 	refreshErr  error
+	upgradeErr  error
+	upgraded    *ManifestUpgradeApplied
 	agents      AgentsSnapshot
 	preview     AgentPreview
 	applied     AgentApplied
+	upgrade     ManifestUpgradePreview
 	changes     []AgentChange
 	revisions   []string
 	probes      []bool
@@ -91,6 +94,19 @@ func (f *fakeClient) PreviewAgentChange(_ context.Context, change AgentChange) (
 func (f *fakeClient) ApplyAgentChange(_ context.Context, change AgentChange, revision string) (AgentApplied, error) {
 	f.changes, f.revisions = append(f.changes, change), append(f.revisions, revision)
 	return f.applied, f.applyErr
+}
+
+func (f *fakeClient) PreviewManifestUpgrade(context.Context) (ManifestUpgradePreview, error) {
+	return f.upgrade, f.upgradeErr
+}
+
+func (f *fakeClient) ApplyManifestUpgrade(_ context.Context, revision string) (ManifestUpgradeApplied, error) {
+	f.revisions = append(f.revisions, revision)
+	applied := ManifestUpgradeApplied{ManifestUpgradePreview: f.upgrade}
+	if f.upgraded != nil {
+		applied = *f.upgraded
+	}
+	return applied, f.upgradeErr
 }
 
 func fixedNow() time.Time { return time.Date(2026, 10, 25, 12, 0, 0, 0, time.UTC) }

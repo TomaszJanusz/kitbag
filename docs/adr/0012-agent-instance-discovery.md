@@ -760,8 +760,14 @@ and `AgentForm` models and the terminal Agents screens).
   (`dry_run`, `revision`; `manifest_upgrade_schema` result) and `hosts` /
   `all_hosts` in the `agent` of `agents.add/edit`, instead of the planned
   v1.1 `agents.preview/apply`.
-- **Remaining:** the hosts step and the manifest upgrade in the models and
-  terminal wizard (PRs 15–16), and the
+- **Models and terminal (PRs 15–16), 2026-10-27:** on a schema-2 manifest
+  the add/edit wizard has a **Machines** step (this machine only, all
+  machines, choose machines, keep); on schema 1 the step is absent and the
+  Agents screen offers **Upgrade the manifest** with a preview, plus a hint on
+  the selected instance. **Deviation:** the upgrade action lives on the Agents
+  screen rather than inside the wizard step, so a schema-1 wizard keeps its
+  steps.
+- **Remaining:** the
   publication queue, `kitbag push` and `pr` mode (PRs 7–11, 17).
 
 ## Consequences

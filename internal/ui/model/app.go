@@ -21,9 +21,11 @@ type App struct {
 	Drift    *Drift
 	Settings *Settings
 	Log      *Log
-	// Agents lists agent instances; AgentForm adds, edits or removes one.
+	// Agents lists agent instances; AgentForm adds, edits or removes one;
+	// Upgrade converts kitbag.toml to schema 2 from the form's hosts step.
 	Agents    *Agents
 	AgentForm *AgentForm
+	Upgrade   *ManifestUpgrade
 	retry     time.Duration
 }
 
@@ -32,7 +34,7 @@ type App struct {
 func NewApp(logCapacity int, clock timefmt.Clock) *App {
 	status, log := NewStatus(), NewLog(logCapacity)
 	status.clock, log.clock = clock, clock
-	return &App{Status: status, Drift: NewDrift(), Settings: NewSettings(), Log: log, Agents: NewAgents(), AgentForm: NewAgentForm()}
+	return &App{Status: status, Drift: NewDrift(), Settings: NewSettings(), Log: log, Agents: NewAgents(), AgentForm: NewAgentForm(), Upgrade: NewManifestUpgrade()}
 }
 
 // Init loads every snapshot and starts the subscription.
@@ -53,6 +55,7 @@ func (a *App) Update(msg Msg) []Cmd {
 	cmds = append(cmds, a.Log.Update(msg)...)
 	cmds = append(cmds, a.Agents.Update(msg)...)
 	cmds = append(cmds, a.AgentForm.Update(msg)...)
+	cmds = append(cmds, a.Upgrade.Update(msg)...)
 	switch msg := msg.(type) {
 	case EventReceived:
 		if msg.Event.Kind == EventConnected {

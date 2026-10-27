@@ -145,9 +145,10 @@ kind and the shared exit code.
 
 ## Agents and instances
 
-The [v1 slice of ADR 12](adr/0012-agent-instance-discovery.md#v1-slice-shipped-first):
-changes apply to all hosts, there is no publication queue, and publication
-follows the host's publish mode ([agent edits](agents.md#add-edit-and-remove-instances)).
+The [v1 slice of ADR 12](adr/0012-agent-instance-discovery.md#v1-slice-shipped-first)
+plus per-host instances: on a schema-2 manifest a change can restrict an
+instance to some hosts, there is no publication queue, and publication follows
+the host's publish mode ([agent edits](agents.md#add-edit-and-remove-instances)).
 
 `Client` methods, backed by the additive local API methods `agents.list`,
 `agents.add`, `agents.edit` and `agents.remove`
@@ -159,7 +160,15 @@ method-not-found:
 Agents(ctx context.Context, probe bool) (AgentsSnapshot, error)
 PreviewAgentChange(ctx context.Context, change AgentChange) (AgentPreview, error)
 ApplyAgentChange(ctx context.Context, change AgentChange, revision string) (AgentApplied, error)
+PreviewManifestUpgrade(ctx context.Context) (ManifestUpgradePreview, error)
+ApplyManifestUpgrade(ctx context.Context, revision string) (ManifestUpgradeApplied, error)
 ```
+
+The last two use `manifest.upgrade` with the same fallback. Daemons ignore
+unknown request fields, so a daemon older than per-host instances would plan an
+all-hosts change; the adapter refuses a preview that does not echo the
+requested `hosts` or `all_hosts` (invalid, "restart it with kitbag service
+refresh"), and applying needs that preview's revision.
 
 The adapter forwards only the known agents' relocation variables
 (`apiclient.Client.AgentVariables`) from this process's environment to
@@ -174,7 +183,9 @@ daemon's environment, like sync. Commands are `LoadAgents{Seq, Probe}`,
 | `AgentCandidate` | `Kind`, `Dir` (absolute), `Variable`, `Source` (`default`, `environment`, `declared`, `probe`), `Presence` (`present`, `missing`, `not_directory`, `symlink`, `outside_home`, `unreadable`) |
 | `AgentInstance` | `AgentCandidate` plus `Target`, `Name`, `Hosts`, `ExcludedHosts`, `Implicit`, `Enabled`, `Settings`, `ActiveHere` |
 | `AgentsSnapshot` | `Host`, `KnownHosts`, `Kinds`, `Instances`, `Candidates`, `Warnings`, `Schema`, `Daemon` |
-| `AgentChange` | `Op` (`add`, `edit`, `remove`), `Kind`, `Target`, `Name`, `Dir`, `Settings` (nil: default or unchanged) |
+| `AgentChange` | `Op` (`add`, `edit`, `remove`), `Kind`, `Target`, `Name`, `Dir`, `Settings` (nil: default or unchanged), `Hosts` (comma-separated, so changes stay comparable; empty keeps the scope), `AllHosts` (edit: remove the restriction) |
+| `ManifestUpgradePreview` | `Revision`, `Title`, `MinToolVersion`, `Conversions`, `Diff`, `Warnings`, `CheckedHosts`, `Publication`, `SchemaBefore`, `Current` (already schema 2) |
+| `ManifestUpgradeApplied` | `ManifestUpgradePreview` plus `Sync`, `ExitCode` |
 | `AgentPreview` | `Change` (normalized), `Revision`, `Title`, `Message`, `Dropped`, `Diff`, `Warnings`, `Publication` (`State`, `Mode`, `Branch`, `Commit`, `Reason`, `Next`, `Attempts`) |
 | `AgentApplied` | `AgentPreview` plus `Released` (dropped directory: `Dir`, `Changed`, `Warnings`), `Sync` (`ExitCode`, `Changed`, `Warnings`), `ExitCode` |
 
@@ -186,12 +197,23 @@ has `Title`, `Headline`, `Problem`, `Phase`, `Rows`, `Warnings`, `Detail` and
 words, never colour alone. `SelectAgent{Index}` and `MoveAgent{Delta}` select.
 `Actions` are, in order: **Add** (prefilled from a selected candidate),
 **Edit** and **Remove** (only for a declared, non-implicit instance),
-**Look for more directories** (`ProbeAgents`) and **Refresh**.
+**Look for more directories** (`ProbeAgents`) and **Refresh**; on a schema-1
+manifest also **Upgrade the manifest** (`OpenManifestUpgrade`), and the
+selected instance's hosts row adds "choosing machines needs manifest schema 2".
 
 **`AgentForm`** (`NewAgentForm`, `Open`, `Update`, `View`). `OpenAgentForm{Op,
 Kind, Target, Name, Dir}` starts it. Steps: add — kind, name, directory,
-settings, preview, confirm, result; edit — directory, settings, preview,
-confirm, result; remove — preview, confirm, result.
+hosts, settings, preview, confirm, result; edit — directory, hosts, settings,
+preview, confirm, result; remove — preview, confirm, result. The hosts step
+exists only on a schema-2 manifest (`AgentsSnapshot.Schema`); on schema 1 the
+form sends no hosts, which the server would refuse.
+
+- Hosts choices: edit starts with **Keep the current machines** (sends
+  nothing); then **This machine only** (`Hosts` = `AgentsSnapshot.Host`, the
+  default for add), **All machines** (add: nothing; edit: `AllHosts`) and
+  **Choose machines…**, which turns the step into a text entry for a
+  comma-separated list validated with `manifest.CheckHostName` and for
+  duplicates; names that are neither this machine nor in `KnownHosts` warn.
 
 - `EditAgentField{Value}` edits the name or directory; `ChooseAgentOption{Index}`
   picks a kind, a directory hint (undeclared candidates of the kind with their
@@ -232,6 +254,18 @@ confirm, result; remove — preview, confirm, result.
   dropped directory, warnings), `Result` (headline, commit, next commands,
   released outputs, sync line, warnings) and the `Back`, `Next`, `Cancel` and
   (on confirm) `Confirm` controls.
+
+**`ManifestUpgrade`** (`NewManifestUpgrade`, `Update`, `Dialog`), owned by
+`App.Upgrade`. `OpenManifestUpgrade{}` opens the window (`manifest-upgrade`)
+and issues `PreviewManifestUpgrade{Seq}`; the body lists the conversions,
+warnings (every machine must run the release that reads schema 2), the checked
+hosts ("any other machine" stands for the undeclared host the check adds),
+commit, route and diff. The buttons are Cancel (initial focus) and **Upgrade
+and publish** (`ConfirmManifestUpgrade{}`), which issues
+`ApplyManifestUpgrade{Revision}` for the previewed revision; a conflict
+previews again with the stale message, other failures show the server's
+detail. A success shows the result and makes `Agents` reload; with schema 2
+the form gains its hosts step. `CloseManifestUpgrade{}` closes it.
 
 The selected row's detail ends with **Next sync**: what a sync does with the
 directory (installs the shared configuration, skips it on this host, warns and

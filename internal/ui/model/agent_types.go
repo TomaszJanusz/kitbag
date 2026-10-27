@@ -81,6 +81,11 @@ type AgentChange struct {
 	Target   string
 	Name     string
 	Dir      string
+	// Hosts restricts the instance to these hosts, separated by commas (a
+	// string keeps changes comparable); AllHosts (edit) removes the
+	// restriction. Both need manifest schema 2.
+	Hosts    string
+	AllHosts bool
 }
 
 // PublishState says what happened to a change in Git.
@@ -211,8 +216,8 @@ type (
 	}
 	// ApplyAgent calls Client.ApplyAgentChange.
 	ApplyAgent struct {
-		Change   AgentChange
 		Revision string
+		Change   AgentChange
 	}
 )
 

@@ -1,0 +1,26 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  +----------------------------------------------------------------------------------------------+
+  | Add an agent instance: Machines                                                          esc |
+  | Step 4/8                                                                                     |
+  |                                                                                              |
+  | Which machines use this instance. Other machines ignore it and never warn about its          |
+  | directory.                                                                                   |
+  | > (*) This machine only (laptop)                                                             |
+  |   ( ) All machines                                                                           |
+  |   ( ) Choose machines… · Machines named in kitbag.toml: laptop, mac                          |
+  |                                                                                              |
+  |                                                             [ Cancel ]   [ Back ]   [ Next ] |
+  +----------------------------------------------------------------------------------------------+

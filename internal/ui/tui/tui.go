@@ -239,8 +239,8 @@ func checkTick() tea.Cmd {
 	return tea.Tick(time.Second, func(time.Time) tea.Msg { return checkTickMsg{} })
 }
 
-// agentDialogs projects the agent form and its discard question; the model
-// decides when they open, change step and close.
+// agentDialogs projects the agent form, its discard question and the
+// manifest upgrade; the models decide when they open, change step and close.
 func (m *Model) agentDialogs() {
 	form := m.app.AgentForm
 	if dialog := form.Dialog(); dialog != nil {
@@ -252,5 +252,10 @@ func (m *Model) agentDialogs() {
 		m.ShowDialog(*dialog)
 	} else {
 		m.HideDialog(model.AgentDiscardDialog)
+	}
+	if dialog := m.app.Upgrade.Dialog(); dialog != nil {
+		m.ShowDialog(*dialog)
+	} else {
+		m.HideDialog(model.ManifestUpgradeDialog)
 	}
 }

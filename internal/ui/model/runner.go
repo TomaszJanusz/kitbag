@@ -35,7 +35,7 @@ func (r Runner) Run(ctx context.Context, cmd Cmd, emit func(Msg)) {
 		emit(SyncFinished{At: r.now(), Outcome: outcome, Err: err})
 	case Subscribe:
 		emit(SubscriptionEnded{Err: r.subscribe(ctx, c, emit), At: r.now()})
-	case LoadAgents, PreviewAgent, ApplyAgent:
+	case LoadAgents, PreviewAgent, ApplyAgent, PreviewManifestUpgrade, ApplyManifestUpgrade:
 		r.runAgents(ctx, cmd, emit)
 	}
 }
@@ -52,6 +52,12 @@ func (r Runner) runAgents(ctx context.Context, cmd Cmd, emit func(Msg)) {
 	case ApplyAgent:
 		applied, err := r.Client.ApplyAgentChange(ctx, c.Change, c.Revision)
 		emit(AgentChangeApplied{At: r.now(), Applied: applied, Err: err})
+	case PreviewManifestUpgrade:
+		preview, err := r.Client.PreviewManifestUpgrade(ctx)
+		emit(ManifestUpgradePreviewed{Seq: c.Seq, Preview: preview, Err: err})
+	case ApplyManifestUpgrade:
+		applied, err := r.Client.ApplyManifestUpgrade(ctx, c.Revision)
+		emit(ManifestUpgradeDone{Applied: applied, Err: err})
 	}
 }
 

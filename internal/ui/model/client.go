@@ -28,6 +28,12 @@ type Client interface {
 	// ApplyAgentChange publishes change and syncs when kitbag.toml is still at
 	// revision (from the preview); a stale revision is ErrConflict.
 	ApplyAgentChange(ctx context.Context, change AgentChange, revision string) (AgentApplied, error)
+	// PreviewManifestUpgrade plans kitbag.toml's upgrade to schema 2 without
+	// writing anything.
+	PreviewManifestUpgrade(ctx context.Context) (ManifestUpgradePreview, error)
+	// ApplyManifestUpgrade publishes the upgrade and syncs when kitbag.toml
+	// is still at revision; a stale revision is ErrConflict.
+	ApplyManifestUpgrade(ctx context.Context, revision string) (ManifestUpgradeApplied, error)
 }
 
 // Classification mirrors the plan and status drift vocabulary.

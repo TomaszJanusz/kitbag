@@ -3,6 +3,10 @@ package apiclient
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io/fs"
+	"slices"
+	"strings"
 
 	"github.com/TomaszJanusz/kitbag/internal/api"
 	"github.com/TomaszJanusz/kitbag/internal/core/agents"
@@ -79,7 +83,7 @@ func (c Client) ApplyAgentChange(ctx context.Context, change model.AgentChange, 
 }
 
 func (c Client) changeAgent(ctx context.Context, change model.AgentChange, opts workflow.AgentOptions) (workflow.AgentResult, error) {
-	core := agents.Change{Op: agents.Op(change.Op), Kind: change.Kind, Target: change.Target, Name: change.Name, Dir: change.Dir, Settings: change.Settings}
+	core := agents.Change{Op: agents.Op(change.Op), Kind: change.Kind, Target: change.Target, Name: change.Name, Dir: change.Dir, Settings: change.Settings, Hosts: model.SplitHosts(change.Hosts), AllHosts: change.AllHosts}
 	p := c.params()
 	p.Agent, p.DryRun, p.Revision = &core, opts.DryRun, opts.Revision
 	var result workflow.AgentResult
@@ -94,7 +98,21 @@ func (c Client) changeAgent(ctx context.Context, change model.AgentChange, opts 
 			result, err = service.ChangeAgent(ctx, core, opts)
 		}
 	}
+	if err == nil && opts.DryRun {
+		err = honoredHosts(core, result.Plan.Change)
+	}
 	return result, classify(err)
+}
+
+// honoredHosts refuses a preview that dropped the requested hosts: a daemon
+// older than per-host instances ignores the unknown fields and would plan an
+// all-hosts change. Applying needs this preview's revision, so nothing is
+// written for such a daemon.
+func honoredHosts(requested, planned agents.Change) error {
+	if len(requested.Hosts) > 0 && !slices.Equal(requested.Hosts, planned.Hosts) || requested.AllHosts && !planned.AllHosts {
+		return fmt.Errorf("the running KitBag service does not support choosing machines yet; restart it with kitbag service refresh: %w", fs.ErrInvalid)
+	}
+	return nil
 }
 
 func agentsSnapshot(s discover.Snapshot, daemon bool) model.AgentsSnapshot {
@@ -120,7 +138,7 @@ func agentPreview(r workflow.AgentResult) model.AgentPreview {
 	ch := r.Plan.Change
 	p := r.Publication
 	return model.AgentPreview{
-		Change:      model.AgentChange{Op: model.AgentOp(ch.Op), Kind: ch.Kind, Target: ch.Target, Name: ch.Name, Dir: ch.Dir, Settings: ch.Settings},
+		Change:      model.AgentChange{Op: model.AgentOp(ch.Op), Kind: ch.Kind, Target: ch.Target, Name: ch.Name, Dir: ch.Dir, Settings: ch.Settings, Hosts: strings.Join(ch.Hosts, ","), AllHosts: ch.AllHosts},
 		Publication: model.AgentPublication{State: model.PublishState(p.State), Mode: p.Mode, Branch: p.Branch, Commit: p.Commit, Reason: p.Reason, Next: p.Next, Attempts: p.Attempts},
 		Revision:    r.Plan.Revision, Title: r.Plan.Title, Message: r.Plan.Message, Dropped: r.Plan.Dropped,
 		Diff: r.Plan.Diff, Warnings: r.Plan.Warnings,

@@ -399,10 +399,37 @@ const (
 	WizardDiscardConfirm  Key = "wizard.discard_confirm"
 )
 
+// Hosts step and manifest upgrade keys (ADR 12, schema 2).
+const (
+	WizardStepHosts       Key = "wizard.step.hosts"
+	WizardExplainHosts    Key = "wizard.explain.hosts"
+	WizardHostsKeep       Key = "wizard.hosts.keep"
+	WizardHostsHere       Key = "wizard.hosts.here"
+	WizardHostsAll        Key = "wizard.hosts.all"
+	WizardHostsPick       Key = "wizard.hosts.pick"
+	WizardHostsPickHint   Key = "wizard.hosts.pick_hint"
+	WizardHostsKnown      Key = "wizard.hosts.known"
+	AgentsScopeSchema1    Key = "agents.scope.schema1"
+	AgentInvalidHosts     Key = "agent.invalid.hosts"
+	AgentInvalidHost      Key = "agent.invalid.host"
+	AgentInvalidHostTwice Key = "agent.invalid.host_twice"
+	AgentWarnUnknownHost  Key = "agent.warn.unknown_host"
+	UpgradeTitle          Key = "upgrade.title"
+	UpgradeExplain        Key = "upgrade.explain"
+	UpgradeLoading        Key = "upgrade.loading"
+	UpgradeApplying       Key = "upgrade.applying"
+	UpgradeChanges        Key = "upgrade.changes"
+	UpgradeChecked        Key = "upgrade.checked"
+	UpgradeCurrent        Key = "upgrade.current"
+	UpgradeApply          Key = "upgrade.apply"
+	UpgradeDone           Key = "upgrade.done"
+	ActionUpgradeManifest Key = "action.upgrade_manifest"
+)
+
 // English returns the default catalog, including plain-language setting descriptions.
 func English() Catalog {
 	catalog := make(Catalog)
-	for _, section := range [][]entry{statusText(), outcomeText(), driftText(), formText(), terminalText(), homeText(), agentsText(), wizardText(), settingDescriptions()} {
+	for _, section := range [][]entry{statusText(), outcomeText(), driftText(), formText(), terminalText(), homeText(), agentsText(), wizardText(), hostsText(), settingDescriptions()} {
 		for _, e := range section {
 			catalog[e.key] = e.template
 		}

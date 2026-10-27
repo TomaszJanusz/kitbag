@@ -179,7 +179,9 @@ func (p *planner) edit() error {
 	if hostsChanged {
 		p.plan.Edits = append(p.plan.Edits, manifestedit.Edit{Op: manifestedit.SetInstanceHosts, Target: c.Target, Name: c.Name, Hosts: hosts})
 	}
-	c.Settings, c.Hosts, c.AllHosts = settings, hosts, hostsChanged && len(hosts) == 0
+	// The normalized change echoes all hosts as requested, so a caller can
+	// tell the request was understood even when nothing about hosts changes.
+	c.Settings, c.Hosts, c.AllHosts = settings, hosts, p.in.Change.AllHosts
 	p.plan.Change = c
 	return p.observeHere(c.Dir, hosts)
 }

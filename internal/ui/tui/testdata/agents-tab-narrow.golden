@@ -12,9 +12,9 @@ claude/main
 Directory        /home/user/.claude
 Source           declared in kitbag.toml
 Directory state  present
-Hosts            all hosts
-On this host     active on this host
-Settings         merges shared settings
+Hosts            all hosts; choosing machines needs manifest
+                 schema 2
   [ Add agent ]  [ Edit ]  [ Remove ]
   [ Look for more directories ]  [ Refresh ]
+  [ Upgrade the manifest ]
 esc back · ? help · q home

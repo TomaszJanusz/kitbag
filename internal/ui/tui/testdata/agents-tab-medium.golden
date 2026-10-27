@@ -4,16 +4,15 @@ kitbag › Agents
                                                           | Directory        /home/user/.claude
 claude                                                    | Source           declared in kitbag.toml
 > claude/main  /home/user/.claude                         | Directory state  present
-    present · declared in kitbag.toml · all hosts · acti… | Hosts            all hosts
-  claude/second  /home/user/.claude_2                     | On this host     active on this host
-    missing · declared in kitbag.toml · only on laptop ·… | Settings         merges shared settings
-  [found, not declared]                                   | Next sync        installs the shared
-  /srv/claude                                             |                  configuration here
-    outside the home directory; cannot be declared · fro… | ↑/↓: select · Enter: edit · a: add · d:
-codex                                                     | remove · p: look for more
-  codex (default directory)  /home/user/.codex            |
-    present · documented default · all hosts · active on… |
-                                                          |
+    present · declared in kitbag.toml · all hosts · acti… | Hosts            all hosts; choosing
+  claude/second  /home/user/.claude_2                     |                  machines needs manifest
+    missing · declared in kitbag.toml · only on laptop ·… |                  schema 2
+  [found, not declared]                                   | On this host     active on this host
+  /srv/claude                                             | Settings         merges shared settings
+    outside the home directory; cannot be declared · fro… | Next sync        installs the shared
+codex                                                     |                  configuration here
+  codex (default directory)  /home/user/.codex            | ↑/↓: select · Enter: edit · a: add · d:
+    present · documented default · all hosts · active on… | remove · p: look for more
                                                           |
                                                           |
                                                           |
@@ -27,4 +26,5 @@ codex                                                     | remove · p: look fo
                                                           |
                                                           |
   [ Add agent ]  [ Edit ]  [ Remove ]  [ Look for more directories ]  [ Refresh ]
+  [ Upgrade the manifest ]
 esc back · ? help · q home

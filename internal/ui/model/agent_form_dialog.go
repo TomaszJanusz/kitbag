@@ -23,6 +23,9 @@ func (m *AgentForm) Dialog() *DialogView {
 		if v.Step == AgentStepDir && v.Placeholder != "" {
 			field.Hint = text.New(text.WizardCurrentDir, text.Plain(v.Placeholder))
 		}
+		if v.Step == AgentStepHosts {
+			field.Hint = text.New(text.WizardHostsPickHint)
+		}
 		fields = []DialogField{field}
 	}
 	dialog := FormDialog(AgentFormDialog, text.New(text.WizardWindowTitle, v.Heading, v.Title), v.StepIndex+1, len(v.Steps), fields, v.Back, v.Next, v.Cancel.Intent)
@@ -46,7 +49,7 @@ func initialFocus(v AgentFormView, fields, options int) int {
 		return buttons + back
 	case AgentStepPreview, AgentStepResult:
 		return buttons + next
-	case AgentStepKind, AgentStepSettings:
+	case AgentStepKind, AgentStepSettings, AgentStepHosts:
 		for i, option := range v.Options {
 			if option.Selected {
 				return fields + i

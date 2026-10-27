@@ -261,6 +261,41 @@ func (f *fakeClient) PreviewAgentChange(_ context.Context, change model.AgentCha
 	return f.agents.preview(change)
 }
 
+// PreviewManifestUpgrade previews a one-line conversion of the listing's
+// manifest; ApplyManifestUpgrade publishes it and the listing reads schema 2.
+func (f *fakeClient) PreviewManifestUpgrade(context.Context) (model.ManifestUpgradePreview, error) {
+	defer f.enter()()
+	a := &f.agents
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.snapshot.Schema >= 2 {
+		return model.ManifestUpgradePreview{Current: true, SchemaBefore: a.snapshot.Schema}, nil
+	}
+	return model.ManifestUpgradePreview{
+		Revision: fmt.Sprintf("r%d", a.revision), Title: "chore(kitbag): upgrade manifest to schema 2", MinToolVersion: "0.1.4", SchemaBefore: 1,
+		Conversions:  []string{"set schema = 2", "set min_tool_version = 0.1.4, the first release that reads schema 2"},
+		Diff:         []string{"-schema = 1", "+schema = 2", "+min_tool_version = \"0.1.4\""},
+		Warnings:     []string{"every machine that syncs this repository must run kitbag 0.1.4 or later before this change is published"},
+		CheckedHosts: []string{"laptop", "mac", "kitbag-undeclared-host"},
+		Publication:  model.AgentPublication{State: model.PublishDryRun, Mode: "direct", Branch: "main"},
+	}, nil
+}
+
+func (f *fakeClient) ApplyManifestUpgrade(_ context.Context, revision string) (model.ManifestUpgradeApplied, error) {
+	defer f.enter()()
+	a := &f.agents
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if revision != fmt.Sprintf("r%d", a.revision) {
+		return model.ManifestUpgradeApplied{}, &model.Error{Kind: model.ErrConflict, Detail: "kitbag.toml changed since the preview"}
+	}
+	a.revision++
+	a.snapshot.Schema = 2
+	applied := model.ManifestUpgradeApplied{ManifestUpgradePreview: model.ManifestUpgradePreview{Title: "chore(kitbag): upgrade manifest to schema 2", SchemaBefore: 1}}
+	applied.Publication = model.AgentPublication{State: model.PublishPublished, Mode: "direct", Branch: "main", Commit: "0123456789abcdef0123456789abcdef01234567", Attempts: 1}
+	return applied, nil
+}
+
 func (f *fakeClient) ApplyAgentChange(_ context.Context, change model.AgentChange, revision string) (model.AgentApplied, error) {
 	defer f.enter()()
 	return f.agents.apply(change, revision)

@@ -16,6 +16,7 @@ const (
 	AgentStepKind     AgentStep = "kind"
 	AgentStepName     AgentStep = "name"
 	AgentStepDir      AgentStep = "dir"
+	AgentStepHosts    AgentStep = "hosts"
 	AgentStepSettings AgentStep = "settings"
 	AgentStepPreview  AgentStep = "preview"
 	AgentStepConfirm  AgentStep = "confirm"
@@ -41,6 +42,7 @@ type AgentForm struct {
 	preview *AgentPreview
 	applied *AgentApplied
 	draft   AgentChange
+	hosts   hostsDraft
 	// currentDir is the edited or removed instance's directory, for display.
 	currentDir string
 	steps      []AgentStep
@@ -61,16 +63,24 @@ func NewAgentForm() *AgentForm { return &AgentForm{} }
 // Open reports whether the form is shown.
 func (m *AgentForm) Open() bool { return m.open }
 
-func formSteps(op AgentOp) []AgentStep {
+// formSteps lists op's steps; the hosts step exists only when the manifest
+// can restrict instances to hosts (schema 2).
+func formSteps(op AgentOp, perHost bool) []AgentStep {
+	var steps []AgentStep
 	switch op {
 	case AgentAdd:
-		return []AgentStep{AgentStepKind, AgentStepName, AgentStepDir, AgentStepSettings, AgentStepPreview, AgentStepConfirm, AgentStepResult}
+		steps = []AgentStep{AgentStepKind, AgentStepName, AgentStepDir, AgentStepHosts, AgentStepSettings, AgentStepPreview, AgentStepConfirm, AgentStepResult}
 	case AgentEdit:
-		return []AgentStep{AgentStepDir, AgentStepSettings, AgentStepPreview, AgentStepConfirm, AgentStepResult}
+		steps = []AgentStep{AgentStepDir, AgentStepHosts, AgentStepSettings, AgentStepPreview, AgentStepConfirm, AgentStepResult}
 	case AgentRemove:
 		return []AgentStep{AgentStepPreview, AgentStepConfirm, AgentStepResult}
+	default:
+		return nil
 	}
-	return nil
+	if !perHost {
+		steps = slices.DeleteFunc(steps, func(step AgentStep) bool { return step == AgentStepHosts })
+	}
+	return steps
 }
 
 func (m *AgentForm) current() AgentStep {
@@ -140,7 +150,7 @@ func (m *AgentForm) draftIntent(msg Msg) []Cmd {
 }
 
 func (m *AgentForm) start(msg OpenAgentForm) []Cmd {
-	steps := formSteps(msg.Op)
+	steps := formSteps(msg.Op, m.perHost())
 	if steps == nil {
 		return nil
 	}
@@ -151,6 +161,8 @@ func (m *AgentForm) start(msg OpenAgentForm) []Cmd {
 	} else {
 		m.currentDir = msg.Dir
 	}
+	m.hosts = m.defaultHosts()
+	m.applyHosts()
 	if m.current() == AgentStepPreview {
 		return m.requestPreview()
 	}
@@ -175,6 +187,10 @@ func (m *AgentForm) edit(value string) {
 		m.draft.Name = value
 	case AgentStepDir:
 		m.draft.Dir = value
+	case AgentStepHosts:
+		if !m.editHosts(value) {
+			return
+		}
 	case AgentStepKind, AgentStepSettings, AgentStepPreview, AgentStepConfirm, AgentStepResult:
 		return
 	}
@@ -196,8 +212,8 @@ func (m *AgentForm) choose(index int) {
 			return
 		}
 		m.draft.Dir = hints[index].Dir
-	case AgentStepSettings:
-		if !m.chooseSettings(index) {
+	case AgentStepSettings, AgentStepHosts:
+		if !m.chooseScope(index) {
 			return
 		}
 	case AgentStepName, AgentStepPreview, AgentStepConfirm, AgentStepResult:
@@ -205,6 +221,14 @@ func (m *AgentForm) choose(index int) {
 	}
 	m.touched = true
 	m.discard()
+}
+
+// chooseScope picks a settings or hosts choice.
+func (m *AgentForm) chooseScope(index int) bool {
+	if m.current() == AgentStepHosts {
+		return m.chooseHosts(index)
+	}
+	return m.chooseSettings(index)
 }
 
 func (m *AgentForm) chooseSettings(index int) bool {
@@ -235,7 +259,7 @@ func (m *AgentForm) next() []Cmd {
 		if m.preview != nil && m.problem == nil {
 			m.step++
 		}
-	case AgentStepKind, AgentStepName, AgentStepDir, AgentStepSettings:
+	case AgentStepKind, AgentStepName, AgentStepDir, AgentStepSettings, AgentStepHosts:
 		return m.nextDraft()
 	}
 	return nil
@@ -340,6 +364,8 @@ func (m *AgentForm) invalid() *text.Message {
 		problem = m.invalidName()
 	case AgentStepDir:
 		problem = m.invalidDir()
+	case AgentStepHosts:
+		problem = m.invalidHosts()
 	case AgentStepSettings, AgentStepPreview, AgentStepConfirm, AgentStepResult:
 	}
 	if problem.Key == "" {
@@ -436,6 +462,9 @@ func sameDir(absolute, typed string) bool {
 
 // warnings explain a draft directory listed as missing.
 func (m *AgentForm) warnings() []text.Message {
+	if m.current() == AgentStepHosts {
+		return m.hostsWarnings()
+	}
 	if m.current() != AgentStepDir || m.draft.Dir == "" {
 		return nil
 	}

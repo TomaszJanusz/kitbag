@@ -1,0 +1,30 @@
+
+
+
+
+
+
+
+
+
+  +----------------------------------------------------------------------------------------------+
+  | Upgrade kitbag.toml to schema 2                                                          esc |
+  |                                                                                              |
+  | Schema 2 lets each agent instance name the machines that use it. Review the changes; nothing |
+  | is written until you upgrade.                                                                |
+  | What changes:                                                                                |
+  | set schema = 2                                                                               |
+  | set min_tool_version = 0.1.4, the first release that reads schema 2                          |
+  | ! every machine that syncs this repository must run kitbag 0.1.4 or later before this change |
+  | is published                                                                                 |
+  | Checked: laptop, mac, any other machine keep the same agent instances.                       |
+  | Commit: chore(kitbag): upgrade manifest to schema 2                                          |
+  | Published directly to main.                                                                  |
+  |                                                                                              |
+  | Changes to kitbag.toml:                                                                      |
+  |   -schema = 1                                                                                |
+  |   +schema = 2                                                                                |
+  |   +min_tool_version = "0.1.4"                                                                |
+  |                                                                                              |
+  |                                                       > [ Cancel ]   [ Upgrade and publish ] |
+  +----------------------------------------------------------------------------------------------+

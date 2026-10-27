@@ -420,9 +420,10 @@ Add, which a found directory prefills with its kind and directory.
 open the model's form as a wide modal window titled with the operation and the
 step, for example **Add an agent instance: Instance name**, with **Step n/N**:
 
-- add: agent, instance name, directory, settings merge, preview, confirm, result;
+- add: agent, instance name, directory, machines (schema 2 only), settings
+  merge, preview, confirm, result;
 - edit: directory (empty keeps the current one, which the field's hint shows),
-  settings merge, preview, confirm, result;
+  machines (schema 2 only), settings merge, preview, confirm, result;
 - remove: preview, confirm, result.
 
 Text steps validate every keystroke with the model's catalog messages (name
@@ -446,6 +447,18 @@ committed but not published (with the reason and the `git pull --rebase` and
 `git push` commands), not written in `pr` mode (with the commands to propose it)
 or not applied; it reports handed-back outputs and the sync that ran, and notes
 that the list was reloaded. Close (or Cancel) returns to the refreshed list.
+
+**Machines.** On a schema-2 manifest the **Machines** step offers **This
+machine only (host)** (the default for add), **All machines**, **Choose
+machines…** (a comma-separated text entry; the option names the machines
+`kitbag.toml` declares) and, when editing, **Keep the current machines**.
+Invalid or repeated names keep Next unavailable; unknown names warn. On a
+schema-1 manifest the step is absent, the selected instance's Hosts row says
+choosing machines needs manifest schema 2, and the button row adds **Upgrade
+the manifest**. It opens a window that previews the upgrade (conversions, the
+warning that every machine must run the release that reads schema 2, the
+checked machines, commit, route and diff) with focus on **Cancel**; **Upgrade
+and publish** applies exactly that preview, and the result reloads the list.
 
 Cancel, Esc and an outside click close the wizard at once while nothing was
 chosen or typed; otherwise a **Discard this change?** window asks first,

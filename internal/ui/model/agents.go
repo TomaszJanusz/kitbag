@@ -51,14 +51,25 @@ func (m *Agents) Update(msg Msg) []Cmd {
 		m.selectIndex(msg.Index)
 	case MoveAgent:
 		m.selectIndex(m.index() + msg.Delta)
-	case AgentChangeApplied:
-		if msg.Err == nil {
+	case AgentChangeApplied, ManifestUpgradeDone:
+		if published(msg) {
 			return m.load(false)
 		}
 	case EventReceived:
 		return m.event(msg.Event)
 	}
 	return nil
+}
+
+// published reports a manifest change that succeeded; the list reloads.
+func published(msg Msg) bool {
+	switch msg := msg.(type) {
+	case AgentChangeApplied:
+		return msg.Err == nil
+	case ManifestUpgradeDone:
+		return msg.Err == nil
+	}
+	return false
 }
 
 // event reloads after a connection or a sync, which may change instances.
@@ -187,12 +198,26 @@ func (m *Agents) View() AgentsView {
 		row.Selected = (agentKey{e.Kind, e.Dir}) == m.selected
 		if row.Selected {
 			selected = &e
-			view.Detail = &AgentDetail{Title: row.Label, Rows: agentDetailRows(e, row)}
+			view.Detail = &AgentDetail{Title: row.Label, Rows: m.schema1Hint(agentDetailRows(e, row))}
 		}
 		view.Rows = append(view.Rows, row)
 	}
 	view.Actions = agentActions(selected)
+	if m.snapshot.Schema == 1 {
+		view.Actions = append(view.Actions, Control{Intent: OpenManifestUpgrade{}, Label: text.New(text.ActionUpgradeManifest), Enabled: true})
+	}
 	return view
+}
+
+// schema1Hint tells, on a schema-1 manifest, that choosing machines needs
+// the upgrade; schema 2 enables the wizard's hosts step instead.
+func (m *Agents) schema1Hint(rows []Row) []Row {
+	for i, row := range rows {
+		if m.snapshot.Schema == 1 && row.Label.Key == text.AgentsDetailScope {
+			rows[i].Value = text.New(text.AgentsScopeSchema1, row.Value)
+		}
+	}
+	return rows
 }
 
 func (m *Agents) headline() text.Message {
