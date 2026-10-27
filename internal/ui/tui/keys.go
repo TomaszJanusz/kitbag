@@ -399,10 +399,16 @@ func (m *Model) agentsKey(name string) {
 		m.dispatch(model.MoveAgent{Delta: 1})
 	case keyAdd, keyEdit, keyEnter, keyRemove, keyProbe:
 		for _, c := range m.app.Agents.View().Actions {
-			if c.Enabled && (intentName(c.Intent) == name || (name == keyEnter && intentName(c.Intent) == keyEdit)) {
+			if c.Enabled && (intentName(c.Intent) == name || (name == keyEnter && agentEnter(c.Intent))) {
 				m.dispatch(c.Intent)
 				return
 			}
 		}
 	}
+}
+
+// agentEnter opens the selected declared instance or adopts a found directory.
+func agentEnter(intent model.Msg) bool {
+	form, ok := intent.(model.OpenAgentForm)
+	return ok && (form.Op == model.AgentEdit || form.Adopt)
 }

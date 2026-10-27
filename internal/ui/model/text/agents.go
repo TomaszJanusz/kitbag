@@ -31,6 +31,7 @@ func agentsText() []entry {
 		{AgentsDetailScope, "Hosts"},
 		{AgentsDetailState, "On this host"},
 		{AgentsDetailSettings, "Settings"},
+		{ActionAdoptAgent, "Adopt this directory"},
 		{ActionAddAgent, "Add agent"},
 		{ActionEditAgent, "Edit"},
 		{ActionRemoveAgent, "Remove"},
@@ -52,12 +53,13 @@ func agentsText() []entry {
 		{AgentsSyncUndeclared, "leaves it alone until it is added"},
 		{AgentsSyncCannot, "leaves it alone; it cannot be declared"},
 		{AgentsSectionFound, "found, not declared"},
-		{AgentsListHint, "↑/↓: select · Enter: edit · a: add · d: remove · p: look for more"},
+		{AgentsListHint, "↑/↓: select · Enter: edit/adopt · a: add/adopt · d: remove · p: look for more"},
 	}
 }
 
 func wizardText() []entry {
 	return []entry{
+		{WizardTitleAdopt, "Adopt %s at %s"},
 		{WizardTitleAdd, "Add an agent instance"},
 		{WizardTitleEdit, "Edit %s"},
 		{WizardTitleRemove, "Remove %s"},

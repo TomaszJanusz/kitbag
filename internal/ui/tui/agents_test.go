@@ -340,7 +340,7 @@ func TestAgentsMouse(t *testing.T) {
 	d.refuse("Step 1/3")
 	d.clickText("[ Look for more directories ]")
 	d.expect("/home/user/.claude_3")
-	d.clickText("[ Add agent ]")
+	d.clickText("[ Adopt this directory ]")
 	d.expect("Step 1/7")
 	d.clickText("( ) codex")
 	d.expect("(*) codex")
@@ -420,4 +420,33 @@ func TestAgentWizardTypingKeepsFocusAndCursorWhenNextBecomesValid(t *testing.T) 
 	d.expect("Step 2/7", "> [ Next ]")
 	d.press(keyNext, "s")
 	d.expect("Instance name: > works")
+}
+
+func TestAgentsAdoptFoundDirectory(t *testing.T) {
+	t.Parallel()
+	for _, trigger := range []string{"enter", "double-click", "button"} {
+		t.Run(trigger, func(t *testing.T) {
+			t.Parallel()
+			d := drive(t, withAgents(newFake()), 120, 35)
+			d.press("5", keyProbe)
+			d.clickText("/home/user/.claude_3")
+			d.refuse("[ Edit", "[ Remove")
+			switch trigger {
+			case "enter":
+				d.press(keyEnter)
+			case "double-click":
+				d.clickText("> /home/user/.claude_3")
+			case "button":
+				d.clickText("[ Adopt this directory ]")
+			}
+			d.expect("Adopt claude at /home/user/.claude_3", "Step 1/5", "Instance name")
+			d.press("work", keyEnter, keyEnter, keyEnter)
+			d.expect("Step 3/5", "+dir = \"~/.claude_3\"")
+			d.golden("agents-adopt-preview-" + trigger)
+			_, previews, applies := d.client.agents.calls()
+			if len(previews) != 1 || previews[0].Kind != "claude" || previews[0].Dir != "/home/user/.claude_3" || len(applies) != 0 {
+				t.Fatalf("candidate lost: previews=%+v applies=%v", previews, applies)
+			}
+		})
+	}
 }

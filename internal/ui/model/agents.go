@@ -286,7 +286,7 @@ func agentActions(e *agentEntry) []Control {
 	if e != nil {
 		add.Kind = e.Kind
 		if e.instance == nil {
-			add.Dir = e.Dir
+			add.Dir, add.Adopt = e.Dir, true
 		}
 		if i := e.instance; i != nil && !i.Implicit {
 			declared = true
@@ -294,7 +294,11 @@ func agentActions(e *agentEntry) []Control {
 			remove = OpenAgentForm{Op: AgentRemove, Kind: i.Kind, Target: i.Target, Name: i.Name, Dir: i.Dir}
 		}
 	}
-	actions := []Control{{Intent: add, Label: text.New(text.ActionAddAgent), Enabled: true}}
+	label := text.ActionAddAgent
+	if add.Adopt {
+		label = text.ActionAdoptAgent
+	}
+	actions := []Control{{Intent: add, Label: text.New(label), Enabled: true}}
 	if declared {
 		actions = append(actions,
 			Control{Intent: edit, Label: text.New(text.ActionEditAgent), Enabled: true},

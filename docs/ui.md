@@ -184,12 +184,15 @@ has `Title`, `Headline`, `Problem`, `Phase`, `Rows`, `Warnings`, `Detail` and
 `Kind`, `Target`, `Name`, `Label`, `Dir`, `Source`, `Presence`, `Scope`,
 `Declared`, `Implicit`, `ActiveHere` and `Selected`; source and presence are
 words, never colour alone. `SelectAgent{Index}` and `MoveAgent{Delta}` select.
-`Actions` are, in order: **Add** (prefilled from a selected candidate),
-**Edit** and **Remove** (only for a declared, non-implicit instance),
+`Actions` are, in order: **Add**, or **Adopt this directory** for a selected candidate,
+**Edit** and **Remove** (shown only for a declared, non-implicit instance),
 **Look for more directories** (`ProbeAgents`) and **Refresh**.
 
 **`AgentForm`** (`NewAgentForm`, `Open`, `Update`, `View`). `OpenAgentForm{Op,
-Kind, Target, Name, Dir}` starts it. Steps: add — kind, name, directory,
+Kind, Target, Name, Dir, Adopt}` starts it. Adoption retains Kind and Dir and
+skips their steps when both pass validation; it starts at name, then settings,
+preview, confirm and result. Back follows this shortened sequence and retains
+the draft. Invalid prefilled paths retain the full sequence for correction. Steps: add — kind, name, directory,
 settings, preview, confirm, result; edit — directory, settings, preview,
 confirm, result; remove — preview, confirm, result.
 

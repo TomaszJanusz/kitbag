@@ -156,6 +156,7 @@ type (
 	OpenAgentForm struct {
 		Op                      AgentOp
 		Kind, Target, Name, Dir string
+		Adopt                   bool
 	}
 	// EditAgentField replaces the current step's text (name or directory).
 	EditAgentField struct{ Value string }
