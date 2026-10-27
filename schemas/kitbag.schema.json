@@ -383,7 +383,24 @@
           "propertyNames": { "$ref": "#/$defs/primitiveName" },
           "additionalProperties": { "$ref": "#/$defs/homePath" }
         },
-        "primitives": { "$ref": "#/$defs/primitives" }
+        "primitives": { "$ref": "#/$defs/primitives" },
+        "hosts": {
+          "description": "Use this instance only on these hosts; other hosts never look for its directory. Default: every host. Not allowed in a host's instance set, and not together with a host's instance set for the same target.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/hostName" }
+        }
+      }
+    },
+    "hostInstances": {
+      "description": "A host's replacement instance set: instances as under a target, without hosts.",
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "$ref": "#/$defs/name" },
+      "additionalProperties": {
+        "$ref": "#/$defs/instance",
+        "properties": { "hosts": false }
       }
     },
     "target": {
@@ -426,8 +443,8 @@
         "enabled": { "type": "boolean" },
         "mode": { "$ref": "#/$defs/mode" },
         "instances": {
-          "description": "Replaces the target's instance set on this host.",
-          "$ref": "#/$defs/instances"
+          "description": "Replaces the target's instance set on this host. Prefer hosts on the target's instances; the two cannot be combined for one target.",
+          "$ref": "#/$defs/hostInstances"
         }
       }
     },

@@ -1,0 +1,1 @@
+instance-hosts-wrong-type.toml:9:1: /targets/claude/instances/main/hosts: got string, want array

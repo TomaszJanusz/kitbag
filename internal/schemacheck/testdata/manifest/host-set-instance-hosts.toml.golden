@@ -1,0 +1,1 @@
+host-set-instance-hosts.toml:9:1: /hosts/mac/targets/claude/instances/main/hosts: 'hosts' is not allowed in a host's instance set, which applies to that host only; set it on the instance under targets.<target>.instances instead

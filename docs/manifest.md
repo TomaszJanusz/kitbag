@@ -52,9 +52,13 @@ destructive rewrite (ADR 9, condition 3).
   An older `schema` stays a validation error (exit 2) that asks for the
   explicit migration. This release reads schema 1 only.
 - Unknown keys are errors everywhere (`additionalProperties: false`), including
-  misspelled optional keys. A new key arrives only with a new schema version;
-  the N/N−1 window gives repositories a release in which every machine can
-  update before the manifest bumps `schema`.
+  misspelled optional keys. A new key normally arrives only with a new schema
+  version; the N/N−1 window gives repositories a release in which every machine
+  can update before the manifest bumps `schema`. Exception, decided by the
+  maintainer ([ADR 12](adr/0012-agent-instance-discovery.md#revision-2026-10-27-hosts-in-schema-1)):
+  the optional `targets.<t>.instances.<n>.hosts` was added to schema 1 without
+  a bump. A kitbag released before it rejects a manifest that uses the key
+  (exit 2, nothing applied), so update every machine before using it.
 - Missing optional tables mean "this primitive is not managed". Nothing is
   inferred from the repository tree.
 - A file is rejected as a whole; there is no partial application of a manifest
@@ -209,6 +213,7 @@ plan reports MCP as unsupported for that instance.
 | `instances.<name>.settings` | boolean | no | `true` | `false` skips the settings merge for this instance (today's `settings=off`). |
 | `instances.<name>.roots.<primitive>` | home path | `generic`: yes | adapter default | Replaces the adapter's documented root for one primitive on this instance. For `generic` only primitives with a root are applied. |
 | `instances.<name>.primitives.<primitive>` | table | no | target value | Same keys as the target level; wins over it. |
+| `instances.<name>.hosts` | array of host names | no | every host | Use this instance only on these hosts ([below](#instances-on-some-hosts)). Non-empty, unique, same grammar as `files[].hosts`. |
 
 Two targets may use the same agent kind (for example two `generic` targets).
 Instance identity is the pair (agent kind, `dir`); the same pair declared twice
@@ -222,6 +227,45 @@ never inferred from an existing instance.
 without re-encoding the file: comments and layout outside the edited table
 stay, and instances written as inline tables or dotted keys are left to hand
 edits ([agent edits](agents.md#add-edit-and-remove-instances)).
+
+#### Instances on some hosts
+
+`hosts` limits an instance to the listed hosts, the same way `files[].hosts`
+limits a file. It is the recommended way to declare a directory that only some
+machines have, such as a second Claude Code account:
+
+```toml
+[targets.claude.instances.main]
+dir = "~/.claude"
+
+[targets.claude.instances.second]
+dir = "~/.claude_2"
+hosts = ["mac"]
+```
+
+- On a listed host the instance behaves as if `hosts` were absent.
+- On any other host the instance is treated like `enabled = false`: it produces
+  no operations, sync, plan and doctor do not look for its directory, and a
+  missing directory there is neither a warning nor a reason to exit 1. If an
+  earlier sync on that host wrote to the directory, KitBag's own output there
+  is removed, as for `enabled = false`; the directory itself stays.
+- The target still lists the instance on every host, so a host where all
+  listed instances are left out never falls back to the adapter's implicit
+  default directory.
+- `hosts` never re-enables an instance with `enabled = false`, and a host's
+  `[hosts.<h>.targets.<t>]` `enabled` and `mode` still apply.
+- Instance identity is checked across all instances regardless of `hosts`: two
+  instances of one agent kind may not share a `dir` even if their lists do not
+  overlap.
+- A host name in `hosts` needs no `[hosts.<name>]` table. Doctor warns
+  (`instance-hosts-<target>/<instance>`) about a name that is neither this
+  machine nor declared under `[hosts]`, which is usually a typo.
+- `hosts` cannot be combined with a host's replacement set for the same
+  target: a `[hosts.<h>.targets.<t>.instances]` table for a target whose
+  instances use `hosts` is a validation error, because the replacement would
+  silently override those lists on that host. Use `hosts` on the target's
+  instances instead; `hosts` is not allowed inside a host's replacement set
+  either.
 
 #### Settings merge rules
 
@@ -257,7 +301,7 @@ until the fragment changes ([adopt.md](adopt.md)).
 | `publish` | publish table | no | top-level `publish` | Per-host publication policy. |
 | `targets.<target>.enabled` | boolean | no | target value | Drop or keep a target on this host. |
 | `targets.<target>.mode` | `link` \| `copy` | no | target value | |
-| `targets.<target>.instances.<name>` | instance table | no | target instances | Replaces the target's whole instance set on this host (no partial merge). |
+| `targets.<target>.instances.<name>` | instance table | no | target instances | Replaces the target's whole instance set on this host (no partial merge). Not allowed for a target whose instances use `hosts`, and its instances take no `hosts`. Prefer [`hosts` on the target's instances](#instances-on-some-hosts). |
 
 The host name comes from `config.toml` `host`, else the machine's short host
 name. A host without a `hosts.<name>` table uses the defaults; this is not an
@@ -303,8 +347,10 @@ Link capability is tracked per primitive and operating system in
 - MCP: manifest definitions overwrite same-name native servers; `policy`
   decides whether unmentioned native servers survive.
 - Settings: repository scalars win, arrays union, managed hooks replaced.
-- Instances: `hosts.<name>.targets.<t>.instances` replaces the target's set;
-  `enabled = false` at any level removes the operations below it.
+- Instances: an instance applies to the hosts in its `hosts` (default: all);
+  `hosts.<name>.targets.<t>.instances` replaces the target's set and cannot be
+  combined with `hosts` on that target; `enabled = false` at any level removes
+  the operations below it.
 - Mode: most specific manifest level, then machine default, and `copy` wins.
 - Publish: `hosts.<name>.publish` over `publish`.
 
@@ -422,7 +468,7 @@ What each part of today's script maps to:
 | Merges `claude/settings.json` into each instance (`settings=off` opts out) | `targets.claude.settings`, instance `settings = false` |
 | Adds `git/agent.gitconfig` as `include.path` | `git.include` |
 | Links `agent-browser/config.json` to `~/.agent-browser/config.json` | `files` |
-| Reads `hosts/<host>.instances` | `targets.<t>.instances` and `hosts.<h>.targets.<t>.instances` |
+| Reads `hosts/<host>.instances` | `targets.<t>.instances`, limited with `instances.<n>.hosts` (or a `hosts.<h>.targets.<t>.instances` replacement set) |
 | `AGENT_CONFIG_HOST`, `AGENT_CONFIG_INSTANCES` | `config.toml` `host`; instance overrides live in the manifest |
 | Pull with `--ff-only`, skipped on local changes | `config.toml` `sync` and the tool's sync cycle (ADR 2) |
 | Links itself into `~/.local/bin` | No counterpart; the tool is installed separately (ADR 6) |

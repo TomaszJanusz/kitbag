@@ -7,6 +7,15 @@
   commits or messages) and discovery breadth (`--probe` on explicit request).
 - V1 slice implemented: 2026-10-26, ahead of the rollout; see
   [V1 slice](#v1-slice-shipped-first).
+- Revised: 2026-10-27, decision revised by the maintainer: S3 is delivered as
+  an optional `hosts` key on schema-1 instances, with **no schema bump**. There
+  is no schema 2, no `kitbag manifest upgrade`, no `min_tool_version` bump and
+  no second JSON Schema; host replacement sets keep their schema-1 meaning and
+  cannot be combined with `hosts` on the same target. Only the maintainer uses
+  KitBag today, so the compatibility window the schema bump bought is not
+  needed. Sections below that describe schema 2, host patches and the upgrade
+  command are superseded where they conflict; see
+  [the revision note](#revision-2026-10-27-hosts-in-schema-1).
 
 ## Context and Problem Statement
 
@@ -178,6 +187,31 @@ to it. Doctor and sync never probe.
 Instance lists are never copied into host overrides. S2's copying and S4 are
 rejected. (A held, unpublished change in the [publication queue](#3-automatic-publication)
 gives consumer-only machines a visible, temporary alternative to S4.)
+
+### Revision 2026-10-27: `hosts` in schema 1
+
+The maintainer revised the storage decision: `targets.<t>.instances.<n>.hosts`
+is an optional key of **schema 1**, defined in
+[manifest.md](../manifest.md#instances-on-some-hosts):
+
+- Non-empty, unique host names with the `files[].hosts` grammar; absent means
+  every host. A host outside the list resolves the instance as disabled, so it
+  produces no operations and its missing directory is never a warning there,
+  and the target never falls back to its implicit default.
+- `[hosts.<h>.targets.<t>.instances]` keeps its schema-1 replacement meaning.
+  To avoid two mechanisms silently overriding each other, a target whose
+  instances use `hosts` may not have a host replacement set (validation error),
+  and `hosts` is not allowed inside a replacement set. `hosts` is the
+  recommended way; host-level `enabled` and `mode` of the target still apply.
+- Manifests without `hosts` resolve byte for byte as before (pinned by
+  resolution goldens recorded before the key existed).
+- A kitbag released before the key rejects a manifest using it (exit 2, nothing
+  applied). The maintainer updates every machine before using it; no
+  `min_tool_version` is written automatically.
+
+The "Schema 2 definition", "Reading, compatibility", "Migration" and schema-2
+parts of the API and doctor sections below are kept for the record and are
+superseded by this revision.
 
 ### Schema 2 definition
 

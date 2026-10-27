@@ -193,3 +193,34 @@ func assertDeclaredDirectories(t *testing.T, main, second Instance) {
 		t.Fatalf("second directory: %+v", second)
 	}
 }
+
+func TestListInstanceHosts(t *testing.T) {
+	t.Parallel()
+	m, err := manifest.Parse("kitbag.toml", []byte(`schema=1
+[targets.claude]
+agent="claude"
+[targets.claude.instances.main]
+dir="~/.claude"
+[targets.claude.instances.second]
+dir="~/.claude_2"
+hosts=["mac"]
+`))
+	must(t, err)
+	for _, tc := range []struct {
+		current string
+		second  bool
+	}{{"mac", true}, {"runner02", false}} {
+		got, listErr := listTable().List(recorder{newHost(nil), t}, m, tc.current, false)
+		must(t, listErr)
+		if len(got.Instances) != 2 {
+			t.Fatalf("%s: %+v", tc.current, got.Instances)
+		}
+		main, second := got.Instances[0], got.Instances[1]
+		if !main.ActiveHere || len(main.Hosts) != 0 || second.ActiveHere != tc.second || !second.Enabled {
+			t.Fatalf("%s: main %+v second %+v", tc.current, main, second)
+		}
+		if !slices.Equal(second.Hosts, []string{"mac"}) || len(second.ExcludedHosts) != 0 || second.Implicit {
+			t.Fatalf("%s: hosts %+v", tc.current, second)
+		}
+	}
+}

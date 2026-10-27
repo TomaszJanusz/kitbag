@@ -1,19 +1,22 @@
 package manifest
 
-// rule mirrors only the schema-v1 vocabulary. Keeping the schema interpreter out
+// rule mirrors only the schema-1 vocabulary. Keeping the schema interpreter out
 // of production avoids a second public model and a JSON Schema runtime dependency.
 type rule struct {
 	properties map[string]*rule
-	item       *rule
-	names      *rule
-	kind       string
-	pattern    string
-	role       string
-	required   []string
-	values     []string
-	minimum    int
-	maximum    int
-	unique     bool
+	// refused maps a key that is not allowed here to the reason that replaces
+	// the generic unknown-key message.
+	refused  map[string]string
+	item     *rule
+	names    *rule
+	kind     string
+	pattern  string
+	role     string
+	required []string
+	values   []string
+	minimum  int
+	maximum  int
+	unique   bool
 }
 
 const (
@@ -77,18 +80,31 @@ func primitivesRule() *rule {
 	return r
 }
 
-func instancesRule() *rule {
-	return dictionary(textRule(namePattern), object(map[string]*rule{
+// instancesRule describes a set of instances. Only a target's own instances
+// may limit themselves to hosts; a host's replacement set already applies to
+// that host alone.
+func instancesRule(hosts bool) *rule {
+	instance := object(map[string]*rule{
 		"dir": pathRule("home"), "enabled": {kind: "boolean"}, "mode": enum("link", "copy"),
 		"settings": {kind: "boolean"}, "roots": dictionary(primitiveRule(), pathRule("home"), 1),
 		"primitives": primitivesRule(),
-	}, "dir"), 1)
+	}, "dir")
+	if hosts {
+		instance.properties["hosts"] = hostsRule()
+	} else {
+		instance.refused = map[string]string{"hosts": "'hosts' is not allowed in a host's instance set, which applies to that host only; " +
+			"set it on the instance under targets.<target>.instances instead"}
+	}
+	return dictionary(textRule(namePattern), instance, 1)
 }
+
+// hostsRule is the allow-list grammar shared by files and instances.
+func hostsRule() *rule { return array(textRule(hostPattern), 1, true) }
 
 func targetRule() *rule {
 	return object(map[string]*rule{
 		"agent": agentRule(), "enabled": {kind: "boolean"}, "mode": enum("link", "copy"),
-		"settings": pathRule("file"), "primitives": primitivesRule(), "instances": instancesRule(),
+		"settings": pathRule("file"), "primitives": primitivesRule(), "instances": instancesRule(true),
 	}, "agent")
 }
 
@@ -102,7 +118,7 @@ func hostRule() *rule {
 	r := object(map[string]*rule{
 		"mode": enum("link", "copy"), "publish": publishRule(),
 		"targets": dictionary(textRule(namePattern), object(map[string]*rule{
-			"enabled": {kind: "boolean"}, "mode": enum("link", "copy"), "instances": instancesRule(),
+			"enabled": {kind: "boolean"}, "mode": enum("link", "copy"), "instances": instancesRule(false),
 		}), 1),
 	})
 	r.minimum = 1
@@ -144,7 +160,7 @@ func manifestRule() *rule {
 		}, "servers"),
 		"files": array(object(map[string]*rule{
 			"src": pathRule("source"), "dest": pathRule("home"), "mode": enum("link", "copy"),
-			"hosts": array(textRule(hostPattern), 1, true),
+			"hosts": hostsRule(),
 		}, "src", "dest"), 0, false),
 		"git":     object(map[string]*rule{"include": array(pathRule("file"), 1, true)}, "include"),
 		"targets": dictionary(textRule(namePattern), targetRule(), 1),

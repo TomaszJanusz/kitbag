@@ -12,8 +12,11 @@ import (
 // ResolveHost selects KITBAG_HOST, then configured (config.toml's host), then the
 // system's short hostname. env can be an internal/platform.Env. It returns an
 // independent copy with matching files, expanded instruction template and merged
-// host policy. Instance overrides replace whole sets; publish replaces both keys.
-// Mode precedence below target level remains the planner's responsibility.
+// host policy. An instance whose Hosts excludes the host is kept with Enabled
+// false, so the target still lists instances and never falls back to its
+// implicit default. Instance overrides replace whole sets; publish replaces
+// both keys. Mode precedence below target level remains the planner's
+// responsibility.
 func (m *Manifest) ResolveHost(env Environment, configured string) (*Manifest, error) {
 	host, err := hostName(env, configured)
 	if err != nil {
@@ -74,6 +77,10 @@ func hostName(env Environment, configured string) (string, error) {
 
 func (m *Manifest) hostTargets(host string) (map[string]Target, error) {
 	targets := maps.Clone(m.Targets)
+	for name, target := range targets {
+		target.Instances = excludeInstances(target.Instances, host)
+		targets[name] = target
+	}
 	for _, name := range slices.Sorted(maps.Keys(m.Hosts[host].Targets)) {
 		override := m.Hosts[host].Targets[name]
 		target, ok := targets[name]
@@ -93,4 +100,30 @@ func (m *Manifest) hostTargets(host string) (map[string]Target, error) {
 		targets[name] = target
 	}
 	return targets, nil
+}
+
+// AppliesTo reports whether the instance's Hosts admits host; an instance
+// without Hosts applies to every host.
+func (i Instance) AppliesTo(host string) bool {
+	return len(i.Hosts) == 0 || slices.Contains(i.Hosts, host)
+}
+
+// excludeInstances returns instances, or a copy in which those that do not
+// apply to host are disabled.
+func excludeInstances(instances map[string]Instance, host string) map[string]Instance {
+	var result map[string]Instance
+	for name, instance := range instances {
+		if instance.AppliesTo(host) {
+			continue
+		}
+		if result == nil {
+			result = maps.Clone(instances)
+		}
+		instance.Enabled = new(bool)
+		result[name] = instance
+	}
+	if result == nil {
+		return instances
+	}
+	return result
 }

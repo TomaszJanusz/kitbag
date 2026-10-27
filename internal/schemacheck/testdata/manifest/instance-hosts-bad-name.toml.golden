@@ -1,0 +1,1 @@
+instance-hosts-bad-name.toml:9:10: /targets/claude/instances/main/hosts/0: does not match pattern ^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$

@@ -197,9 +197,37 @@ func manifestInstanceCases() []manifestCase {
 	}
 }
 
+// instanceHostsCases cover instances limited to some hosts.
+func instanceHostsCases() []manifestCase {
+	return []manifestCase{
+		{
+			name: "instance hosts and unknown host names",
+			manifest: "schema=1\n[targets.codex]\nagent=\"codex\"\n" +
+				"[targets.codex.instances.main]\ndir=\"~/main\"\n" +
+				"[targets.codex.instances.elsewhere]\ndir=\"~/elsewhere\"\nhosts=[\"desk\"]\n" +
+				"[targets.codex.instances.here]\ndir=\"~/here\"\nhosts=[\"laptop\", \"lapotp\", \"desk\"]\n" +
+				"[hosts.desk]\nmode=\"copy\"\n",
+			flag: "laptop", dirs: []string{filepath.Join(testHome(), "main"), filepath.Join(testHome(), "here")},
+			// elsewhere, missing but not used on this host, is not checked at all.
+			order: []string{"tool-version", "host", "manifest-schema", "instance-hosts-codex/here", "instance-codex/here", "instance-codex/main"},
+			expects: []expect{
+				{"instance-hosts-codex/here", "hosts lists lapotp, which is neither this machine (laptop) nor declared under [hosts]", "correct the host name in targets.codex.instances.here.hosts", Warn},
+				{"instance-codex/here", filepath.Join(testHome(), "here"), "", OK},
+			},
+		},
+		{
+			name: "instance for another host is not checked",
+			manifest: "schema=1\n[targets.codex]\nagent=\"codex\"\n" +
+				"[targets.codex.instances.main]\ndir=\"~/main\"\nhosts=[\"desk\"]\n[hosts.desk]\nmode=\"copy\"\n",
+			flag: "laptop", order: []string{"tool-version", "host", "manifest-schema"},
+			expects: []expect{{"host", "host laptop (--host)", "", OK}},
+		},
+	}
+}
+
 func TestManifestChecks(t *testing.T) {
 	t.Parallel()
-	for _, tc := range append(manifestVersionCases(), manifestInstanceCases()...) {
+	for _, tc := range slices.Concat(manifestVersionCases(), manifestInstanceCases(), instanceHostsCases()) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			s, host := subjectWith(t, tc.env, tc.manifest)

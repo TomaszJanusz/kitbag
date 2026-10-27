@@ -1,0 +1,9 @@
+# expect: items at 0 and 1 are equal
+schema = 1
+
+[targets.claude]
+agent = "claude"
+
+[targets.claude.instances.main]
+dir = "~/.claude"
+hosts = ["mac", "mac"]

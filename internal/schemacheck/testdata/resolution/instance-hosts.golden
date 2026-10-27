@@ -1,0 +1,122 @@
+# host ci
+min_tool_version = ""
+mode = ""
+files = []
+schema = 1
+
+[targets]
+  [targets.claude]
+    agent = "claude"
+    mode = "copy"
+    settings = "claude/settings.json"
+    [targets.claude.instances]
+      [targets.claude.instances.main]
+        dir = "~/.claude"
+        mode = ""
+      [targets.claude.instances.second]
+        settings = false
+        dir = "~/.claude_2"
+        mode = ""
+        hosts = ["mac", "ci"]
+  [targets.codex]
+    agent = "codex"
+    mode = ""
+    settings = ""
+    [targets.codex.instances]
+      [targets.codex.instances.work]
+        enabled = false
+        dir = "~/.codex-work"
+        mode = ""
+        hosts = ["runner02"]
+# host mac
+min_tool_version = ""
+mode = "copy"
+files = []
+schema = 1
+
+[targets]
+  [targets.claude]
+    agent = "claude"
+    mode = ""
+    settings = "claude/settings.json"
+    [targets.claude.instances]
+      [targets.claude.instances.main]
+        dir = "~/.claude"
+        mode = ""
+      [targets.claude.instances.second]
+        settings = false
+        dir = "~/.claude_2"
+        mode = ""
+        hosts = ["mac", "ci"]
+  [targets.codex]
+    agent = "codex"
+    mode = ""
+    settings = ""
+    [targets.codex.instances]
+      [targets.codex.instances.work]
+        enabled = false
+        dir = "~/.codex-work"
+        mode = ""
+        hosts = ["runner02"]
+# host runner02
+min_tool_version = ""
+mode = ""
+files = []
+schema = 1
+
+[targets]
+  [targets.claude]
+    agent = "claude"
+    mode = ""
+    settings = "claude/settings.json"
+    [targets.claude.instances]
+      [targets.claude.instances.main]
+        dir = "~/.claude"
+        mode = ""
+      [targets.claude.instances.second]
+        enabled = false
+        settings = false
+        dir = "~/.claude_2"
+        mode = ""
+        hosts = ["mac", "ci"]
+  [targets.codex]
+    enabled = false
+    agent = "codex"
+    mode = ""
+    settings = ""
+    [targets.codex.instances]
+      [targets.codex.instances.work]
+        dir = "~/.codex-work"
+        mode = ""
+        hosts = ["runner02"]
+# host undeclared-host
+min_tool_version = ""
+mode = ""
+files = []
+schema = 1
+
+[targets]
+  [targets.claude]
+    agent = "claude"
+    mode = ""
+    settings = "claude/settings.json"
+    [targets.claude.instances]
+      [targets.claude.instances.main]
+        dir = "~/.claude"
+        mode = ""
+      [targets.claude.instances.second]
+        enabled = false
+        settings = false
+        dir = "~/.claude_2"
+        mode = ""
+        hosts = ["mac", "ci"]
+  [targets.codex]
+    agent = "codex"
+    mode = ""
+    settings = ""
+    [targets.codex.instances]
+      [targets.codex.instances.work]
+        enabled = false
+        dir = "~/.codex-work"
+        mode = ""
+        hosts = ["runner02"]

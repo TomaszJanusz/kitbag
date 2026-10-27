@@ -99,15 +99,13 @@ func (m *Manifest) validateRelations() error {
 	if err := m.validateFileDestinations(); err != nil {
 		return err
 	}
-	if m.Skills != nil {
-		for _, name := range slices.Sorted(maps.Keys(m.Skills.Imports)) {
-			imp := m.Skills.Imports[name]
-			if imp.Dir != "" && !slices.Contains(m.Skills.Dirs, imp.Dir) {
-				return m.doc.fail(pointer("/skills/imports", name)+"/dir", "import dir must be one of skills.dirs", nil)
-			}
-		}
+	if err := m.validateImports(); err != nil {
+		return err
 	}
 	if err := m.validateInstances(m.Targets, "/targets"); err != nil {
+		return err
+	}
+	if err := m.validateHostSets(); err != nil {
 		return err
 	}
 	for _, host := range slices.Sorted(maps.Keys(m.Hosts)) {
@@ -117,6 +115,42 @@ func (m *Manifest) validateRelations() error {
 		}
 		if err = m.validateInstances(targets, pointer("/hosts", host)+"/targets"); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func (m *Manifest) validateImports() error {
+	if m.Skills == nil {
+		return nil
+	}
+	for _, name := range slices.Sorted(maps.Keys(m.Skills.Imports)) {
+		imp := m.Skills.Imports[name]
+		if imp.Dir != "" && !slices.Contains(m.Skills.Dirs, imp.Dir) {
+			return m.doc.fail(pointer("/skills/imports", name)+"/dir", "import dir must be one of skills.dirs", nil)
+		}
+	}
+	return nil
+}
+
+// validateHostSets refuses a host's replacement instance set for a target whose
+// instances limit themselves with hosts: the set would silently override those
+// lists on that host, so a target uses one mechanism or the other.
+func (m *Manifest) validateHostSets() error {
+	for _, host := range slices.Sorted(maps.Keys(m.Hosts)) {
+		for _, name := range slices.Sorted(maps.Keys(m.Hosts[host].Targets)) {
+			if m.Hosts[host].Targets[name].Instances == nil {
+				continue
+			}
+			instances := m.Targets[name].Instances
+			for _, instanceName := range slices.Sorted(maps.Keys(instances)) {
+				if len(instances[instanceName].Hosts) == 0 {
+					continue
+				}
+				key := pointer(pointer("/hosts", host)+"/targets", name) + "/instances"
+				return m.doc.fail(key, "host instance set for targets."+name+", whose instance "+instanceName+
+					" lists its hosts; use one or the other: declare every instance under targets."+name+".instances with its 'hosts', or remove 'hosts'", nil)
+			}
 		}
 	}
 	return nil

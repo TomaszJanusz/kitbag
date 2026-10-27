@@ -102,9 +102,9 @@ func (a Adapter) Plan(fsys manifest.FileSystem, repository string, intent *manif
 }
 
 type instance struct {
-	manifest.Instance
 	name string
 	dir  string
+	manifest.Instance
 	// listed instances must exist; the default instance may be created.
 	listed bool
 }
