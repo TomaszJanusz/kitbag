@@ -45,7 +45,8 @@ type Local struct {
 type Client struct {
 	BinaryVersion string
 	Transport     Transport
-	// Host and OpenGit optionally enrich settings with local read-only context.
+	// Host enriches context and supports bounded local service upgrade recovery.
+	// OpenGit optionally supplies read-only repository context.
 	Host    platform.Host
 	OpenGit func(context.Context, string) (vcs.Backend, error)
 	Env     platform.Env
@@ -294,7 +295,8 @@ func settingValues(entries []settings.Entry) []model.SettingValue {
 	return values
 }
 
-// serviceStatus observes the local supervisor and older v1 daemon versions too.
+// serviceStatus observes older v1 daemons and requests bounded upgrade recovery
+// in this client, outside the daemon that the supervisor may stop.
 func (c Client) serviceStatus(ctx context.Context, snapshot *model.StatusSnapshot) {
 	if c.Host == nil {
 		return
@@ -303,13 +305,17 @@ func (c Client) serviceStatus(ctx context.Context, snapshot *model.StatusSnapsho
 	if err == nil {
 		snapshot.ServiceStale, snapshot.ServiceInstalled = report.Stale, report.Installed
 	}
+	observed := snapshot.DaemonVersion != "" || !snapshot.Daemon
 	if snapshot.Daemon && snapshot.DaemonVersion == "" {
 		var info api.VersionInfo
 		callErr := c.Transport.Call(ctx, "version.get", c.params(), &info, nil)
-		version, running, err := client.VersionObservation(info, callErr)
-		if err == nil && running {
-			snapshot.DaemonVersion = version
+		version, running, observationErr := client.RecoveryVersionObservation(info, callErr)
+		if observationErr == nil && running {
+			snapshot.DaemonVersion, observed = version, true
 		}
+	}
+	if err == nil && observed {
+		c.recoverService(ctx, snapshot)
 	}
 }
 
@@ -330,4 +336,12 @@ func (c Client) RefreshService(ctx context.Context) error {
 	}
 	_, err = (service.Service{Host: c.Host, Config: c.Options.Config}).Refresh(ctx, service.RefreshRequest{BinaryVersion: c.BinaryVersion, DaemonVersion: version, Running: running})
 	return classify(err)
+}
+
+func (c Client) recoverService(ctx context.Context, snapshot *model.StatusSnapshot) {
+	pending, err := (service.Service{Host: c.Host, Config: c.Options.Config}).RecoverVersion(ctx, service.RefreshRequest{BinaryVersion: c.BinaryVersion, DaemonVersion: snapshot.DaemonVersion, Running: snapshot.Daemon}, time.Now())
+	snapshot.ServiceRecovering = pending
+	if err != nil {
+		snapshot.Warnings = append(snapshot.Warnings, fmt.Sprintf("Automatic service recovery failed: %v", err))
+	}
 }

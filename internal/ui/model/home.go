@@ -97,6 +97,8 @@ func (m *Status) homeSecondary(view StatusView) (text.Message, Severity) {
 func (m *Status) homeWarning() text.Message {
 	s := m.snapshot
 	switch {
+	case s.ServiceRecovering:
+		return text.New(text.StatusServiceRecovering)
 	case s.Daemon && s.BinaryVersion != "" && s.DaemonVersion != s.BinaryVersion:
 		return text.New(text.StatusVersionMismatch)
 	case s.ServiceStale:

@@ -38,7 +38,10 @@ func TestAgentsV2ScreensAndChoiceDialog(t *testing.T) {
 			d.expect("kitbag › Agents", "claude/main", "Add agent")
 			d.golden(fmt.Sprintf("v2-agents-%dx%d", size[0], size[1]))
 			d.press(keyAdd)
-			d.expect("Step 1/7", "esc", "(*) claude")
+			d.expect("Step 1/7", "esc", "> [ Next ]")
+			if size[1] > MinHeight {
+				d.expect("(*) claude")
+			}
 			d.golden(fmt.Sprintf("v2-agents-choices-%dx%d", size[0], size[1]))
 		})
 	}

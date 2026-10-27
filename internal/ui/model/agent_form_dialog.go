@@ -19,46 +19,46 @@ func (m *AgentForm) Dialog() *DialogView {
 	v := m.View()
 	var fields []DialogField
 	if v.TextEntry {
-		field := DialogField{ID: string(v.Step), Value: v.Field, Label: v.Title, Enabled: !v.Busy}
-		if v.Step == AgentStepDir && v.Placeholder != "" {
-			field.Hint = text.New(text.WizardCurrentDir, text.Plain(v.Placeholder))
-		}
-		if v.Step == AgentStepHosts {
-			field.Hint = text.New(text.WizardHostsPickHint)
-		}
-		fields = []DialogField{field}
+		fields = []DialogField{{ID: string(v.Step), Value: v.Field, Label: v.Title, Hint: fieldHint(v), Enabled: !v.Busy}}
 	}
 	dialog := FormDialog(AgentFormDialog, text.New(text.WizardWindowTitle, v.Heading, v.Title), v.StepIndex+1, len(v.Steps), fields, v.Back, v.Next, v.Cancel.Intent)
 	dialog.Message, dialog.Wide = v.Explanation, true
-	dialog.Buttons = []Control{v.Cancel, v.Back, v.Next}
+	dialog.Buttons = []Control{v.Cancel}
+	if v.StepIndex > 0 {
+		dialog.Buttons = append(dialog.Buttons, v.Back)
+	}
+	dialog.Buttons = append(dialog.Buttons, v.Next)
+	if v.Step == AgentStepResult {
+		dialog.Buttons = []Control{v.Next}
+	}
 	dialog.Body = formBody(v)
 	for i, option := range v.Options {
 		dialog.Options = append(dialog.Options, DialogOption{Intent: ChooseAgentOption{Index: i}, Label: option.Label, Detail: option.Detail, Selected: option.Selected})
 	}
-	dialog.InitialFocus = initialFocus(v, len(fields), len(dialog.Options))
+	dialog.InitialFocus = initialFocus(v, len(fields), len(dialog.Options), len(dialog.Buttons))
+	if v.Busy && v.Step == AgentStepConfirm {
+		dialog.Buttons = nil
+	}
 	return &dialog
 }
 
-// initialFocus starts on the text entry, the chosen option, Next on preview
-// and result, and Back on confirm, so a stray Enter never applies.
-func initialFocus(v AgentFormView, fields, options int) int {
-	const cancel, back, next = 0, 1, 2
-	buttons := fields + options
-	switch v.Step {
-	case AgentStepConfirm:
-		return buttons + back
-	case AgentStepPreview, AgentStepResult:
-		return buttons + next
-	case AgentStepKind, AgentStepSettings, AgentStepHosts:
-		for i, option := range v.Options {
-			if option.Selected {
-				return fields + i
-			}
-		}
-	case AgentStepName, AgentStepDir:
+// fieldHint shows an edited instance's current directory, or the format of
+// a typed host list.
+func fieldHint(v AgentFormView) text.Message {
+	switch {
+	case v.Step == AgentStepDir && v.Placeholder != "":
+		return text.New(text.WizardCurrentDir, text.Plain(v.Placeholder))
+	case v.Step == AgentStepHosts:
+		return text.New(text.WizardHostsPickHint)
 	}
-	if fields+options == 0 {
-		return buttons + cancel
+	return text.Message{}
+}
+
+// initialFocus offers the primary action on every ready, valid step. An
+// invalid draft starts at its field or options so the user can complete it.
+func initialFocus(v AgentFormView, fields, options, buttons int) int {
+	if v.Next.Enabled || fields+options == 0 {
+		return fields + options + buttons - 1
 	}
 	return 0
 }

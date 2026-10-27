@@ -60,13 +60,13 @@ func TestAgentFormHostsPick(t *testing.T) {
 	expect(t, v.TextEntry && v.Field == "" && invalidText(m) == "Enter at least one host name." && !v.Next.Enabled, "empty pick %+v", v)
 	d := m.Dialog()
 	expect(t, len(d.Fields) == 1 && d.Fields[0].ID == "hosts" && render(d.Fields[0].Hint) == "Host names separated by commas, for example mac, runner02.", "field %+v", d.Fields)
-	for value, want := range map[string]string{
-		"mac, my mac": "my mac is not a valid host name: use letters, digits, dots, underscores or hyphens.",
-		"mac,mac":     "mac is listed twice.",
-		" mac , ci ":  "",
+	for _, tc := range []struct{ value, want string }{
+		{"mac, my mac", "my mac is not a valid host name: use letters, digits, dots, underscores or hyphens."},
+		{"mac,mac", "mac is listed twice."},
+		{" mac , ci ", ""},
 	} {
-		m.Update(EditDialogField{Dialog: AgentFormDialog, Value: value})
-		expect(t, invalidText(m) == want, "%q: invalid %q, want %q", value, invalidText(m), want)
+		m.Update(EditDialogField{Dialog: AgentFormDialog, Value: tc.value})
+		expect(t, invalidText(m) == tc.want, "%q: invalid %q, want %q", tc.value, invalidText(m), tc.want)
 	}
 	expect(t, m.draft.Hosts == "mac,ci" && len(m.View().Warnings) == 0, "typed draft %+v", m.draft)
 	m.Update(EditAgentField{Value: "mac, macbok"})

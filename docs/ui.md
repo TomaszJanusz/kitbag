@@ -244,8 +244,12 @@ form sends no hosts, which the server would refuse.
   validation, warnings, problems, the busy state, the preview (commit, route,
   commands to propose a `pr`-mode change, handed-back directory, warnings and,
   on the preview step, the diff) and the result, then Cancel, Back and
-  Next/Apply/Close. The initial focus is the text field or chosen option, Next
-  on preview and result, and Back on confirm, so a stray Enter never applies.
+  Next/Apply/Close. Every ready valid step initially focuses its primary button
+  (Next, Apply, Close), including prefilled fields and known kinds. Invalid
+  text or an unselected kind starts at the field/option with disabled Next.
+  Explicit typing and cursor movement preserve editor focus on reprojection.
+  Applying shows busy text without buttons and still refuses cancellation;
+  the result has only Close.
   `AgentForm.DiscardDialog()` is a `ConfirmDialog` (`AgentDiscardDialog`) while
   `Discarding`: Yes cancels again (discarding), No resumes.
 - `AgentFormView` carries `Op`, `Step`, `Steps`, `StepIndex`, `Title`,
@@ -275,3 +279,13 @@ directory alone).
 All texts are in `internal/ui/model/text` (`agents.*`, `wizard.*`, `agent.*`,
 `publish.*` keys). The terminal renders them in the
 [Agents screen](tui.md#agents-screen-and-wizard).
+
+Action rows omit operations with no effect: Settings hides unchanged Save/Revert
+and Remove for inherited/default values, Agents hides Edit/Remove without a
+declared instance, and empty Drift has no Details. Settings loading/saving has
+no action row. Disabled Save for an invalid changed draft and disabled wizard
+Next for validation/preview loading explain their restrictions. Status and Home retain
+disabled Sync during sync/service refresh activity or an unmet tool version.
+Status retains disabled service refresh during sync/refresh activity, with
+status messages explaining availability. Confirmation and information dialogs
+keep their usable Yes/No or OK actions.
