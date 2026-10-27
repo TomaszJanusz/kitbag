@@ -3,6 +3,7 @@ package doctor
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/TomaszJanusz/kitbag/internal/core/service"
 )
@@ -10,7 +11,8 @@ import (
 func (s Service) serviceChecks(ctx context.Context) []Check {
 	bounded, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
-	return append(s.supervisorChecks(bounded), s.daemonVersionCheck(bounded)...)
+	versions := s.daemonVersionCheck(bounded)
+	return append(s.supervisorChecks(bounded), versions...)
 }
 
 func (s Service) supervisorChecks(ctx context.Context) []Check {
@@ -89,6 +91,17 @@ func (s Service) daemonVersionCheck(ctx context.Context) []Check {
 	version, running, err := s.DaemonVersion(ctx)
 	if err != nil {
 		return []Check{{ID: "daemon-version", Status: Warn, Message: "cannot read daemon version", Fix: "inspect kitbag status and daemon logs"}}
+	}
+	now := time.Now()
+	if s.Now != nil {
+		now = s.Now()
+	}
+	pending, recoveryErr := (service.Service{Host: s.Host, Config: s.ServiceConfig}).RecoverVersion(ctx, service.RefreshRequest{BinaryVersion: s.Version, DaemonVersion: version, Running: running}, now)
+	if recoveryErr != nil {
+		return []Check{{ID: "daemon-version", Status: Warn, Message: fmt.Sprintf("automatic service recovery failed: %v", recoveryErr), Fix: "inspect daemon logs and kitbag service status"}}
+	}
+	if pending {
+		return []Check{{ID: "daemon-version", Status: OK, Message: fmt.Sprintf("daemon %s, binary %s; restarting on the new version, usually within a few minutes", version, s.Version)}}
 	}
 	if !running {
 		return nil

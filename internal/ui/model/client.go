@@ -87,6 +87,7 @@ type StatusSnapshot struct {
 	Git                            GitState
 	Drift                          DriftCounts
 	ServiceStale, ServiceInstalled bool
+	ServiceRecovering              bool
 	Daemon                         bool
 }
 
