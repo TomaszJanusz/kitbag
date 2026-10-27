@@ -122,9 +122,9 @@ func TestAgentsActions(t *testing.T) {
 	m.Update(SelectAgent{Index: 2})
 	add := OpenAgentForm{Op: AgentAdd, Kind: "claude", Dir: "/home/u/.claude-work"}
 	expect(t, action(t, m.View().Actions, add).Enabled, "add prefilled from a candidate")
-	expect(t, !action(t, m.View().Actions, OpenAgentForm{Op: AgentRemove}).Enabled, "remove of a candidate")
+	expect(t, len(m.View().Actions) == 3, "remove of a candidate")
 	m.Update(SelectAgent{Index: 4})
-	expect(t, !action(t, m.View().Actions, OpenAgentForm{Op: AgentEdit}).Enabled, "edit of an implicit default")
+	expect(t, len(m.View().Actions) == 3, "edit of an implicit default")
 	expect(t, action(t, m.View().Actions, ProbeAgents{}).Enabled && action(t, m.View().Actions, Refresh{}).Enabled, "probe and refresh")
 	expect(t, len(m.View().Detail.Rows) == 7, "instance detail rows")
 	checkText(t, agentsTexts(m.View())...)

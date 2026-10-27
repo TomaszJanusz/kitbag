@@ -40,23 +40,17 @@ func (m *AgentForm) Dialog() *DialogView {
 		dialog.Options = append(dialog.Options, DialogOption{Intent: ChooseAgentOption{Index: i}, Label: option.Label, Detail: option.Detail, Selected: option.Selected})
 	}
 	dialog.InitialFocus = initialFocus(v, len(fields), len(dialog.Options), len(dialog.Buttons))
+	if v.Busy && v.Step == AgentStepConfirm {
+		dialog.Buttons = nil
+	}
 	return &dialog
 }
 
-// initialFocus keeps editable fields ready for typing. Choice steps start on
-// the selected option; settings, preview, confirm and result focus the primary
-// action so advancing never lands on Back after a completed choice.
+// initialFocus offers the primary action on every ready, valid step. An
+// invalid draft starts at its field or options so the user can complete it.
 func initialFocus(v AgentFormView, fields, options, buttons int) int {
-	switch v.Step {
-	case AgentStepSettings, AgentStepPreview, AgentStepConfirm, AgentStepResult:
+	if v.Next.Enabled || fields+options == 0 {
 		return fields + options + buttons - 1
-	case AgentStepKind:
-		for i, option := range v.Options {
-			if option.Selected {
-				return fields + i
-			}
-		}
-	case AgentStepName, AgentStepDir:
 	}
 	return 0
 }

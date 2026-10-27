@@ -28,7 +28,7 @@ func TestAgentsAddScreens(t *testing.T) {
 			d.press(keyProbe, keyAdd)
 			d.expect("Step 1/7", "(*) claude")
 			d.golden("agents-add-kind-" + size.name)
-			d.press(keyEnter, keyEnter, "work")
+			d.press(keyEnter, "work")
 			d.expect("Step 2/7", "work")
 			d.golden("agents-add-name-" + size.name)
 			d.press(keyEnter)

@@ -83,3 +83,14 @@ func TestFooterMouseHelpQuitAndBack(t *testing.T) {
 		t.Fatal("quit hint did not quit")
 	}
 }
+
+func TestEmptyDriftHasNoDetailsAction(t *testing.T) {
+	t.Parallel()
+	d := drive(t, newFake(), 80, 24)
+	d.press("2")
+	// Use a fresh empty model: no selected item can open Details.
+	d.m.app.Drift = model.NewDrift()
+	if len(d.m.screenControls()) != 0 || len(d.m.actionLayout().hits) != 0 {
+		t.Fatal("empty drift offered Details")
+	}
+}

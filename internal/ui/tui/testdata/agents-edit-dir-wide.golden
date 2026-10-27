@@ -14,10 +14,10 @@
         | Step 1/5                                                                                             |
         |                                                                                                      |
         | The agent's configuration directory below your home directory, for example ~/.claude_2.              |
-        | Configuration directory: >                                                                           |
+        | Configuration directory:                                                                             |
         | Now /home/user/.claude_2; leave empty to keep it.                                                    |
         | Directories found on this machine:                                                                   |
         |   ( ) /srv/claude · from CLAUDE_CONFIG_DIR, outside the home directory; cannot be declared           |
         |                                                                                                      |
-        |                                                                                [ Cancel ]   [ Next ] |
+        |                                                                                [ Cancel ] > [ Next ] |
         +------------------------------------------------------------------------------------------------------+

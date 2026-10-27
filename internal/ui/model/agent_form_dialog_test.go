@@ -50,7 +50,7 @@ func TestAgentFormDialogDraftSteps(t *testing.T) {
 	checkDialog(t, d)
 	expect(t, render(d.Title) == "Add an agent instance: Agent" && len(d.Fields) == 0, "kind %+v", d)
 	expect(t, d.Step == 1 && d.Steps == 7, "steps %d/%d", d.Step, d.Steps)
-	expect(t, len(d.Options) == 3 && d.Options[0].Selected && d.InitialFocus == 0, "kind options %+v", d.Options)
+	expect(t, len(d.Options) == 3 && d.Options[0].Selected && d.InitialFocus == len(d.Options)+len(d.Buttons)-1, "kind options %+v", d.Options)
 	expect(t, d.Options[1].Intent == ChooseAgentOption{Index: 1}, "option intent %+v", d.Options[1])
 	m.Update(AgentFormNext{})
 	d = m.Dialog()
@@ -105,7 +105,7 @@ func TestAgentFormDialogApplyAndResult(t *testing.T) {
 	m.Update(AgentFormNext{})
 	as[ApplyAgent](t, only(t, m.Update(AgentFormNext{})))
 	d := m.Dialog()
-	expect(t, strings.Contains(bodyText(d), "Applying and publishing…") && !d.Buttons[0].Enabled && !d.Buttons[1].Enabled && !d.Buttons[2].Enabled, "applying %+v", d.Buttons)
+	expect(t, strings.Contains(bodyText(d), "Applying and publishing…") && len(d.Buttons) == 0, "applying %+v", d.Buttons)
 	expect(t, m.DiscardDialog() == nil, "no question while applying")
 	m.Update(AgentChangeApplied{Applied: AgentApplied{AgentPreview: AgentPreview{Title: "chore(kitbag): add", Publication: AgentPublication{State: PublishPublished, Commit: "abc"}}, Sync: &AgentSyncReport{Changed: 1}}})
 	d = m.Dialog()
@@ -176,8 +176,7 @@ func TestAgentDetailSaysWhatSyncDoes(t *testing.T) {
 	}
 }
 
-// Every step has a deliberate initial focus. Input steps remain ready for
-// editing; after the draft is complete Enter always advances the primary action.
+// Every ready valid step initially focuses its enabled primary button.
 func TestAgentFormInitialFocusEveryStep(t *testing.T) {
 	t.Parallel()
 	m, _ := openForm(t, OpenAgentForm{Op: AgentAdd, Kind: "claude", Name: "work", Dir: "~/.claude-work"})
@@ -200,13 +199,8 @@ func TestAgentFormInitialFocusEveryStep(t *testing.T) {
 
 func assertStepFocus(t *testing.T, d *DialogView, step AgentStep) {
 	t.Helper()
-	want := 0
-	switch step {
-	case AgentStepSettings, AgentStepPreview, AgentStepConfirm, AgentStepResult:
-		want = len(d.Fields) + len(d.Options) + len(d.Buttons) - 1
-	case AgentStepKind, AgentStepName, AgentStepDir:
-	}
-	expect(t, d.InitialFocus == want, "step %s: focus %d, want %d", step, d.InitialFocus, want)
+	want := len(d.Fields) + len(d.Options) + len(d.Buttons) - 1
+	expect(t, d.InitialFocus == want && d.Buttons[len(d.Buttons)-1].Enabled, "step %s: focus %d, want enabled primary %d", step, d.InitialFocus, want)
 	if step == AgentStepKind || step == AgentStepResult {
 		for _, button := range d.Buttons {
 			_, back := button.Intent.(AgentFormBack)

@@ -7,11 +7,11 @@
   |                                                      |
   | Choose the agent this configuration directory        |
   | belongs to.                                          |
-  | > (*) claude                                         |
+  |   (*) claude                                         |
   |   ( ) codex                                          |
   |   ( ) gemini                                         |
   |   ( ) opencode                                       |
   |   ( ) generic                                        |
   |                                                      |
-  |                                [ Cancel ]   [ Next ] |
+  |                                [ Cancel ] > [ Next ] |
   +------------------------------------------------------+

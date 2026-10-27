@@ -34,8 +34,8 @@ func TestAgentsAddWizardFlow(t *testing.T) {
 	s.press("5")
 	s.waitFor("claude/main")
 	s.press(keyAdd)
-	s.waitFor("Step 1/7", "> (*) claude")
-	s.press(keyEnter, keyEnter)
+	s.waitFor("Step 1/7", "> [ Next ]")
+	s.press(keyEnter)
 	s.waitFor("Step 2/7", "Instance name: >")
 	s.press("new")
 	s.waitFor("Instance name: > new")
@@ -78,10 +78,10 @@ func TestAgentsCancelAsksBeforeDiscarding(t *testing.T) {
 	s := start(t, withAgents(newFake()))
 	s.press("5")
 	s.waitFor("claude/main")
-	s.press(keyAdd, keyEscape, keyAdd, keyEnter, keyEnter, "draft", keyEscape)
+	s.press(keyAdd, keyEscape, keyAdd, keyEnter, "draft", keyEscape)
 	s.waitFor("Discard this change?", "Nothing has been written.", "> [ No ]")
 	s.press(keyEnter)
-	s.waitFor("Instance name: > draft")
+	s.waitFor("Instance name:", "draft", "> [ Next ]")
 	s.press(keyEscape)
 	s.waitFor("Discard this change?")
 	s.press(keyLeft, keyEnter)
@@ -134,7 +134,7 @@ func TestAgentsResizeWithWizardOpen(t *testing.T) {
 	s := start(t, withAgents(newFake()))
 	s.press("5")
 	s.waitFor("claude/main")
-	s.press(keyAdd, keyEnter, keyEnter, "kept")
+	s.press(keyAdd, keyEnter, "kept")
 	s.waitFor("Instance name: > kept")
 	s.tm.Send(tea.WindowSizeMsg{Width: 60, Height: 20})
 	s.tm.Send(tea.WindowSizeMsg{Width: 30, Height: 8})
@@ -152,7 +152,7 @@ func TestAgentsResizeWithWizardOpen(t *testing.T) {
 func TestAgentsValidationErrors(t *testing.T) {
 	t.Parallel()
 	d := drive(t, withAgents(newFake()), 100, 30)
-	d.press("5", keyAdd, keyDown, keyDown, keyDown, keyDown, keySpace)
+	d.press("5", keyAdd, keyDown, keyDown, keyDown, keyDown, keyDown, keySpace)
 	d.expect("> (*) generic", "Generic agents need explicit roots", "[ Next (unavailable) ]")
 	d.press(keyUp, keyUp, keyUp, keyUp, keySpace)
 	d.expect("> (*) claude")
@@ -186,7 +186,7 @@ func TestAgentsEditDirectory(t *testing.T) {
 	d.press("5", keyDown, keyEnter)
 	d.expect("Edit claude/second: Configuration directory", "Step 1/5", "Now /home/user/.claude_2; leave empty to keep it.")
 	d.golden("agents-edit-dir-wide")
-	d.press("~/.claude_9", keyEnter)
+	d.press(keyNext, "~/.claude_9", keyEnter)
 	d.expect("Step 2/5", "(*) Keep the current setting")
 	d.press(keyEnter)
 	d.expect("Step 3/5", `-dir = "~/.claude_2"`, `+dir = "~/.claude_9"`, "~/.claude_2 is handed back")
@@ -228,7 +228,7 @@ func TestAgentsRemoveNeedsConfirmation(t *testing.T) {
 // step with the Apply button focused.
 func addToConfirm(d *driver) {
 	d.t.Helper()
-	d.press("5", keyAdd, keyEnter, keyEnter, "extra", keyEnter, "~/.claude_3", keyEnter, keyEnter)
+	d.press("5", keyAdd, keyEnter, "extra", keyEnter, "~/.claude_3", keyEnter, keyEnter)
 	d.expect("Step 5/7")
 	d.press(keyEnter)
 	d.expect("Step 6/7", "> [ Apply ]")
@@ -279,7 +279,7 @@ func TestAgentsFailedApplyStaysOnConfirm(t *testing.T) {
 func TestAgentsRefusedChangeShowsDetail(t *testing.T) {
 	t.Parallel()
 	d := drive(t, withAgents(newFake()), 120, 35)
-	d.press("5", keyAdd, keyDown, keyEnter, keyEnter, "work", keyEnter, "~/.codex-work", keyEnter, "shift+tab", "shift+tab", "shift+tab", keyLeft, keyEnter)
+	d.press("5", keyAdd, keyDown, keyDown, keyEnter, keyEnter, "work", keyEnter, "~/.codex-work", keyEnter, "shift+tab", "shift+tab", "shift+tab", keyLeft, keyEnter)
 	d.expect("(*) Merge shared settings")
 	d.press(keyEnter)
 	d.expect("Step 5/7", "✗ The configuration or request is invalid: target codex declares no settings fragment", "[ Next (unavailable) ]")
@@ -314,11 +314,11 @@ func TestAgentsStalePreviewIsNotApplied(t *testing.T) {
 func TestAgentsDiscardScreen(t *testing.T) {
 	t.Parallel()
 	d := drive(t, withAgents(newFake()), 120, 35)
-	d.press("5", keyAdd, keyEnter, keyEnter, "draft", keyEscape)
+	d.press("5", keyAdd, keyEnter, "draft", keyEscape)
 	d.expect("Discard this change?", "> [ No ]")
 	d.golden("agents-discard-wide")
 	d.press(keyEscape)
-	d.expect("Instance name: > draft")
+	d.expect("Instance name:", "draft", "> [ Next ]")
 	d.refuse("Discard this change?")
 }
 
@@ -335,7 +335,8 @@ func TestAgentsMouse(t *testing.T) {
 	d.refuse("Step 1/5")
 	d.send(tea.MouseMsg{X: 3, Y: 6, Button: tea.MouseButtonWheelDown, Action: tea.MouseActionPress})
 	d.expect("Directory state  outside the home directory")
-	d.clickText("[ Remove (unavailable) ]")
+	d.refuse("[ Remove (unavailable) ]", "[ Edit (unavailable) ]")
+	d.press(keyRemove, keyEdit)
 	d.refuse("Step 1/3")
 	d.clickText("[ Look for more directories ]")
 	d.expect("/home/user/.claude_3")
@@ -364,7 +365,7 @@ func TestAgentsWindowScrollsLongPreview(t *testing.T) {
 	t.Parallel()
 	client := withAgents(newFake())
 	d := drive(t, client, 60, 15)
-	d.press("5", keyDown, keyEnter, "~/.claude_9", keyEnter, keyEnter)
+	d.press("5", keyDown, keyEnter, keyNext, "~/.claude_9", keyEnter, keyEnter)
 	d.expect("Step 3/5", "scroll ↑/↓")
 	d.refuse(`+dir = "~/.claude_9"`)
 	d.press(keyPageDown)
@@ -372,4 +373,51 @@ func TestAgentsWindowScrollsLongPreview(t *testing.T) {
 	d.send(tea.MouseMsg{X: 30, Y: 10, Button: tea.MouseButtonWheelUp, Action: tea.MouseActionPress})
 	d.press(keyPageUp)
 	d.refuse(`+dir = "~/.claude_9"`)
+}
+
+func TestAgentWizardReadyStepsFocusPrimaryButton(t *testing.T) {
+	t.Parallel()
+	d := drive(t, withAgents(newFake()), 120, 35)
+	d.m.dispatch(model.OpenAgentForm{Op: model.AgentAdd, Kind: "claude", Name: "ready", Dir: "~/.claude-ready"})
+	d.settle()
+	for _, step := range []model.AgentStep{model.AgentStepKind, model.AgentStepName, model.AgentStepDir, model.AgentStepSettings, model.AgentStepPreview, model.AgentStepConfirm, model.AgentStepResult} {
+		w := d.m.windows.top()
+		if d.step() != step || w == nil {
+			t.Fatalf("step %s, want %s", d.step(), step)
+		}
+		index := w.focus - w.buttons()
+		if index != len(w.view.Buttons)-1 || index < 0 || !w.view.Buttons[index].Enabled {
+			t.Fatalf("step %s focused %d, want enabled primary button", step, w.focus)
+		}
+		if _, ok := w.view.Buttons[index].Intent.(model.AgentFormNext); !ok {
+			t.Fatalf("step %s focused intent %#v", step, w.view.Buttons[index].Intent)
+		}
+		d.press(keyEnter)
+	}
+	if d.m.windows.Len() != 0 {
+		t.Fatal("Close did not close the result")
+	}
+}
+
+func TestAgentWizardTypingKeepsFocusAndCursorWhenNextBecomesValid(t *testing.T) {
+	t.Parallel()
+	d := drive(t, withAgents(newFake()), 120, 35)
+	d.press("5", keyAdd, keyEnter)
+	// Type one character at a time: the first enables Next, later edits must
+	// stay in the field, including edits after explicit cursor movement.
+	d.press("w", "o", "k", keyLeft, "r")
+	d.expect("Instance name: > work")
+	if w := d.m.windows.top(); w.focus != 0 || w.inputs[0].Position() != 3 {
+		t.Fatalf("typing lost field/cursor: focus %d position %d", w.focus, w.inputs[0].Position())
+	}
+	d.press(keyEnter)
+	d.expect("Step 3/7")
+	d.press("~", "/", ".", "w", "o", "k", keyLeft, "r")
+	d.expect("Configuration directory: > ~/.work")
+	// Enter a valid prefilled step again, explicitly choose its field, edit,
+	// and verify subsequent projections preserve that choice too.
+	d.clickText("[ Back ]")
+	d.expect("Step 2/7", "> [ Next ]")
+	d.press(keyNext, "s")
+	d.expect("Instance name: > works")
 }

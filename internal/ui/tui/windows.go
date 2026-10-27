@@ -212,6 +212,9 @@ func (w *dialogWindow) edit(msg tea.KeyMsg) model.Msg {
 	if w.focus < 0 || w.focus >= len(w.inputs) {
 		return nil
 	}
+	// Typing and cursor movement are explicit focus choices too. Keep the
+	// editor active when validation enables the primary action.
+	w.moved = true
 	input := &w.inputs[w.focus]
 	before := input.Value()
 	*input, _ = input.Update(msg)
