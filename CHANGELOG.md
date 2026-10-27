@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.1.3](https://github.com/TomaszJanusz/kitbag/compare/v0.1.2...v0.1.3) (2026-10-27)
+
+
+### Features
+
+* **agent:** add, edit and remove agent instances ([#84](https://github.com/TomaszJanusz/kitbag/issues/84)) ([39eface](https://github.com/TomaszJanusz/kitbag/commit/39efacee3f4c56f63bf6efabc412d9626cf8da9c))
+* **api:** add agents API methods and view models ([#86](https://github.com/TomaszJanusz/kitbag/issues/86)) ([26ba6eb](https://github.com/TomaszJanusz/kitbag/commit/26ba6eb1e0694c1bf3fec92a96219642a3796d67))
+* **manifest:** add position-preserving instance editor ([#83](https://github.com/TomaszJanusz/kitbag/issues/83)) ([5761b9e](https://github.com/TomaszJanusz/kitbag/commit/5761b9e4b8829a1a4da014a97bac83f0cd688ce3))
+* **service:** refresh stale services and restart old daemons ([#82](https://github.com/TomaszJanusz/kitbag/issues/82)) ([ffc4bc4](https://github.com/TomaszJanusz/kitbag/commit/ffc4bc478d51c17f856bc2c04bc84573de13fdd8))
+* **tui:** add home and screen navigation ([#90](https://github.com/TomaszJanusz/kitbag/issues/90)) ([ec2094e](https://github.com/TomaszJanusz/kitbag/commit/ec2094e32001662c54ed174de58f127daff269ca))
+* **tui:** add master/detail panes and modal windows ([#85](https://github.com/TomaszJanusz/kitbag/issues/85)) ([1992a31](https://github.com/TomaszJanusz/kitbag/commit/1992a31e24bfe171995c9d998b1425cd4e18a1b1))
+* **tui:** add the Agents tab and agent wizard ([#88](https://github.com/TomaszJanusz/kitbag/issues/88)) ([ac508a4](https://github.com/TomaszJanusz/kitbag/commit/ac508a4c38cfba6e59e4f3144d94ec323c7fda5d))
+* **tui:** restyle buttons and dialogs ([#89](https://github.com/TomaszJanusz/kitbag/issues/89)) ([dd2abcb](https://github.com/TomaszJanusz/kitbag/commit/dd2abcbf7269fb447f9c74b9e849a34193e9503e))
+* **tui:** style the Agents screens like the home screen ([#92](https://github.com/TomaszJanusz/kitbag/issues/92)) ([82f9045](https://github.com/TomaszJanusz/kitbag/commit/82f904506cdc0f2782b2bd2ef6685d820e289c9d))
+
+
+### Bug Fixes
+
+* **ci:** ignore commit hashes in typos ([#94](https://github.com/TomaszJanusz/kitbag/issues/94)) ([bf073d9](https://github.com/TomaszJanusz/kitbag/commit/bf073d93dfc7af78bec942c5a8d906fdab324cb1))
+* **packaging:** print Homebrew caveats only when Git is missing ([#81](https://github.com/TomaszJanusz/kitbag/issues/81)) ([40bdb35](https://github.com/TomaszJanusz/kitbag/commit/40bdb352c9fb233dae0afd05838dae908b132c6e))
+
 ## [0.1.2](https://github.com/TomaszJanusz/kitbag/compare/v0.1.1...v0.1.2) (2026-10-26)
 
 
