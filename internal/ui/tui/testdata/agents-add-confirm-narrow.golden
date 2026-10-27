@@ -1,16 +1,20 @@
-
-
-
-
   +------------------------------------------------------+
   | Add an agent instance: Confirm                   esc |
   | Step 6/7                                             |
   |                                                      |
-  | Apply writes kitbag.toml for all machines, commits,  |
-  | publishes and syncs this machine.                    |
-  | Commit: chore(kitbag): add claude instance work at   |
-  | ~/.claude_3                                          |
-  | Published directly to main.                          |
-  |                                                      |
+  | Review the proposal below, then Apply using this     |
+  | host's publication policy.                           |
+  | Edit the shared manifest at                          |
+  | /home/user/.local/share/kitbag/repo/kitbag.toml.     |
+  | Apply will attempt to commit and push this change to |
+  | branch main. The declaration affects all hosts on    |
+  | their next sync; Apply also syncs this machine.      |
+  | Local configuration directory: /home/user/.claude_3. |
+  | These file effects describe this machine now. Apply  |
+  | rechecks the files; other hosts plan from their own  |
+  | files.                                               |
+  | Create shared configuration at                       |
+  | /home/user/.claude_3/CLAUDE.md.                      |
+  | scroll ↑/↓                                           |
   |                    [ Cancel ]   [ Back ] > [ Apply ] |
   +------------------------------------------------------+

@@ -85,7 +85,7 @@ func TestAgentFormAddPath(t *testing.T) {
 	expect(t, c.Op == AgentAdd && c.Kind == "claude" && c.Name == "work" && c.Dir == "/home/u/.claude-work" && c.Settings != nil && !*c.Settings, "change=%+v", c)
 	expect(t, m.View().Busy && !m.View().Next.Enabled, "previewing must disable next")
 	m.Update(AgentPreviewed{Seq: preview.Seq, Preview: AgentPreview{Revision: "r1", Title: "chore(kitbag): add", Diff: []string{"+x"}, Dropped: "~/.old", Publication: AgentPublication{Mode: "direct", Branch: "main"}}})
-	expect(t, render(m.View().Preview.Route) == "Published directly to main.", "route")
+	expect(t, render(m.View().Preview.Route) == "Publication route: direct push to main.", "route")
 	checkForm(t, m)
 	checkConfirm(t, m)
 }

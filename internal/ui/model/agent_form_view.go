@@ -19,6 +19,7 @@ type AgentOption struct {
 // the generated commit title and the publication route. Next lists the
 // commands that propose a change the publish mode does not write (pr).
 type AgentPreviewView struct {
+	Summary  []text.Message
 	Dropped  *text.Message
 	Title    text.Message
 	Commit   text.Message
@@ -209,6 +210,7 @@ func (m *AgentForm) nextControl(valid bool) Control {
 
 func previewView(p AgentPreview) *AgentPreviewView {
 	view := &AgentPreviewView{Title: text.Plain(p.Title), Commit: text.New(text.WizardCommit, text.Plain(p.Title)), Diff: p.Diff, Next: plain(p.Publication.Next), Warnings: plain(p.Warnings)}
+	view.Summary = previewSummary(p)
 	view.Route = text.New(text.PublishRouteDirect, text.Plain(p.Publication.Branch))
 	if p.Publication.Mode != "" && p.Publication.Mode != "direct" {
 		view.Route = text.New(text.PublishRouteManual)

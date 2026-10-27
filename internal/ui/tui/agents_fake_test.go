@@ -118,7 +118,8 @@ func (a *agentFake) plan(change model.AgentChange) (model.AgentPreview, error) {
 		return model.AgentPreview{}, &model.Error{Kind: model.ErrInvalid, Detail: "target codex declares no settings fragment"}
 	}
 	preview := model.AgentPreview{
-		Change: change, Revision: fmt.Sprintf("r%d", a.revision),
+		Manifest: "/home/user/.local/share/kitbag/repo/kitbag.toml",
+		Change:   change, Revision: fmt.Sprintf("r%d", a.revision),
 		Publication: model.AgentPublication{State: model.PublishDryRun, Mode: a.mode, Branch: "main"},
 	}
 	switch change.Op {
@@ -151,8 +152,21 @@ func (a *agentFake) plan(change model.AgentChange) (model.AgentPreview, error) {
 		preview.Title = fmt.Sprintf("chore(kitbag): remove %s instance %s", change.Target, change.Name)
 		preview.Diff = []string{fmt.Sprintf("-[targets.%s.instances.%s]", change.Target, change.Name), fmt.Sprintf("-dir = %q", old)}
 		preview.Dropped = old
+		preview.Change.Dir = old
 	}
-	return preview, nil
+	return fakePreviewEffects(preview, change.Op), nil
+}
+
+func fakePreviewEffects(preview model.AgentPreview, op model.AgentOp) model.AgentPreview {
+	preview.Directory = absolute(preview.Change.Dir)
+	preview.Effects = []model.AgentEffect{{Path: preview.Directory + "/CLAUDE.md", Kind: "materialize"}}
+	if op == model.AgentRemove {
+		preview.Effects = nil
+	}
+	if preview.Dropped != "" {
+		preview.Effects = append(preview.Effects, model.AgentEffect{Path: absolute(preview.Dropped) + "/CLAUDE.md", Kind: "discard", Existing: true})
+	}
+	return preview
 }
 
 func (a *agentFake) preview(change model.AgentChange) (model.AgentPreview, error) {

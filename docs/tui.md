@@ -611,3 +611,16 @@ and directory and starts at the name step when those known values are valid.
 Back returns through the shortened steps without losing the candidate. Invalid
 prefilled paths retain the full sequence so they can be corrected. Edit and
 Remove are hidden for found directories and implicit defaults.
+
+### Preview consequences
+
+**What will change** starts with sentences naming the exact `kitbag.toml` in
+the repository clone, the commit/push branch and all-host declaration scope,
+and the local directory. It lists the sync and release planner's current
+writes, replacements, backups, skipped/unchanged entries, deletions, restores
+and changed outputs retained in place. A dropped directory and unowned files
+stay. The raw manifest diff follows the summary; use PgUp/PgDn or the wheel
+when it does not fit. Apply rechecks files, and other hosts plan from their
+own contents. Pull request mode explicitly says Apply writes no manifest,
+commits nothing and does not sync. Older daemons without file effects say
+those details are unavailable.
