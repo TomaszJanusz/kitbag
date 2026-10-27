@@ -46,14 +46,25 @@ func (p *planner) add() error {
 	if err = p.settings(target, c.Settings, created); err != nil {
 		return err
 	}
+	return p.addInstance(resolver, c, created)
+}
+
+// addInstance plans the edits of a validated add.
+func (p *planner) addInstance(resolver discover.Resolver, c Change, created bool) error {
+	hosts, err := p.scope(c)
+	if err != nil {
+		return err
+	}
+	c.Hosts, c.AllHosts = hosts, false
+	target := c.Target
 	if created {
 		p.plan.Edits = append(p.plan.Edits, manifestedit.Edit{Op: manifestedit.AddTarget, Target: target, Agent: c.Kind})
 	} else if err = p.keepDefault(resolver, target, c); err != nil {
 		return err
 	}
-	p.plan.Edits = append(p.plan.Edits, manifestedit.Edit{Op: manifestedit.AddInstance, Target: target, Name: c.Name, Dir: c.Dir, Settings: c.Settings})
+	p.plan.Edits = append(p.plan.Edits, manifestedit.Edit{Op: manifestedit.AddInstance, Target: target, Name: c.Name, Dir: c.Dir, Settings: c.Settings, Hosts: c.Hosts})
 	p.plan.Change = c
-	return p.observe(c.Dir)
+	return p.observeHere(c.Dir, c.Hosts)
 }
 
 // kind returns the resolver of a native kind; generic needs explicit roots.
@@ -144,34 +155,103 @@ func (p *planner) edit() error {
 		return err
 	}
 	current := p.m.Targets[c.Target].Instances[c.Name]
+	changed, err := p.editValues(&c, current)
+	if err != nil {
+		return err
+	}
+	hosts, hostsChanged, err := p.editScope(current)
+	if err != nil {
+		return err
+	}
+	if !changed && !hostsChanged {
+		return invalid("instance %s/%s already has this directory, settings and hosts; nothing to change", c.Target, c.Name)
+	}
+	p.plan.Edits = nil
+	if changed {
+		edit := manifestedit.Edit{Op: manifestedit.EditInstance, Target: c.Target, Name: c.Name, Settings: c.Settings}
+		if c.Dir != current.Dir {
+			edit.Dir = c.Dir
+			p.plan.Dropped = current.Dir
+		}
+		p.plan.Edits = append(p.plan.Edits, edit)
+	}
+	if hostsChanged {
+		p.plan.Edits = append(p.plan.Edits, manifestedit.Edit{Op: manifestedit.SetInstanceHosts, Target: c.Target, Name: c.Name, Hosts: hosts})
+	}
+	c.Hosts, c.AllHosts = hosts, hostsChanged && len(hosts) == 0
+	p.plan.Change = c
+	return p.observeHere(c.Dir, hosts)
+}
+
+// editValues sets the requested directory and settings on c and reports
+// whether they differ from the current instance.
+func (p *planner) editValues(c *Change, current manifest.Instance) (bool, error) {
 	changed := false
 	if p.in.Change.Dir != "" {
-		if c.Dir, err = p.dir(p.in.Change.Dir); err != nil {
-			return err
+		dir, err := p.dir(p.in.Change.Dir)
+		if err != nil {
+			return false, err
 		}
-		if err = p.unique(c.Kind, c.Dir, c.Target, c.Name); err != nil {
-			return err
+		if err = p.unique(c.Kind, dir, c.Target, c.Name); err != nil {
+			return false, err
 		}
-		changed = c.Dir != current.Dir
+		c.Dir, changed = dir, dir != current.Dir
 	}
-	settings := p.in.Change.Settings
-	if settings != nil {
-		if err = p.settings(c.Target, settings, false); err != nil {
-			return err
+	c.Settings = p.in.Change.Settings
+	if c.Settings != nil {
+		if err := p.settings(c.Target, c.Settings, false); err != nil {
+			return false, err
 		}
-		changed = changed || on(current.Settings) != *settings
+		changed = changed || on(current.Settings) != *c.Settings
 	}
-	if !changed {
-		return invalid("instance %s/%s already has this directory and settings; nothing to change", c.Target, c.Name)
+	return changed, nil
+}
+
+// editScope returns the hosts list an edit asks for and whether it differs
+// from the current one; without a request the current list stays.
+func (p *planner) editScope(current manifest.Instance) ([]string, bool, error) {
+	request := p.in.Change
+	if len(request.Hosts) == 0 && !request.AllHosts {
+		return current.Hosts, false, nil
 	}
-	edit := manifestedit.Edit{Op: manifestedit.EditInstance, Target: c.Target, Name: c.Name, Settings: settings}
-	if c.Dir != current.Dir {
-		edit.Dir = c.Dir
-		p.plan.Dropped = current.Dir
+	hosts, err := p.scope(request)
+	if err != nil {
+		return nil, false, err
 	}
-	c.Settings = settings
-	p.plan.Edits, p.plan.Change = []manifestedit.Edit{edit}, c
-	return p.observe(c.Dir)
+	return hosts, !slices.Equal(hosts, current.Hosts), nil
+}
+
+// scope validates a requested hosts list with the manifest's host grammar. A
+// host that is neither this machine nor declared under [hosts] is likely a
+// typo and only warned about, like doctor does: a host needs no table.
+func (p *planner) scope(c Change) ([]string, error) {
+	switch {
+	case len(c.Hosts) > 0 && c.AllHosts:
+		return nil, invalid("choose either a hosts list or all hosts")
+	case len(c.Hosts) == 0:
+		return nil, nil
+	}
+	for i, host := range c.Hosts {
+		if err := manifest.CheckHostName(host); err != nil {
+			return nil, invalid("host %q: %v", host, err)
+		}
+		if slices.Contains(c.Hosts[:i], host) {
+			return nil, invalid("host %s is listed twice", host)
+		}
+		if _, declared := p.m.Hosts[host]; !declared && host != p.in.HostName {
+			p.warn("host %s is neither this machine (%s) nor declared under [hosts]; check its spelling", host, p.in.HostName)
+		}
+	}
+	return slices.Clone(c.Hosts), nil
+}
+
+// observeHere checks the directory only where the instance applies.
+func (p *planner) observeHere(dir string, hosts []string) error {
+	if len(hosts) > 0 && !slices.Contains(hosts, p.in.HostName) {
+		p.warn("%s is not used on this machine (%s), which its hosts list leaves out", dir, p.in.HostName)
+		return nil
+	}
+	return p.observe(dir)
 }
 
 func (p *planner) remove() error {
@@ -220,12 +300,13 @@ func (p *planner) resolveTarget(ref string) (string, error) {
 	return "", invalid("agent %s is used by targets %s; name the target instead", ref, strings.Join(targets, ", "))
 }
 
-// hostSets refuses targets whose instance set a schema-1 host table
-// replaces: an all-hosts edit would not reach those hosts.
+// hostSets refuses targets whose instance set a host table replaces: an edit
+// of the target's instances would not reach those hosts.
 func (p *planner) hostSets(target string) error {
 	for _, host := range slices.Sorted(maps.Keys(p.m.Hosts)) {
 		if p.m.Hosts[host].Targets[target].Instances != nil {
-			return unsupported("[hosts.%s.targets.%s.instances] replaces this target's instances on %s; agent edits change all hosts only, so edit kitbag.toml by hand until per-host instances arrive with manifest schema 2", host, target, host)
+			return unsupported("[hosts.%s.targets.%s.instances] replaces this target's instances on %s, so agent edits would not reach it; "+
+				"move those instances to targets.%s.instances with a hosts list (see docs/manifest.md, Instances on some hosts) by hand first", host, target, host, target)
 		}
 	}
 	return nil

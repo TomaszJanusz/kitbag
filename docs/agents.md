@@ -717,17 +717,34 @@ mutation, recovery or conflict operation in this command.
 ## Add, edit and remove instances
 
 ```sh
-kitbag agent add --agent <kind> --name <instance> --dir <path> [--target <t>] [--settings on|off] [--dry-run] [--json] [--yes]
-kitbag agent edit <target-or-kind>/<name> [--dir <path>] [--settings on|off] [--dry-run] [--json] [--yes]
+kitbag agent add --agent <kind> --name <instance> --dir <path> [--target <t>] [--settings on|off] [--hosts <h,...> | --all-hosts] [--dry-run] [--json] [--yes]
+kitbag agent edit <target-or-kind>/<name> [--dir <path>] [--settings on|off] [--hosts <h,...> | --all-hosts] [--dry-run] [--json] [--yes]
 kitbag agent remove <target-or-kind>/<name> [--dry-run] [--json] [--yes]
 ```
 
 This is the v1 slice of [ADR 12](adr/0012-agent-instance-discovery.md#v1-slice-shipped-first).
-Every change edits the shared `kitbag.toml` in the working copy and applies to
-**all hosts**: a global `--host` is refused, because per-host instances need
-manifest schema 2. A target whose instance set a `[hosts.<h>.targets.<t>.instances]`
-table replaces is refused too, since an all-hosts edit would not reach that host;
-edit such a manifest by hand.
+Every change edits the shared `kitbag.toml` in the working copy, so a global
+`--host` is refused. An instance applies to **all hosts** unless `--hosts`
+restricts it. A target whose instance set a `[hosts.<h>.targets.<t>.instances]`
+table replaces is refused, since an edit of the target's instances would not
+reach that host; move such instances to the target with a
+[`hosts` list](manifest.md#instances-on-some-hosts) by hand first.
+
+**Hosts.** `add --hosts mac,runner02` writes the instance's `hosts` list
+(schema 1, no schema change); `edit --hosts` replaces it and `edit --all-hosts`
+deletes it, so the instance applies everywhere again (a comment on that line
+stays). Without either flag `edit` keeps the current list. Host names follow
+the manifest's host grammar and may not repeat (exit 2); a name that is neither
+this machine nor declared under `[hosts]` is accepted with a warning, because
+it is likely a typo. An instance whose list leaves out this machine is not
+checked for a directory here. Lists written over several lines or with
+comments inside are left to hand edits.
+
+When sync skips a listed instance because its directory is missing, it adds
+one warning per instance with the fix: `instance claude/second: ~/.claude_2 is
+missing on this machine; if only some machines have it, restrict it: kitbag
+agent edit claude/second --hosts <hosts>`. Doctor's Instances check gives the
+same fix.
 
 **Validation** uses the manifest parser and the adapters' discovery table:
 the kind must be a native kind (`claude`, `codex`, `gemini`, `opencode`;
