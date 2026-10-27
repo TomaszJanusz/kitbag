@@ -340,7 +340,7 @@ func TestAgentsMouse(t *testing.T) {
 	d.refuse("Step 1/3")
 	d.clickText("[ Look for more directories ]")
 	d.expect("/home/user/.claude_3")
-	d.clickText("[ Adopt this directory ]")
+	d.clickText("[ Add this directory ]")
 	d.expect("Step 1/7")
 	d.clickText("( ) codex")
 	d.expect("(*) codex")
@@ -437,7 +437,7 @@ func TestAgentsAdoptFoundDirectory(t *testing.T) {
 			case "double-click":
 				d.clickText("> /home/user/.claude_3")
 			case "button":
-				d.clickText("[ Adopt this directory ]")
+				d.clickText("[ Add this directory ]")
 			}
 			d.expect("Adopt claude at /home/user/.claude_3", "Step 1/5", "Instance name")
 			d.press("work", keyEnter, keyEnter, keyEnter)

@@ -122,7 +122,7 @@ func TestAgentsActions(t *testing.T) {
 	m.Update(SelectAgent{Index: 2})
 	add := OpenAgentForm{Op: AgentAdd, Adopt: true, Kind: "claude", Dir: "/home/u/.claude-work"}
 	expect(t, action(t, m.View().Actions, add).Enabled, "add prefilled from a candidate")
-	expect(t, len(m.View().Actions) == 3 && render(m.View().Actions[0].Label) == "Adopt this directory", "candidate actions %+v", m.View().Actions)
+	expect(t, len(m.View().Actions) == 3 && render(m.View().Actions[0].Label) == "Add this directory", "candidate actions %+v", m.View().Actions)
 	m.Update(SelectAgent{Index: 4})
 	expect(t, len(m.View().Actions) == 3, "implicit default actions %+v", m.View().Actions)
 	expect(t, action(t, m.View().Actions, ProbeAgents{}).Enabled && action(t, m.View().Actions, Refresh{}).Enabled, "probe and refresh")

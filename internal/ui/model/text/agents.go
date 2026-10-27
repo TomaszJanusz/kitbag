@@ -31,7 +31,7 @@ func agentsText() []entry {
 		{AgentsDetailScope, "Hosts"},
 		{AgentsDetailState, "On this host"},
 		{AgentsDetailSettings, "Settings"},
-		{ActionAdoptAgent, "Adopt this directory"},
+		{ActionAdoptAgent, "Add this directory"},
 		{ActionAddAgent, "Add agent"},
 		{ActionEditAgent, "Edit"},
 		{ActionRemoveAgent, "Remove"},

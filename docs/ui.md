@@ -184,7 +184,7 @@ has `Title`, `Headline`, `Problem`, `Phase`, `Rows`, `Warnings`, `Detail` and
 `Kind`, `Target`, `Name`, `Label`, `Dir`, `Source`, `Presence`, `Scope`,
 `Declared`, `Implicit`, `ActiveHere` and `Selected`; source and presence are
 words, never colour alone. `SelectAgent{Index}` and `MoveAgent{Delta}` select.
-`Actions` are, in order: **Add**, or **Adopt this directory** for a selected candidate,
+`Actions` are, in order: **Add**, or **Add this directory** for a selected candidate,
 **Edit** and **Remove** (shown only for a declared, non-implicit instance),
 **Look for more directories** (`ProbeAgents`) and **Refresh**.
 

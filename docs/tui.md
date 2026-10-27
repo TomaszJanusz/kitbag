@@ -416,7 +416,7 @@ as a/e/d/p. The detail keeps its key hint and warnings. Below 100 columns the
 panes stack; short screens reserve space for the selected row and its states,
 with actions still at the bottom. Only the declared instances of a
 target can be edited or removed; the implicit default and found directories offer
-Add for an implicit default, or **Adopt this directory** for a found directory.
+Add for an implicit default, or **Add this directory** for a found directory.
 Edit and Remove are hidden for both. Enter and a second click adopt a found
 directory with its kind and directory prefilled, skipping those known steps.
 
@@ -606,7 +606,7 @@ ordinary **r** only reloads views. A failed repair remains visible and retryable
 ### Adopting a found directory
 
 Select a **found, not declared** directory and press Enter, double-click its
-row, or click **Adopt this directory**. The add wizard retains its agent type
+row, or click **Add this directory**. The add wizard retains its agent type
 and directory and starts at the name step when those known values are valid.
 Back returns through the shortened steps without losing the candidate. Invalid
 prefilled paths retain the full sequence so they can be corrected. Edit and
