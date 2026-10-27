@@ -9,8 +9,8 @@ claude                                                    | Source           dec
     missing · declared in kitbag.toml · only on laptop ·… | Settings         merges shared settings
   [found, not declared]                                   | Next sync        installs the shared
   /srv/claude                                             |                  configuration here
-    outside the home directory; cannot be declared · fro… | ↑/↓: select · Enter: edit · a: add · d:
-codex                                                     | remove · p: look for more
+    outside the home directory; cannot be declared · fro… | ↑/↓: select · Enter: edit/adopt · a:
+codex                                                     | add/adopt · d: remove · p: look for more
   codex (default directory)  /home/user/.codex            |
     present · documented default · all hosts · active on… |
                                                           |

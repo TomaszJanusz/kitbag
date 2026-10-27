@@ -115,6 +115,9 @@ func (m *AgentForm) heading() text.Message {
 		return text.New(text.WizardTitleRemove, instance)
 	case AgentAdd:
 	}
+	if m.steps[0] == AgentStepName {
+		return text.New(text.WizardTitleAdopt, text.Plain(m.draft.Kind), text.Plain(m.draft.Dir))
+	}
 	return text.New(text.WizardTitleAdd)
 }
 

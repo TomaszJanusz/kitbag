@@ -148,6 +148,9 @@ func (m *AgentForm) start(msg OpenAgentForm) []Cmd {
 	m.draft = AgentChange{Op: msg.Op, Kind: msg.Kind, Target: msg.Target, Name: msg.Name}
 	if msg.Op == AgentAdd {
 		m.draft.Dir = msg.Dir
+		if msg.Adopt && m.invalidKind().Key == "" && m.invalidDir().Key == "" {
+			m.steps = []AgentStep{AgentStepName, AgentStepSettings, AgentStepPreview, AgentStepConfirm, AgentStepResult}
+		}
 	} else {
 		m.currentDir = msg.Dir
 	}

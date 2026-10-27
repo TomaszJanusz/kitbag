@@ -260,3 +260,23 @@ func TestAgentFormEdit(t *testing.T) {
 	expect(t, preview.Change.Op == AgentEdit && preview.Change.Dir == "" && *preview.Change.Settings, "edit change=%+v", preview.Change)
 	checkForm(t, m)
 }
+
+func TestAgentFormAdoptionSkipsKnownStepsAndBack(t *testing.T) {
+	t.Parallel()
+	m, _ := openForm(t, OpenAgentForm{Op: AgentAdd, Adopt: true, Kind: "claude", Dir: "/home/u/.claude-work"})
+	expect(t, m.View().Step == AgentStepName && len(m.View().Steps) == 5, "adoption steps %+v", m.View().Steps)
+	m.Update(EditAgentField{Value: "work"})
+	m.Update(AgentFormNext{})
+	expect(t, m.View().Step == AgentStepSettings, "known directory was not skipped")
+	m.Update(AgentFormBack{})
+	expect(t, m.View().Step == AgentStepName && m.View().Field == "work", "back lost name")
+	m.Update(AgentFormNext{})
+	cmd := as[PreviewAgent](t, only(t, m.Update(AgentFormNext{})))
+	expect(t, cmd.Change.Kind == "claude" && cmd.Change.Dir == "/home/u/.claude-work", "lost candidate %+v", cmd.Change)
+}
+
+func TestAgentFormAdoptionDoesNotSkipInvalidDirectory(t *testing.T) {
+	t.Parallel()
+	m, _ := openForm(t, OpenAgentForm{Op: AgentAdd, Adopt: true, Kind: "claude", Dir: "/srv/claude"})
+	expect(t, m.View().Step == AgentStepKind && len(m.View().Steps) == 7, "invalid directory skipped validation")
+}

@@ -135,7 +135,7 @@ func (m *Model) clickAgents(x, y int) {
 	switch {
 	case !ok:
 	case view.Rows[row].Selected:
-		m.agentsKey(keyEdit)
+		m.agentsKey(keyEnter)
 	default:
 		m.dispatch(model.SelectAgent{Index: row})
 	}

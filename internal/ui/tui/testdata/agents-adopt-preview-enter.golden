@@ -1,0 +1,25 @@
+
+
+
+
+
+
+
+
+
+
+        +------------------------------------------------------------------------------------------------------+
+        | Adopt claude at /home/user/.claude_3: What will change                                           esc |
+        | Step 3/5                                                                                             |
+        |                                                                                                      |
+        | The change to kitbag.toml, its commit title and how it will be published.                            |
+        | Commit: chore(kitbag): add claude instance work at ~/.claude_3                                       |
+        | Published directly to main.                                                                          |
+        |                                                                                                      |
+        | Changes to kitbag.toml:                                                                              |
+        |   @@ kitbag.toml @@                                                                                  |
+        |   +[targets.claude.instances.work]                                                                   |
+        |   +dir = "~/.claude_3"                                                                               |
+        |                                                                                                      |
+        |                                                                     [ Cancel ]   [ Back ] > [ Next ] |
+        +------------------------------------------------------------------------------------------------------+
