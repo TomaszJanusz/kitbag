@@ -436,8 +436,10 @@ The preview step shows the commit title, how it will be published (directly to
 the branch, or for `pr` publish mode that nothing is written and the commands to
 propose it follow in the result), a directory that is handed back, warnings and
 the `kitbag.toml` diff; PgUp/PgDn or the wheel scroll a long preview. A refused
-preview shows the server's detail and focuses Back. The confirm step starts on
-**Back**, so a stray Enter never applies; **Apply** must be chosen. While the
+preview shows the server's detail and focuses Back. Settings starts on **Next** with the current choice retained; Tab or a click
+returns to its options. Preview starts on **Next**, confirm on **Apply**, and
+result on **Close**. Text steps keep their field ready for typing. The first
+step omits Back; the result offers only Close. While the
 daemon applies, the window says so, every button is unavailable and Esc or an
 outside click is refused. A preview made stale by another change to
 `kitbag.toml` is not applied: the window returns to the preview, says it changed
@@ -445,7 +447,8 @@ and shows the new one. The result says published (with the short commit),
 committed but not published (with the reason and the `git pull --rebase` and
 `git push` commands), not written in `pr` mode (with the commands to propose it)
 or not applied; it reports handed-back outputs and the sync that ran, and notes
-that the list was reloaded. Close (or Cancel) returns to the refreshed list.
+that the list was reloaded. Close returns to the refreshed list. Disabled controls remain visible while
+loading, applying or validating, to explain why an action is unavailable.
 
 Cancel, Esc and an outside click close the wizard at once while nothing was
 chosen or typed; otherwise a **Discard this change?** window asks first,

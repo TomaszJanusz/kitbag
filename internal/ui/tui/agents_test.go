@@ -45,13 +45,13 @@ func TestAgentsAddWizardFlow(t *testing.T) {
 	s.waitFor("Configuration directory: > ~/.claude-new")
 	s.press(keyEnter)
 	s.waitFor("Step 4/7")
-	s.press(keyRight, keyRight, keyEnter)
+	s.press("shift+tab", "shift+tab", "shift+tab", keyEnter)
 	s.waitFor("(*) Do not merge shared settings")
 	s.press(keyEnter)
 	s.waitFor("Step 5/7", "+dir = \"~/.claude-new\"")
 	s.press(keyEnter)
-	s.waitFor("Step 6/7", "> [ Back ]")
-	s.press(keyRight, keyEnter)
+	s.waitFor("Step 6/7", "> [ Apply ]")
+	s.press(keyEnter)
 	s.waitFor("Step 7/7", "Sync succeeded, 2 changed")
 	s.press(keyEnter)
 	s.waitFor("claude/new  /home/user/.claude-new")
@@ -113,8 +113,8 @@ func TestAgentsBusyWhileApplying(t *testing.T) {
 	s.press(keyDown, keyRemove)
 	s.waitFor("Step 1/3", "-[targets.claude.instances.second]")
 	s.press(keyEnter)
-	s.waitFor("Step 2/3", "> [ Back ]")
-	s.press(keyRight, keyEnter)
+	s.waitFor("Step 2/3", "> [ Apply ]")
+	s.press(keyEnter)
 	s.waitFor("Applying and publishing…")
 	// Esc and an outside click are refused while applying: the window stays
 	// and shows the result below.
@@ -188,10 +188,10 @@ func TestAgentsEditDirectory(t *testing.T) {
 	d.golden("agents-edit-dir-wide")
 	d.press("~/.claude_9", keyEnter)
 	d.expect("Step 2/5", "(*) Keep the current setting")
-	d.press(keyEnter, keyEnter)
+	d.press(keyEnter)
 	d.expect("Step 3/5", `-dir = "~/.claude_2"`, `+dir = "~/.claude_9"`, "~/.claude_2 is handed back")
 	d.golden("agents-edit-preview-wide")
-	d.press(keyEnter, keyRight, keyEnter)
+	d.press(keyEnter, keyEnter)
 	d.expect("Step 5/5", "Handed back ~/.claude_2", "discard ~/.claude_2/CLAUDE.md")
 	d.press(keyEnter)
 	d.expect("claude/second  /home/user/.claude_9")
@@ -207,15 +207,15 @@ func TestAgentsRemoveNeedsConfirmation(t *testing.T) {
 	d.expect("Remove claude/second: What will change", "Step 1/3", "-[targets.claude.instances.second]")
 	d.golden("agents-remove-preview-wide")
 	d.press(keyEnter)
-	d.expect("Step 2/3", "> [ Back ]")
+	d.expect("Step 2/3", "> [ Apply ]")
 	d.golden("agents-remove-confirm-wide")
-	// Enter on the initial focus goes back: a stray Enter never applies.
-	d.press(keyEnter)
+	// Back remains available explicitly.
+	d.press(keyLeft, keyEnter)
 	d.expect("Step 1/3")
 	if _, _, applies := d.client.agents.calls(); len(applies) != 0 {
 		t.Fatalf("applied without confirmation: %v", applies)
 	}
-	d.press(keyEnter, keyRight, keyEnter)
+	d.press(keyEnter, keyEnter)
 	d.expect("Step 3/3", "Published remove claude instance second as 9b8c7d6e5f4a.")
 	d.press(keyEnter)
 	d.refuse("claude/second")
@@ -228,9 +228,9 @@ func TestAgentsRemoveNeedsConfirmation(t *testing.T) {
 // step with the Apply button focused.
 func addToConfirm(d *driver) {
 	d.t.Helper()
-	d.press("5", keyAdd, keyEnter, keyEnter, "extra", keyEnter, "~/.claude_3", keyEnter, keyEnter, keyEnter)
+	d.press("5", keyAdd, keyEnter, keyEnter, "extra", keyEnter, "~/.claude_3", keyEnter, keyEnter)
 	d.expect("Step 5/7")
-	d.press(keyEnter, keyRight)
+	d.press(keyEnter)
 	d.expect("Step 6/7", "> [ Apply ]")
 }
 
@@ -279,7 +279,7 @@ func TestAgentsFailedApplyStaysOnConfirm(t *testing.T) {
 func TestAgentsRefusedChangeShowsDetail(t *testing.T) {
 	t.Parallel()
 	d := drive(t, withAgents(newFake()), 120, 35)
-	d.press("5", keyAdd, keyDown, keyEnter, keyEnter, "work", keyEnter, "~/.codex-work", keyEnter, keyRight, keyEnter)
+	d.press("5", keyAdd, keyDown, keyEnter, keyEnter, "work", keyEnter, "~/.codex-work", keyEnter, "shift+tab", "shift+tab", "shift+tab", keyLeft, keyEnter)
 	d.expect("(*) Merge shared settings")
 	d.press(keyEnter)
 	d.expect("Step 5/7", "✗ The configuration or request is invalid: target codex declares no settings fragment", "[ Next (unavailable) ]")
@@ -304,7 +304,7 @@ func TestAgentsStalePreviewIsNotApplied(t *testing.T) {
 	d.press(keyEnter)
 	d.expect("Step 5/7", "kitbag.toml changed since the preview. Review the new preview.")
 	d.golden("agents-stale-wide")
-	d.press(keyEnter, keyRight, keyEnter)
+	d.press(keyEnter, keyEnter)
 	d.expect("Step 7/7")
 	if _, previews, applies := d.client.agents.calls(); len(previews) != 2 || strings.Join(applies, ",") != "r0,r1" {
 		t.Fatalf("previews=%d applies=%v", len(previews), applies)
@@ -364,7 +364,7 @@ func TestAgentsWindowScrollsLongPreview(t *testing.T) {
 	t.Parallel()
 	client := withAgents(newFake())
 	d := drive(t, client, 60, 15)
-	d.press("5", keyDown, keyEnter, "~/.claude_9", keyEnter, keyEnter, keyEnter)
+	d.press("5", keyDown, keyEnter, "~/.claude_9", keyEnter, keyEnter)
 	d.expect("Step 3/5", "scroll ↑/↓")
 	d.refuse(`+dir = "~/.claude_9"`)
 	d.press(keyPageDown)

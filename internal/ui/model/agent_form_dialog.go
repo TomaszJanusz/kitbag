@@ -27,35 +27,36 @@ func (m *AgentForm) Dialog() *DialogView {
 	}
 	dialog := FormDialog(AgentFormDialog, text.New(text.WizardWindowTitle, v.Heading, v.Title), v.StepIndex+1, len(v.Steps), fields, v.Back, v.Next, v.Cancel.Intent)
 	dialog.Message, dialog.Wide = v.Explanation, true
-	dialog.Buttons = []Control{v.Cancel, v.Back, v.Next}
+	dialog.Buttons = []Control{v.Cancel}
+	if v.StepIndex > 0 {
+		dialog.Buttons = append(dialog.Buttons, v.Back)
+	}
+	dialog.Buttons = append(dialog.Buttons, v.Next)
+	if v.Step == AgentStepResult {
+		dialog.Buttons = []Control{v.Next}
+	}
 	dialog.Body = formBody(v)
 	for i, option := range v.Options {
 		dialog.Options = append(dialog.Options, DialogOption{Intent: ChooseAgentOption{Index: i}, Label: option.Label, Detail: option.Detail, Selected: option.Selected})
 	}
-	dialog.InitialFocus = initialFocus(v, len(fields), len(dialog.Options))
+	dialog.InitialFocus = initialFocus(v, len(fields), len(dialog.Options), len(dialog.Buttons))
 	return &dialog
 }
 
-// initialFocus starts on the text entry, the chosen option, Next on preview
-// and result, and Back on confirm, so a stray Enter never applies.
-func initialFocus(v AgentFormView, fields, options int) int {
-	const cancel, back, next = 0, 1, 2
-	buttons := fields + options
+// initialFocus keeps editable fields ready for typing. Choice steps start on
+// the selected option; settings, preview, confirm and result focus the primary
+// action so advancing never lands on Back after a completed choice.
+func initialFocus(v AgentFormView, fields, options, buttons int) int {
 	switch v.Step {
-	case AgentStepConfirm:
-		return buttons + back
-	case AgentStepPreview, AgentStepResult:
-		return buttons + next
-	case AgentStepKind, AgentStepSettings:
+	case AgentStepSettings, AgentStepPreview, AgentStepConfirm, AgentStepResult:
+		return fields + options + buttons - 1
+	case AgentStepKind:
 		for i, option := range v.Options {
 			if option.Selected {
 				return fields + i
 			}
 		}
 	case AgentStepName, AgentStepDir:
-	}
-	if fields+options == 0 {
-		return buttons + cancel
 	}
 	return 0
 }

@@ -2,9 +2,9 @@
   | Add an agent instance: Agent esc |
   | Step 1/7                         |
   |                                  |
+  | configuration directory belongs  |
+  | to.                              |
   | > (*) claude                     |
   | scroll ↑/↓                       |
-  |                       [ Cancel ] |
-  |           [ Back (unavailable) ] |
-  |                         [ Next ] |
+  |            [ Cancel ]   [ Next ] |
   +----------------------------------+

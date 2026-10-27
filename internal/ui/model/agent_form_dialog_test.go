@@ -36,11 +36,10 @@ func bodyText(d *DialogView) string {
 
 func checkDialog(t *testing.T, d *DialogView) {
 	t.Helper()
-	expect(t, d != nil && d.ID == AgentFormDialog && d.Wide && len(d.Buttons) == 3, "dialog %+v", d)
-	_, back := d.Buttons[1].Intent.(AgentFormBack)
-	_, next := d.Buttons[2].Intent.(AgentFormNext)
+	expect(t, d != nil && d.ID == AgentFormDialog && d.Wide && len(d.Buttons) > 0, "dialog %+v", d)
+	_, next := d.Buttons[len(d.Buttons)-1].Intent.(AgentFormNext)
 	_, cancel := d.Cancel.(CancelAgentForm)
-	expect(t, back && next && cancel, "buttons %+v", d.Buttons)
+	expect(t, next && cancel, "buttons %+v", d.Buttons)
 	checkText(t, dialogTexts(*d)...)
 }
 
@@ -75,7 +74,7 @@ func TestAgentFormDialogDirAndSettings(t *testing.T) {
 	m.Update(ChooseAgentOption{Index: 0})
 	m.Update(AgentFormNext{})
 	d = m.Dialog()
-	expect(t, d.Options[0].Selected && d.InitialFocus == 0 && render(d.Options[0].Label) == "Default (merge shared settings)", "settings %+v", d.Options)
+	expect(t, d.Options[0].Selected && d.InitialFocus == 5 && render(d.Options[0].Label) == "Default (merge shared settings)", "settings %+v", d.Options)
 	checkDialog(t, d)
 }
 
@@ -96,7 +95,7 @@ func TestAgentFormDialogPreviewToResult(t *testing.T) {
 	expect(t, strings.HasSuffix(body, "Changes to kitbag.toml:\n+a\n-b") && d.InitialFocus == 2 && d.Buttons[2].Enabled, "preview diff %q", body)
 	m.Update(AgentFormNext{})
 	d = m.Dialog()
-	expect(t, d.InitialFocus == 1 && render(d.Buttons[2].Label) == "Apply" && !strings.Contains(bodyText(d), "+a"), "confirm %+v", d)
+	expect(t, d.InitialFocus == 2 && render(d.Buttons[2].Label) == "Apply" && !strings.Contains(bodyText(d), "+a"), "confirm %+v", d)
 }
 
 func TestAgentFormDialogApplyAndResult(t *testing.T) {
@@ -112,7 +111,7 @@ func TestAgentFormDialogApplyAndResult(t *testing.T) {
 	d = m.Dialog()
 	checkDialog(t, d)
 	expect(t, d.Body[0].Tone == ToneSuccess && strings.HasSuffix(bodyText(d), "The agents list was reloaded."), "result %q", bodyText(d))
-	expect(t, render(d.Buttons[2].Label) == "Close" && d.InitialFocus == 2, "close %+v", d.Buttons[2])
+	expect(t, len(d.Buttons) == 1 && render(d.Buttons[0].Label) == "Close" && d.InitialFocus == 0, "close %+v", d.Buttons)
 	m.Update(AgentFormNext{})
 	expect(t, m.Dialog() == nil, "closed form has a window")
 }
@@ -174,5 +173,44 @@ func TestAgentDetailSaysWhatSyncDoes(t *testing.T) {
 		m.Update(SelectAgent{Index: i})
 		rows := m.View().Detail.Rows
 		expect(t, render(rows[len(rows)-1].Value) == sync, "row %d: %q", i, render(rows[len(rows)-1].Value))
+	}
+}
+
+// Every step has a deliberate initial focus. Input steps remain ready for
+// editing; after the draft is complete Enter always advances the primary action.
+func TestAgentFormInitialFocusEveryStep(t *testing.T) {
+	t.Parallel()
+	m, _ := openForm(t, OpenAgentForm{Op: AgentAdd, Kind: "claude", Name: "work", Dir: "~/.claude-work"})
+	for _, step := range []AgentStep{AgentStepKind, AgentStepName, AgentStepDir, AgentStepSettings, AgentStepPreview, AgentStepConfirm, AgentStepResult} {
+		d := m.Dialog()
+		expect(t, m.current() == step, "step %s, want %s", m.current(), step)
+		assertStepFocus(t, d, step)
+		cmds := m.Update(AgentFormNext{})
+		switch step {
+		case AgentStepSettings:
+			m.Update(AgentPreviewed{Seq: as[PreviewAgent](t, only(t, cmds)).Seq, Preview: AgentPreview{Revision: "r1"}})
+		case AgentStepConfirm:
+			m.Update(AgentChangeApplied{Applied: AgentApplied{}})
+		case AgentStepResult:
+			expect(t, len(d.Buttons) == 1 && render(d.Buttons[0].Label) == "Close", "result buttons %+v", d.Buttons)
+		case AgentStepKind, AgentStepName, AgentStepDir, AgentStepPreview:
+		}
+	}
+}
+
+func assertStepFocus(t *testing.T, d *DialogView, step AgentStep) {
+	t.Helper()
+	want := 0
+	switch step {
+	case AgentStepSettings, AgentStepPreview, AgentStepConfirm, AgentStepResult:
+		want = len(d.Fields) + len(d.Options) + len(d.Buttons) - 1
+	case AgentStepKind, AgentStepName, AgentStepDir:
+	}
+	expect(t, d.InitialFocus == want, "step %s: focus %d, want %d", step, d.InitialFocus, want)
+	if step == AgentStepKind || step == AgentStepResult {
+		for _, button := range d.Buttons {
+			_, back := button.Intent.(AgentFormBack)
+			expect(t, !back, "unusable Back on %s", step)
+		}
 	}
 }
