@@ -3,7 +3,12 @@
 Run `kitbag doctor` to explain synchronization prerequisites without applying a
 plan. Results are grouped **OK**, **WARN**, **FAIL**; each warning/failure has a
 one-line `fix:` hint. Checks continue after failures when their prerequisites
-remain available. Text groups and JSON registry order are deterministic.
+remain available. Like status and the TUI, doctor automatically requests bounded
+service recovery when it observes an eligible older daemon. It shows a transient
+notice for at most 150 seconds; a persistent mismatch or failed recovery has an
+actionable warning. Recovery preserves the saved service inputs and never
+starts an intentionally stopped or disabled service. Text groups and JSON
+registry order are deterministic.
 
 `kitbag doctor --json` emits `doctor_schema: 1`, validated against
 [`doctor.schema.json`](../schemas/doctor.schema.json). Every check has `id`,
@@ -29,6 +34,7 @@ checks; it does not assert that they passed.
 | Legacy markers | Inspect instruction files for `agent-config-managed` or `Managed by agent-config-sync`; review/migrate them. Owned files, such as adopted ones that keep the script's marker until their output changes, are skipped. |
 | Legacy settings markers | `legacy-settings-markers`: for every enabled Claude instance, a bounded byte search of `<dir>/settings.json` for the hook marker `# agent-config-managed`. It reports only the instance, the path and the number of occurrences; run `kitbag adopt`, then `kitbag sync` ([adopt.md](adopt.md)). A missing file is OK; an unreadable file, or one larger than 4 MiB (not read at all), WARNs with a permission/size hint. |
 | Service | Background service: WARN when not installed (the machine then syncs only on `kitbag sync`; fix `kitbag service install`); WARN when unloaded, inactive, disabled, stale, the last supervisor exit code is nonzero (except 75, the daemon's restart after its executable was replaced), or the executable the definition runs no longer exists (for example after a package upgrade). Shows supervisor run/exit observations; run `kitbag service refresh` when the executable is missing, otherwise reinstall with `kitbag service install`, and inspect `kitbag service status`. |
+| Daemon version | An eligible older daemon is automatically refreshed through the saved installation. While recovery is pending, report that the daemon is restarting on the new version, usually within a few minutes. After the bounded window or when recovery is unavailable, warn and offer repair diagnostics. Matching versions never trigger recovery. |
 | Legacy units | Detect filenames containing `agent-config` under XDG `systemd/user` and `~/Library/LaunchAgents`. Definitions of the host's own manager (systemd units on Linux, `<label>.plist` on macOS, label from the filename) are inspected read-only with `platform.UnitInspect` (`systemctl --user show`, `launchctl print`/`print-disabled`; nothing is loaded, started or changed): a unit neither loaded nor enabled is counted as ignored, anything else WARNs with `loaded=`/`enabled=`. A booted-out LaunchAgent that is not disabled still WARNs, as launchd loads it again at login. Other definitions and failed inspections WARN by presence. Disable and unload old timers/services manually. |
 
 Legacy checks skip when `migration.legacy_roots` is empty. They only detect;
