@@ -1,0 +1,33 @@
+# Header comment.
+schema = 1 # the version
+
+[targets.claude]
+agent = "claude"
+
+[targets.claude.instances.main]
+dir = "~/.claude"
+
+[hosts.ci]
+
+# ci repeats main; this note must survive.
+[hosts.ci.targets.claude.instances.main]
+dir = "~/.claude" # same dir
+
+# The work account exists only on ci and runner02.
+[hosts.ci.targets.claude.instances.work]
+dir = "~/.claude-work"
+mode = "copy" # copies on ci
+
+[hosts.ci.targets.claude.instances.work.roots]
+# Skills live elsewhere for this account.
+skills = "~/work-skills"
+
+[hosts.runner02.targets.claude.instances.work]
+# runner02's copy of the work account.
+dir = "~/.claude-work"
+mode = "copy"
+
+[hosts.runner02.targets.claude.instances.work.roots]
+skills = "~/work-skills"
+
+# Trailing comment of the file.

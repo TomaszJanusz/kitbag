@@ -1,0 +1,27 @@
+# Header comment.
+schema = 2 # the version
+min_tool_version = "0.1.4"
+
+[targets.claude]
+agent = "claude"
+
+[targets.claude.instances.main]
+dir = "~/.claude"
+
+# The work account exists only on ci and runner02.
+[targets.claude.instances.work]
+dir = "~/.claude-work"
+hosts = ["ci", "runner02"]
+mode = "copy" # copies on ci
+
+[targets.claude.instances.work.roots]
+# Skills live elsewhere for this account.
+skills = "~/work-skills"
+
+# ci repeats main; this note must survive.
+# same dir
+# runner02's copy of the work account.
+# Trailing comment of the file.
+
+[hosts.runner02.targets.claude.instances.main]
+enabled = false

@@ -28,6 +28,9 @@ func (l *layout) addInstance(e Edit) ([]byte, error) {
 	}
 	related := l.within("targets", e.Target)
 	lines := []string{line("dir", quote(e.Dir))}
+	if len(e.Hosts) > 0 {
+		lines = append(lines, line("hosts", hostList(e.Hosts)))
+	}
 	if e.Settings != nil {
 		lines = append(lines, line("settings", strconv.FormatBool(*e.Settings)))
 	}

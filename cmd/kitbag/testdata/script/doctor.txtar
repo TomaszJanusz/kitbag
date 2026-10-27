@@ -19,12 +19,12 @@ stdout 'ssh-agent: .*fix: start an SSH agent and export SSH_AUTH_SOCK'
 stdout 'agent-claude: .*fix: install claude'
 stdout 'agent-codex: .*fix: install codex'
 stdout 'instance-codex/first: .*fix: create or correct instance directory'
-stdout 'manifest-schema: schema 1 \(supported\)'
+stdout 'manifest-schema: schema 1 \(supported\); kitbag manifest upgrade enables per-host instances'
 execstatus 1 kitbag doctor --strict
 exec kitbag doctor --json
 doctorschema stdout
 stdout '"status": "WARN"'
-stdout '"id": "manifest-schema",\n\s*"status": "OK",\n\s*"message": "schema 1 \(supported\)"'
+stdout '"id": "manifest-schema",\n\s*"status": "OK",\n\s*"message": "schema 1 \(supported\); kitbag manifest upgrade enables per-host instances"'
 
 # Both missing and regular-file socket paths warn.
 env SSH_AUTH_SOCK=$WORK/plain

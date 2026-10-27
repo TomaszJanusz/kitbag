@@ -9,13 +9,13 @@ import (
 )
 
 func (c *commandLine) statusService(ctx context.Context, status *workflow.Status) {
-	version, running, err := (client.Client{Host: c.host}).DaemonVersion(ctx)
+	daemonVersion, running, err := (client.Client{Host: c.host}).DaemonVersion(ctx)
 	if err != nil {
 		status.Warnings = append(status.Warnings, "Daemon version unavailable; inspect daemon logs.")
 	} else if running {
-		status.DaemonRunning, status.DaemonVersion = true, version
-		if version != status.BinaryVersion {
-			status.Warnings = append(status.Warnings, fmt.Sprintf("Version mismatch: daemon %s, binary %s; run kitbag service refresh.", version, status.BinaryVersion))
+		status.DaemonRunning, status.DaemonVersion = true, daemonVersion
+		if daemonVersion != status.BinaryVersion {
+			status.Warnings = append(status.Warnings, fmt.Sprintf("Version mismatch: daemon %s, binary %s; run kitbag service refresh.", daemonVersion, status.BinaryVersion))
 		}
 	}
 	report, err := c.userService().Status(ctx)

@@ -94,7 +94,7 @@ func (s Service) manifestChecks(context.Context) []Check {
 	}
 	checks := []Check{
 		result("tool-version", "kitbag "+s.Version+"; min_tool_version "+m.MinToolVersion, "upgrade kitbag to the manifest's min_tool_version", m.CheckVersion(s.Version), Fail), hosts[0],
-		{ID: "manifest-schema", Status: OK, Message: fmt.Sprintf("schema %d (supported)", m.Schema)},
+		{ID: "manifest-schema", Status: OK, Message: schemaMessage(m.Schema)},
 	}
 	checks = append(checks, hosts[1:]...)
 	dirs, err := s.instances(m)
@@ -147,4 +147,13 @@ func listedInstances(home, name string, target manifest.Target) []instance {
 		}
 	}
 	return dirs
+}
+
+// schemaMessage reports the schema in use; schema 1 points at the upgrade
+// that enables per-host instances.
+func schemaMessage(schema int) string {
+	if schema < manifest.SchemaLatest {
+		return fmt.Sprintf("schema %d (supported); kitbag manifest upgrade enables per-host instances", schema)
+	}
+	return fmt.Sprintf("schema %d (supported)", schema)
 }

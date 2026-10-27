@@ -26,6 +26,7 @@ kitbag [flags]
 * [kitbag daemon](kitbag_daemon.md)	 - Poll configuration, detect drift and serve the local API
 * [kitbag doctor](kitbag_doctor.md)	 - Explain synchronization problems and suggest fixes
 * [kitbag init](kitbag_init.md)	 - Set up a configuration clone or scaffold a new repository
+* [kitbag manifest](kitbag_manifest.md)	 - Operate on the shared kitbag.toml
 * [kitbag plan](kitbag_plan.md)	 - Show the local synchronization diff without applying it
 * [kitbag revert](kitbag_revert.md)	 - Restore the targets as they were before recent plans
 * [kitbag self-update](kitbag_self-update.md)	 - Verify and install a newer release or show the package manager command

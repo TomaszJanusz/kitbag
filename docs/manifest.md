@@ -308,8 +308,50 @@ settings = false       # patch: no settings merge for this account on mac
 ```
 
 Converting a schema-1 file, including its host replacement tables, is a
-separate, explicit step; a tool that reads schema 2 never rewrites a schema-1
-file on its own.
+separate, explicit step ([upgrading to schema 2](#upgrading-to-schema-2)); a
+tool that reads schema 2 never rewrites a schema-1 file on its own.
+
+### Upgrading to schema 2
+
+`kitbag manifest upgrade [--dry-run] [--json] [--yes]` converts the shared
+`kitbag.toml` in the working copy from schema 1 to 2 without re-encoding it:
+
+1. `schema = 1` becomes `schema = 2`, and `min_tool_version` becomes the
+   larger of its value and **0.1.4**, the first release that reads schema 2
+   (added after `schema` when absent).
+2. Each `[hosts.<h>.targets.<t>.instances]` set that replaces target `t`'s
+   instances is converted, comparing instances by name and definition:
+   an instance in both stays at target level and the host table is dropped
+   (differences in `enabled` or `settings`, or a set `mode`, become a host
+   patch); an instance only in host sets moves to the target with `hosts`
+   listing those hosts; a target instance missing from a host's set gets the
+   patch `enabled = false` there. A target without listed instances first
+   declares its documented default directory as `main` (or `default`), with a
+   warning when this machine relocates it with a variable.
+3. Refused, exit 2, nothing written: one name with different `dir`, `roots` or
+   `primitives` in the target and a host set, or in two host sets; two names for
+   one directory; a `mode` a patch cannot unset; layouts the editor does not
+   change (inline tables, dotted keys, scattered sub-tables). Edit those by
+   hand first.
+4. The result is reparsed as schema 2 and the active instances of every
+   target are compared on every host the file names plus one it does not;
+   any difference aborts. Comments stay: moved tables take theirs along, and
+   comments of dropped tables remain as comment lines in place.
+
+The preview lists each conversion, the diff, the checked hosts, the commit
+title `chore(kitbag): upgrade manifest to schema 2` and the publication route.
+Publication is that of the agent edits: a clean working copy on its branch,
+fast-forwarded, one commit with `Kitbag-Host` and `Kitbag-Op: manifest.upgrade`
+trailers, a push without force in `direct` mode (nothing written in `pr`
+mode), then a sync. A manifest already on schema 2 is left alone (exit 0).
+`kitbag config` is unaffected.
+
+**Update every machine first.** A machine still on 0.1.1–0.1.3 stops on the
+upgraded manifest with "update kitbag" (exit 4), and 0.1.0 with a validation
+error (exit 2); neither applies anything until updated. The command also
+refuses to publish (exit 4) when the running kitbag itself is older than the
+`min_tool_version` it writes, such as a development build, because this
+machine could not sync afterwards; a preview only warns.
 
 ### `[publish]`
 

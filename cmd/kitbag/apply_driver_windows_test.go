@@ -2,4 +2,7 @@
 
 package main
 
-func testKitbagMain() { main() }
+func testKitbagMain() {
+	testVersion()
+	main()
+}

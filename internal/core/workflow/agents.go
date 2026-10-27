@@ -119,7 +119,29 @@ type AgentOptions struct {
 // A rejected push is replayed once on the fetched upstream. A published
 // change is then synchronized in the same lock.
 func (s Service) ChangeAgent(ctx context.Context, change agents.Change, opts AgentOptions) (AgentResult, error) {
-	result := AgentResult{AgentChangeSchema: 1, DryRun: opts.DryRun, Manifest: filepath.Join(s.Repository, manifestName), Publication: Publication{Next: []string{}}}
+	return s.runChange(ctx, s.agentChange(change), opts)
+}
+
+// manifestChange is a publishable edit of kitbag.toml: prepare plans it
+// against the current manifest bytes (again after a rejected push), and
+// branch names the branch the manual pr route proposes.
+type manifestChange struct {
+	prepare func(data []byte, host string) (agents.Plan, error)
+	branch  func(agents.Plan) string
+}
+
+func (s Service) agentChange(change agents.Change) manifestChange {
+	return manifestChange{
+		prepare: func(data []byte, host string) (agents.Plan, error) {
+			return agents.Prepare(agents.Input{Host: s.Host, Kinds: s.Kinds, Filename: s.manifestPath(), HostName: host, Manifest: data, Change: change})
+		},
+		branch: func(p agents.Plan) string { return "kitbag/" + p.Change.Kind + "-" + p.Change.Name },
+	}
+}
+
+// runChange previews or publishes change as ChangeAgent documents.
+func (s Service) runChange(ctx context.Context, change manifestChange, opts AgentOptions) (AgentResult, error) {
+	result := AgentResult{AgentChangeSchema: 1, DryRun: opts.DryRun, Manifest: s.manifestPath(), Publication: Publication{Next: []string{}}}
 	if err := s.compatible(); err != nil {
 		return result, err
 	}
@@ -127,7 +149,7 @@ func (s Service) ChangeAgent(ctx context.Context, change agents.Change, opts Age
 		return result, s.previewAgent(ctx, change, opts, &result)
 	}
 	if s.Now == nil || s.Now().IsZero() {
-		return result, fmt.Errorf("agent change clock: %w", invalidInput())
+		return result, fmt.Errorf("manifest change clock: %w", invalidInput())
 	}
 	err := s.Store.WithLock(func(session *state.Session) error {
 		return s.publishAgent(ctx, session, change, opts, &result)
@@ -135,7 +157,7 @@ func (s Service) ChangeAgent(ctx context.Context, change agents.Change, opts Age
 	return result, err
 }
 
-func (s Service) previewAgent(ctx context.Context, change agents.Change, opts AgentOptions, result *AgentResult) error {
+func (s Service) previewAgent(ctx context.Context, change manifestChange, opts AgentOptions, result *AgentResult) error {
 	_, policy, err := s.agentPlan(change, opts.Revision, result)
 	if err != nil {
 		return err
@@ -154,7 +176,7 @@ func (s Service) previewAgent(ctx context.Context, change agents.Change, opts Ag
 }
 
 // agentPlan reads the manifest and prepares change against it.
-func (s Service) agentPlan(change agents.Change, revision string, result *AgentResult) ([]byte, manifest.Publish, error) {
+func (s Service) agentPlan(change manifestChange, revision string, result *AgentResult) ([]byte, manifest.Publish, error) {
 	data, err := s.Host.ReadFile(result.Manifest)
 	if err != nil {
 		return nil, manifest.Publish{}, err
@@ -166,7 +188,7 @@ func (s Service) agentPlan(change agents.Change, revision string, result *AgentR
 	if err != nil {
 		return nil, manifest.Publish{}, err
 	}
-	result.Plan, err = agents.Prepare(agents.Input{Host: s.Host, Kinds: s.Kinds, Filename: result.Manifest, HostName: host, Manifest: data, Change: change})
+	result.Plan, err = change.prepare(data, host)
 	if err != nil {
 		return nil, manifest.Publish{}, err
 	}
@@ -177,7 +199,7 @@ func (s Service) agentPlan(change agents.Change, revision string, result *AgentR
 // publishPolicy resolves [publish] and [hosts.<host>.publish]; empty mode
 // means direct and an empty branch means the working copy's branch.
 func (s Service) publishPolicy(data []byte, host string) (manifest.Publish, error) {
-	m, err := manifest.Parse(filepath.Join(s.Repository, manifestName), data)
+	m, err := manifest.Parse(s.manifestPath(), data)
 	if err != nil {
 		return manifest.Publish{}, err
 	}
@@ -195,7 +217,7 @@ func (s Service) publishPolicy(data []byte, host string) (manifest.Publish, erro
 	return policy, nil
 }
 
-func (s Service) publishAgent(ctx context.Context, session *state.Session, change agents.Change, opts AgentOptions, result *AgentResult) error {
+func (s Service) publishAgent(ctx context.Context, session *state.Session, change manifestChange, opts AgentOptions, result *AgentResult) error {
 	data, err := s.prepareCheckout(ctx, change, opts, result)
 	if err != nil || result.Publication.State == Manual {
 		return err
@@ -226,7 +248,7 @@ func (s Service) publishAgent(ctx context.Context, session *state.Session, chang
 
 // prepareCheckout checks and fast-forwards the working copy, then plans the
 // change on it. In pr mode it records the manual publication instead.
-func (s Service) prepareCheckout(ctx context.Context, change agents.Change, opts AgentOptions, result *AgentResult) ([]byte, error) {
+func (s Service) prepareCheckout(ctx context.Context, change manifestChange, opts AgentOptions, result *AgentResult) ([]byte, error) {
 	status, err := s.cleanCheckout(ctx)
 	if err != nil {
 		return nil, err
@@ -243,7 +265,7 @@ func (s Service) prepareCheckout(ctx context.Context, change agents.Change, opts
 		return nil, fmt.Errorf("publish.branch %q differs from the working copy branch %q; agent edits publish only to the checked-out branch: %w", policy.Branch, status.Branch, invalidInput())
 	}
 	if policy.Mode != "direct" {
-		s.manualPublication(result)
+		s.manualPublication(result, change.branch(result.Plan))
 	}
 	return data, nil
 }
@@ -367,7 +389,7 @@ func (s Service) commitPlan(ctx context.Context, before []byte, result *AgentRes
 
 // push publishes the commit; a non-fast-forward rejection is replayed once
 // on the fetched upstream from the same structured change.
-func (s Service) push(ctx context.Context, change agents.Change, result *AgentResult) error {
+func (s Service) push(ctx context.Context, change manifestChange, result *AgentResult) error {
 	for {
 		result.Publication.Attempts++
 		err := s.Backend.Push(ctx, s.Repository, vcs.PushOptions{})
@@ -387,7 +409,7 @@ func (s Service) push(ctx context.Context, change agents.Change, result *AgentRe
 
 // replay drops the rejected local commit, fast-forwards to the new upstream
 // and commits the same change prepared against the new manifest.
-func (s Service) replay(ctx context.Context, change agents.Change, result *AgentResult) error {
+func (s Service) replay(ctx context.Context, change manifestChange, result *AgentResult) error {
 	if err := s.Backend.Fetch(ctx, s.Repository); err != nil {
 		s.notPublished(result, err)
 		return err
@@ -423,10 +445,9 @@ func (s Service) notPublished(result *AgentResult, err error) {
 
 // manualPublication explains the pr policy: v1 writes nothing, so the
 // working copy stays clean and sync keeps pulling.
-func (s Service) manualPublication(result *AgentResult) {
-	branch := "kitbag/" + result.Plan.Change.Kind + "-" + result.Plan.Change.Name
+func (s Service) manualPublication(result *AgentResult, branch string) {
 	result.Publication.State = Manual
-	result.Publication.Reason = "publish mode is pr for this host; agent edits do not open pull requests yet, so nothing was written"
+	result.Publication.Reason = "publish mode is pr for this host; KitBag does not open pull requests yet, so nothing was written"
 	result.Publication.Next = []string{
 		"git -C " + shellQuote(s.Repository) + " switch -c " + branch,
 		"apply the diff above to " + result.Manifest,
@@ -439,3 +460,6 @@ func (s Service) manualPublication(result *AgentResult) {
 func shellQuote(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", `'\''`) + "'"
 }
+
+// manifestPath is kitbag.toml in the working copy.
+func (s Service) manifestPath() string { return filepath.Join(s.Repository, manifestName) }

@@ -57,7 +57,7 @@ func (c *commandLine) root() *cobra.Command {
 	flags.BoolVar(&c.flags.verbose, "verbose", false, "Show backend selection and working copy diagnostics")
 	flags.BoolVar(&c.flags.quiet, "quiet", false, "Suppress successful sync change output")
 	root.MarkFlagsMutuallyExclusive("verbose", "quiet")
-	root.AddCommand(c.agentCommand(), c.serviceCommand(), c.daemonCommand(), c.configCommand(), c.initCommand(), c.syncCommand(), c.planCommand(), c.statusCommand(), c.tuiCommand(), c.doctorCommand(), c.adoptCommand(), c.unmanageCommand(), c.revertCommand(), c.versionCommand(), c.selfUpdateCommand())
+	root.AddCommand(c.agentCommand(), c.manifestCommand(), c.serviceCommand(), c.daemonCommand(), c.configCommand(), c.initCommand(), c.syncCommand(), c.planCommand(), c.statusCommand(), c.tuiCommand(), c.doctorCommand(), c.adoptCommand(), c.unmanageCommand(), c.revertCommand(), c.versionCommand(), c.selfUpdateCommand())
 	return root
 }
 

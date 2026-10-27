@@ -1,5 +1,5 @@
-// Package manifestedit changes agent instance declarations in kitbag.toml
-// without re-encoding it: it inserts, rewrites or deletes only the affected
+// Package manifestedit changes agent instance declarations, host instance
+// tables and the schema keys in kitbag.toml without re-encoding it: it inserts, rewrites or deletes only the affected
 // lines and table blocks, found with the same go-toml/v2/unstable parser that
 // pkg/manifest uses for positions, so comments, order and layout elsewhere stay
 // byte for byte. Every result is reparsed with manifest.Parse and must decode
@@ -48,16 +48,37 @@ const (
 	EditInstance Op = "edit"
 	// RemoveInstance deletes the instance table and its sub-tables.
 	RemoveInstance Op = "remove"
+	// SetSchema rewrites the root schema value to Schema.
+	SetSchema Op = "set_schema"
+	// SetMinToolVersion sets the root min_tool_version to Version, adding the
+	// key after schema when it is absent.
+	SetMinToolVersion Op = "set_min_tool_version"
+	// AddHostPatch declares [hosts.<Host>.targets.<Target>.instances.<Name>]
+	// with the Enabled, Mode and Settings that are set (a schema-2 patch).
+	AddHostPatch Op = "add_host_patch"
+	// RemoveHostInstance deletes a host instance table and its sub-tables;
+	// every comment in them stays as a comment line.
+	RemoveHostInstance Op = "remove_host_instance"
+	// MoveHostInstance moves a host instance table, its sub-tables and its
+	// comments to [targets.<Target>.instances.<Name>] with hosts = Hosts.
+	MoveHostInstance Op = "move_host_instance"
 )
 
 // Edit is one change. Fields other than Op and Target apply as Op documents.
+// AddInstance also writes Hosts when it is set.
 type Edit struct {
 	Settings *bool
+	Enabled  *bool
 	Op       Op
 	Target   string
 	Name     string
 	Agent    string
 	Dir      string
+	Host     string
+	Mode     string
+	Version  string
+	Hosts    []string
+	Schema   int64
 }
 
 // Apply applies edits in order to data, a manifest that manifest.Parse
@@ -85,6 +106,9 @@ func Apply(filename string, data []byte, edits ...Edit) ([]byte, error) {
 
 // change applies e to the decoded model, which becomes the expected result.
 func change(m *manifest.Manifest, e Edit) error {
+	if upgradeEdit(e.Op) {
+		return changeUpgrade(m, e)
+	}
 	target, ok := m.Targets[e.Target]
 	if e.Op == AddTarget {
 		if ok {
@@ -123,12 +147,12 @@ func changeInstances(current map[string]manifest.Instance, e Edit) (map[string]m
 	}
 	switch e.Op {
 	case AddInstance:
-		result[e.Name] = manifest.Instance{Dir: e.Dir, Settings: e.Settings}
+		result[e.Name] = manifest.Instance{Dir: e.Dir, Settings: e.Settings, Hosts: e.Hosts}
 	case EditInstance:
 		result[e.Name] = edited(instance, e)
 	case RemoveInstance:
 		delete(result, e.Name)
-	case AddTarget:
+	case AddTarget, SetSchema, SetMinToolVersion, AddHostPatch, RemoveHostInstance, MoveHostInstance:
 		return nil, fmt.Errorf("unexpected edit %q", e.Op)
 	default:
 		return nil, fmt.Errorf("unknown edit %q", e.Op)
@@ -190,10 +214,14 @@ func rewrite(data []byte, intent *manifest.Manifest, e Edit) ([]byte, error) {
 		return l.editInstance(e)
 	case RemoveInstance:
 		return l.removeInstance(e, len(intent.Targets[e.Target].Instances) == 0)
+	case SetSchema, SetMinToolVersion, AddHostPatch, RemoveHostInstance, MoveHostInstance:
+		return l.rewriteUpgrade(e)
 	default:
 		return nil, fmt.Errorf("unknown edit %q", e.Op)
 	}
 }
+
+func wrapped(subject string, err error) error { return fmt.Errorf("%s: %w", subject, err) }
 
 func layoutError(path []string) error {
 	return fmt.Errorf("%s: %w", strings.Join(path, "."), ErrLayout)

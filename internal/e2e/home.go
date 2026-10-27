@@ -70,6 +70,16 @@ func accountHome() []string {
 	return []string{account.HomeDir}
 }
 
+// TestVersion returns KITBAG_TEST_VERSION when a script sets it, else
+// fallback, so the test binary can run as a release version where
+// min_tool_version checks need one.
+func TestVersion(fallback string) string {
+	if v := os.Getenv("KITBAG_TEST_VERSION"); v != "" {
+		return v
+	}
+	return fallback
+}
+
 // Guarded wraps the main function of a command registered with
 // testscript.Main. The wrapper refuses to run, with exit status 125, unless
 // HOME is a throwaway directory inside the script's $WORK and is not the

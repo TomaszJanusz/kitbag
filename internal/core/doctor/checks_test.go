@@ -129,7 +129,7 @@ func manifestVersionCases() []manifestCase {
 		},
 		{
 			name: "schema in use", manifest: "schema=1\n", order: []string{"tool-version", "host", "manifest-schema"},
-			expects: []expect{{"manifest-schema", "schema 1 (supported)", "", OK}},
+			expects: []expect{{"manifest-schema", "schema 1 (supported); kitbag manifest upgrade enables per-host instances", "", OK}},
 		},
 	}
 }

@@ -12,22 +12,28 @@ import (
 // pkg/manifest uses for diagnostics. Offsets index data.
 type layout struct {
 	comments map[int]bool
+	notes    []note // every comment, in file order
 	newline  string
 	data     []byte
 	tables   []table
 }
 
+// note is the byte range of one comment.
+type note struct{ from, to int }
+
 // table is a [header] block, or the root keys before the first header. Its
-// bytes run from start to the next table's start.
+// bytes run from start to the next table's start; close is the offset just
+// past the header's closing bracket.
 type table struct {
 	path  []string
 	keys  []keyValue
 	start int
+	close int
 	array bool
 }
 
-// keyValue is one key = value line. value is the byte range of a string or
-// boolean value; other kinds are never rewritten and have from = -1.
+// keyValue is one key = value line. value is the byte range of a string,
+// boolean or integer value; other kinds are never rewritten and have from = -1.
 type keyValue struct {
 	path     []string
 	from, to int
@@ -43,20 +49,7 @@ func scan(data []byte) (*layout, error) {
 	parser.KeepComments = true
 	parser.Reset(data)
 	for parser.NextExpression() {
-		node := parser.Expression()
-		switch node.Kind {
-		case unstable.Comment:
-			l.comment(int(node.Raw.Offset))
-		case unstable.Table, unstable.ArrayTable:
-			path, first := keyPath(node)
-			l.tables = append(l.tables, table{path: path, start: l.lineStart(bytes.LastIndexByte(data[:first], '[')), array: node.Kind == unstable.ArrayTable})
-		case unstable.KeyValue:
-			l.keyValue(&parser, node)
-		case unstable.Invalid, unstable.Key, unstable.Array, unstable.InlineTable, unstable.String,
-			unstable.Bool, unstable.Float, unstable.Integer, unstable.LocalDate, unstable.LocalTime,
-			unstable.LocalDateTime, unstable.DateTime:
-			// Only comments, tables and key-value expressions occur at top level.
-		}
+		l.expression(&parser, parser.Expression())
 	}
 	if err := parser.Error(); err != nil {
 		return nil, fmt.Errorf("parse manifest: %w", err)
@@ -64,18 +57,51 @@ func scan(data []byte) (*layout, error) {
 	return l, nil
 }
 
-func keyPath(node *unstable.Node) ([]string, int) {
+func (l *layout) expression(parser *unstable.Parser, node *unstable.Node) {
+	switch node.Kind {
+	case unstable.Comment:
+		l.comment(int(node.Raw.Offset))
+		l.note(int(node.Raw.Offset), int(node.Raw.Offset+node.Raw.Length))
+	case unstable.Table, unstable.ArrayTable:
+		path, first, last := keyPath(node)
+		l.tables = append(l.tables, table{path: path, start: l.lineStart(bytes.LastIndexByte(l.data[:first], '[')), close: last + bytes.IndexByte(l.data[last:], ']') + 1, array: node.Kind == unstable.ArrayTable})
+	case unstable.KeyValue:
+		l.keyValue(parser, node)
+	case unstable.Invalid, unstable.Key, unstable.Array, unstable.InlineTable, unstable.String,
+		unstable.Bool, unstable.Float, unstable.Integer, unstable.LocalDate, unstable.LocalTime,
+		unstable.LocalDateTime, unstable.DateTime:
+		// Only comments, tables and key-value expressions occur at top level.
+	}
+	// A comment after a table header or key-value is chained to it.
+	if next := node.Next(); next != nil && next.Valid() && next.Kind == unstable.Comment {
+		l.note(int(next.Raw.Offset), int(next.Raw.Offset+next.Raw.Length))
+	}
+}
+
+// keyPath returns a key's segments, the offset of the first one and the
+// offset just past the last one.
+func keyPath(node *unstable.Node) ([]string, int, int) {
 	var path []string
-	first := -1
+	first, last := -1, -1
 	keys := node.Key()
 	for keys.Next() {
 		key := keys.Node()
 		if first < 0 {
 			first = int(key.Raw.Offset)
 		}
+		last = int(key.Raw.Offset + key.Raw.Length)
 		path = append(path, string(key.Data))
 	}
-	return path, first
+	return path, first, last
+}
+
+// note records a comment's range; a comment that ends the input is reported
+// without its leading #, so the range is widened back to it.
+func (l *layout) note(from, to int) {
+	for from > 0 && l.data[from] != '#' {
+		from--
+	}
+	l.notes = append(l.notes, note{from, to})
 }
 
 func (l *layout) comment(offset int) {
@@ -86,19 +112,19 @@ func (l *layout) comment(offset int) {
 }
 
 func (l *layout) keyValue(parser *unstable.Parser, node *unstable.Node) {
-	path, _ := keyPath(node)
+	path, _, _ := keyPath(node)
 	kv := keyValue{path: path, from: -1, to: -1}
 	value := node.Value()
 	switch value.Kind {
 	case unstable.String:
 		kv.from = int(value.Raw.Offset)
 		kv.to = kv.from + int(value.Raw.Length)
-	case unstable.Bool:
-		// Booleans carry no raw range; their data references the input.
+	case unstable.Bool, unstable.Integer:
+		// Booleans and integers carry no raw range; their data references the input.
 		r := parser.Range(value.Data)
 		kv.from, kv.to = int(r.Offset), int(r.Offset+r.Length)
 	case unstable.Invalid, unstable.Comment, unstable.Key, unstable.Table, unstable.ArrayTable,
-		unstable.KeyValue, unstable.Array, unstable.InlineTable, unstable.Float, unstable.Integer,
+		unstable.KeyValue, unstable.Array, unstable.InlineTable, unstable.Float,
 		unstable.LocalDate, unstable.LocalTime, unstable.LocalDateTime, unstable.DateTime:
 		// Other values are never rewritten.
 	}

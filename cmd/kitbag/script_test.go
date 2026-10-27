@@ -21,6 +21,7 @@ func TestScripts(t *testing.T) {
 	configureAPIScripts(&params)
 	params.Cmds["agentsschema"] = validatePlanCommand(namedSchema(t, "agents"))
 	params.Cmds["agentchangeschema"] = validatePlanCommand(namedSchema(t, "agent-change"))
+	params.Cmds["manifestupgradeschema"] = validatePlanCommand(namedSchema(t, "manifest-upgrade"))
 	params.Cmds["adoptschema"] = validatePlanCommand(namedSchema(t, "adopt"))
 	params.Cmds["configschema"] = validateConfigCommand(namedSchema(t, "config"))
 	params.Cmds["doctorschema"] = validatePlanCommand(namedSchema(t, "doctor"))
@@ -29,3 +30,8 @@ func TestScripts(t *testing.T) {
 	params.Cmds["planschema"] = validatePlanCommand(planSchema(t))
 	testscript.Run(t, params)
 }
+
+// testVersion lets a script run the test binary as a release version
+// (KITBAG_TEST_VERSION), as min_tool_version checks need; it exists only in
+// the test binary.
+func testVersion() { version = e2e.TestVersion(version) }

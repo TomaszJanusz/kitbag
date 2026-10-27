@@ -90,10 +90,13 @@ func instancesRule(schema int64) *rule {
 		"settings": {kind: "boolean"}, "roots": dictionary(primitiveRule(), pathRule("home"), 1),
 		"primitives": primitivesRule(),
 	}
+	instance := object(properties, "dir")
 	if schema >= schemaInstanceHosts {
 		properties["hosts"] = hostsRule()
+	} else {
+		instance.refused = map[string]string{"hosts": "'hosts' on an instance needs manifest schema 2; preview the conversion with kitbag manifest upgrade --dry-run"}
 	}
-	return dictionary(textRule(namePattern), object(properties, "dir"), 1)
+	return dictionary(textRule(namePattern), instance, 1)
 }
 
 func hostsRule() *rule { return array(textRule(hostPattern), 1, true) }

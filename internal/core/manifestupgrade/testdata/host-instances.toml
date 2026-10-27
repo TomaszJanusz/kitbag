@@ -1,0 +1,33 @@
+# Schema-1 host overrides: a host's instance table replaces the target's set.
+schema = 1
+
+[targets.claude]
+agent = "claude"
+settings = "claude/settings.json"
+
+[targets.claude.instances.main]
+dir = "~/.claude"
+
+# Only some machines have this second account.
+[targets.claude.instances.second]
+dir = "~/.claude_2"
+settings = false
+
+[targets.codex]
+agent = "codex"
+
+[hosts.mac]
+mode = "copy"
+
+[hosts.runner02.targets.claude.instances.main]
+dir = "~/.claude"
+
+[hosts.runner02.targets.claude.instances.work]
+dir = "~/.claude-work"
+mode = "copy"
+
+[hosts.runner02.targets.codex]
+enabled = false
+
+[hosts.ci.targets.codex.instances.main]
+dir = "~/.codex"

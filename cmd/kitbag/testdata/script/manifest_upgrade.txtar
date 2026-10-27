@@ -1,0 +1,166 @@
+# kitbag manifest upgrade against a local bare remote in the throwaway HOME.
+[windows] stop 'Windows refuses commands before 1.x'
+env KITBAG_CONFIG=$WORK/machine.toml
+env KITBAG_HOST=test
+env CLAUDE_CONFIG_DIR=
+env CODEX_HOME=
+env GEMINI_CLI_HOME=
+env XDG_CONFIG_HOME=
+env XDG_DATA_HOME=
+env XDG_STATE_HOME=
+env XDG_CACHE_HOME=
+env KITBAG_TEST_VERSION=0.1.4
+gitremote $WORK/config.git seed
+exec git clone --quiet $WORK/config.git $HOME/checkout
+exec git -C $HOME/checkout config user.name 'Agent Owner'
+exec git -C $HOME/checkout config user.email owner@example.com
+agentdirs .claude
+exec kitbag sync
+exists $HOME/.claude/CLAUDE.md
+
+# A preview writes nothing, lists every conversion and the readiness warning.
+exec kitbag manifest upgrade --dry-run
+stdout '^Upgrade: manifest schema 1 to 2$'
+stdout '^  - set schema = 2$'
+stdout '^  - set min_tool_version = 0\.1\.4, the first release that reads schema 2$'
+stdout '^  - move instance second of \[hosts\.mac\.targets\.claude\.instances\] to \[targets\.claude\.instances\.second\] with hosts = \[mac\]$'
+stdout '^\+hosts = \["mac"\]$'
+stdout '^Checked hosts: mac, kitbag-undeclared-host '
+stdout '^Commit: chore\(kitbag\): upgrade manifest to schema 2$'
+stdout '^publish: direct push to main$'
+stderr 'every machine that syncs this repository must run kitbag 0\.1\.4 or later before this change is published'
+cmp $HOME/checkout/kitbag.toml seed/kitbag.toml
+exec kitbag manifest upgrade --dry-run --json
+manifestupgradeschema stdout
+stdout '"manifest_upgrade_schema": 1'
+stdout '"state": "dry_run"'
+stdout '"schema_before": 1'
+
+# Safety rules: no terminal without --yes, no host scope, JSON needs --yes,
+# a dirty working copy is refused, an ambiguous layout is refused.
+execstatus 2 kitbag manifest upgrade
+stderr 'needs a terminal; pass --yes or --dry-run'
+execstatus 2 kitbag --host mac manifest upgrade --yes
+stderr 'shared by every host'
+execstatus 2 kitbag manifest upgrade --json
+stderr '--json needs --yes or --dry-run'
+cp ambiguous.toml $HOME/checkout/kitbag.toml
+execstatus 2 kitbag manifest upgrade --dry-run
+stderr 'name the same directory ~/\.claude; use one name for it by hand first'
+execstatus 2 kitbag manifest upgrade --yes
+stderr 'has local changes'
+exec git -C $HOME/checkout checkout --quiet -- kitbag.toml
+env KITBAG_TEST_VERSION=0.1.3
+exec kitbag manifest upgrade --dry-run
+stderr 'this kitbag \(0\.1\.3\) could not read the upgraded manifest'
+execstatus 4 kitbag manifest upgrade --yes
+stderr 'update this machine first'
+env KITBAG_TEST_VERSION=0.1.4
+cmp $HOME/checkout/kitbag.toml seed/kitbag.toml
+
+# Upgrade: one commit on the remote, comments kept, then synchronized without
+# changes, because every host keeps its active instances.
+exec kitbag manifest upgrade --yes
+stdout '^published upgrade manifest to schema 2 to main as [0-9a-f]{12}$'
+cmp $HOME/checkout/kitbag.toml want/upgraded.toml
+exec git -C $WORK/config.git log -1 --format=%B main
+cmp stdout want/message
+exec git -C $HOME/checkout status --porcelain --branch
+stdout '^## main\.\.\.origin/main$'
+exec kitbag sync
+nooutput
+env KITBAG_HOST=mac
+exec kitbag plan
+stdout '\.claude_2'
+
+# A development build cannot read the result, so it refuses to publish an
+# upgrade (exit 4) and stops syncing an upgraded manifest.
+env KITBAG_TEST_VERSION=
+execstatus 4 kitbag sync --no-pull
+stderr 'manifest requires kitbag 0\.1\.4; running 0\.0\.0-dev'
+env KITBAG_TEST_VERSION=0.1.4
+
+# A second upgrade has nothing to do.
+env KITBAG_HOST=test
+exec kitbag manifest upgrade --yes
+stdout 'already uses manifest schema 2; nothing to do\.$'
+exec kitbag manifest upgrade --dry-run --json
+stdout '"already_current": true'
+
+-- machine.toml --
+schema=1
+[repo]
+url="local-config"
+path="~/checkout"
+branch="main"
+-- seed/kitbag.toml --
+# Shared agent configuration.
+schema = 1
+
+[instructions]
+# Loaded by every agent.
+source = "rules.md"
+
+[targets.claude]
+agent = "claude"
+
+[targets.claude.instances.main]
+dir = "~/.claude"
+
+# mac also has a second account.
+[hosts.mac.targets.claude.instances.main]
+dir = "~/.claude"
+
+[hosts.mac.targets.claude.instances.second]
+dir = "~/.claude_2" # the second login
+
+# Publish straight to main.
+[publish]
+mode = "direct"
+-- seed/rules.md --
+Shared rules.
+-- ambiguous.toml --
+schema = 1
+[instructions]
+source = "rules.md"
+[targets.claude]
+agent = "claude"
+[targets.claude.instances.main]
+dir = "~/.claude"
+[hosts.mac.targets.claude.instances.other]
+dir = "~/.claude"
+-- want/upgraded.toml --
+# Shared agent configuration.
+schema = 2
+min_tool_version = "0.1.4"
+
+[instructions]
+# Loaded by every agent.
+source = "rules.md"
+
+[targets.claude]
+agent = "claude"
+
+[targets.claude.instances.main]
+dir = "~/.claude"
+
+# mac also has a second account.
+
+[targets.claude.instances.second]
+dir = "~/.claude_2" # the second login
+hosts = ["mac"]
+
+# Publish straight to main.
+[publish]
+mode = "direct"
+-- want/message --
+chore(kitbag): upgrade manifest to schema 2
+
+- set schema = 2
+- set min_tool_version = 0.1.4, the first release that reads schema 2
+- drop [hosts.mac.targets.claude.instances.main], which repeats the target's instance
+- move instance second of [hosts.mac.targets.claude.instances] to [targets.claude.instances.second] with hosts = [mac]
+
+Kitbag-Host: test
+Kitbag-Op: manifest.upgrade
+

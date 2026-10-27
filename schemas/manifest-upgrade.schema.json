@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kitbag.sh/schemas/manifest-upgrade.schema.json",
+  "title": "KitBag manifest upgrade (manifest_upgrade_schema 1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_upgrade_schema",
+    "dry_run",
+    "manifest",
+    "upgrade",
+    "publication",
+    "sync"
+  ],
+  "properties": {
+    "manifest_upgrade_schema": {
+      "const": 1
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "manifest": {
+      "type": "string",
+      "minLength": 1
+    },
+    "revision_after": {
+      "$ref": "#/$defs/revision"
+    },
+    "upgrade": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision",
+        "title",
+        "message",
+        "min_tool_version",
+        "conversions",
+        "diff",
+        "warnings",
+        "checked_hosts",
+        "schema_before",
+        "already_current"
+      ],
+      "properties": {
+        "revision": {
+          "$ref": "#/$defs/revision"
+        },
+        "title": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "min_tool_version": {
+          "type": "string"
+        },
+        "conversions": {
+          "description": "One line per change the upgrade makes, in order.",
+          "$ref": "#/$defs/strings"
+        },
+        "diff": {
+          "description": "Unified diff of kitbag.toml, one line per entry.",
+          "$ref": "#/$defs/strings"
+        },
+        "warnings": {
+          "$ref": "#/$defs/strings"
+        },
+        "checked_hosts": {
+          "description": "Hosts whose active instances were compared before and after, including one the file does not name.",
+          "$ref": "#/$defs/strings"
+        },
+        "schema_before": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "already_current": {
+          "type": "boolean"
+        }
+      }
+    },
+    "publication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "mode",
+        "branch",
+        "next",
+        "attempts"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "",
+            "dry_run",
+            "published",
+            "not_published",
+            "manual",
+            "conflict"
+          ]
+        },
+        "mode": {
+          "enum": [
+            "",
+            "direct",
+            "pr"
+          ]
+        },
+        "branch": {
+          "type": "string"
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40,64}$"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "next": {
+          "$ref": "#/$defs/strings"
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        }
+      },
+      "description": "How the upgrade reached the repository; state is empty when the manifest already used schema 2."
+    },
+    "sync": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "exit_code",
+            "changed",
+            "warnings"
+          ],
+          "properties": {
+            "exit_code": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "changed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "warnings": {
+              "$ref": "#/$defs/strings"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "revision": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "strings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

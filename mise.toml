@@ -53,6 +53,7 @@ run = [
   "go test -race -shuffle=on -count=1 ./...",
   "go test ./pkg/manifest -run=^$ -fuzz=^FuzzParse$ -fuzztime=2s -parallel=2",
   "go test ./internal/core/manifestedit -run=^$ -fuzz=^FuzzApply$ -fuzztime=2s -fuzzminimizetime=1s -parallel=2",
+  "go test ./internal/core/manifestupgrade -run=^$ -fuzz=^FuzzUpgrade$ -fuzztime=2s -fuzzminimizetime=1s -parallel=2",
   "bash scripts/manifest-api.sh",
   "govulncheck ./...",
   "typos",

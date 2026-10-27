@@ -84,7 +84,7 @@ func TestSchema1HostTablesStillReplace(t *testing.T) {
 	t.Parallel()
 	head, _, _ := strings.Cut(schema2Body, "[hosts.")
 	body := strings.Replace(head, "schema = 2", "schema = 1", 1)
-	if _, err := manifest.Parse("kitbag.toml", []byte(body)); err == nil || !strings.Contains(err.Error(), "/targets/claude/instances/second/hosts: additional properties 'hosts' not allowed") {
+	if _, err := manifest.Parse("kitbag.toml", []byte(body)); err == nil || !strings.Contains(err.Error(), "/targets/claude/instances/second/hosts: 'hosts' on an instance needs manifest schema 2") {
 		t.Fatalf("schema 1 accepted instance hosts: %v", err)
 	}
 	// The same host tables are replacement sets in schema 1: they need a dir.

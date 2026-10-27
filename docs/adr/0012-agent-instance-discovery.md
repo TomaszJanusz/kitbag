@@ -739,8 +739,15 @@ and `AgentForm` models and the terminal Agents screens).
   and `publish.message` are not part of schema 2 as shipped; they belong to the
   publication queue (PRs 7–11) and need a decision on whether they wait for a
   schema 3 or are added to schema 2 before any file is upgraded.
-- **Remaining:** `kitbag manifest upgrade` and `agent add/edit --hosts` (PRs 12
-  and 13, on the V1 slice's direct publication instead of the queue), the
+- **`kitbag manifest upgrade` (PR 12), 2026-10-27:** implemented on the V1
+  slice's direct publication instead of the queue, with new
+  `internal/core/manifestedit` edits (schema keys, host patches, moving and
+  dropping host tables) and `internal/core/manifestupgrade`; writes
+  `min_tool_version = "0.1.4"`. **Deviations:** the preview does not read
+  `Kitbag-Version` trailers for per-host readiness (it prints a fixed warning
+  instead); the command refuses to publish when the running tool is older than
+  the `min_tool_version` it writes.
+- **Remaining:** `agent add/edit --hosts` (PR 13, on the V1 slice), the
   hosts step in the API, models and terminal wizard (PRs 14–16), and the
   publication queue, `kitbag push` and `pr` mode (PRs 7–11, 17).
 

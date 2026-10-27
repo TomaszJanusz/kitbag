@@ -40,6 +40,11 @@ require a repository URL. An explicit missing config is an error.
   (direct push, or printed instructions for `pr`), release a dropped directory
   by the unmanage rules and sync. `--json` emits `agent_change_schema: 1`. See
   [agent edits](agents.md#add-edit-and-remove-instances).
+- `manifest upgrade`: convert the shared `kitbag.toml` from schema 1 to 2
+  losslessly, preview first, then commit and publish like the agent edits.
+  `--json` emits `manifest_upgrade_schema: 1`. Every machine must run the
+  release that reads schema 2 before the upgrade is published; see
+  [upgrading to schema 2](manifest.md#upgrading-to-schema-2).
 - `sync`: hold the state lock, fetch and fast-forward a clean clone, read the new
   manifest, check `min_tool_version`, resolve host/mode, recover pending work,
   build **one** plan, execute **once**, then ensure Git includes and record the
