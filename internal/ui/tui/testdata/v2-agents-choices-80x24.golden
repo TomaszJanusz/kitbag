@@ -8,11 +8,11 @@
   | Step 1/7                                                                 |
   |                                                                          |
   | Choose the agent this configuration directory belongs to.                |
-  | > (*) claude                                                             |
+  |   (*) claude                                                             |
   |   ( ) codex                                                              |
   |   ( ) gemini                                                             |
   |   ( ) opencode                                                           |
   |   ( ) generic                                                            |
   |                                                                          |
-  |                           [ Cancel ]   [ Back (unavailable) ]   [ Next ] |
+  |                                                    [ Cancel ] > [ Next ] |
   +--------------------------------------------------------------------------+

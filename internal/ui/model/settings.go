@@ -293,11 +293,21 @@ func (m *Settings) updateControl(msg Msg) {
 }
 
 func (f *field) actions(known bool) []Control {
-	return []Control{
-		{Intent: SaveSetting{Key: f.key.Path}, Label: text.New(text.ActionSave), Enabled: known && f.canSave()},
-		{Intent: UnsetSetting{Key: f.key.Path}, Label: text.New(text.ActionUnset), Enabled: known && !f.saving && f.current.Source == SourceFile},
-		{Intent: RevertSetting{Key: f.key.Path}, Label: text.New(text.ActionRevert), Enabled: !f.saving && f.draft != f.current.Value},
+	if !known || f.saving {
+		return nil
 	}
+	var actions []Control
+	if f.draft != f.current.Value {
+		// Keep disabled Save beside validation so its restriction is visible.
+		actions = append(actions, Control{Intent: SaveSetting{Key: f.key.Path}, Label: text.New(text.ActionSave), Enabled: f.canSave()})
+	}
+	if f.current.Source == SourceFile {
+		actions = append(actions, Control{Intent: UnsetSetting{Key: f.key.Path}, Label: text.New(text.ActionUnset), Enabled: true})
+	}
+	if f.draft != f.current.Value {
+		actions = append(actions, Control{Intent: RevertSetting{Key: f.key.Path}, Label: text.New(text.ActionRevert), Enabled: true})
+	}
+	return actions
 }
 
 func (m *Settings) requestUnset(key string) {

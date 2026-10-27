@@ -294,13 +294,15 @@ func agentActions(e *agentEntry) []Control {
 			remove = OpenAgentForm{Op: AgentRemove, Kind: i.Kind, Target: i.Target, Name: i.Name, Dir: i.Dir}
 		}
 	}
-	return []Control{
-		{Intent: add, Label: text.New(text.ActionAddAgent), Enabled: true},
-		{Intent: edit, Label: text.New(text.ActionEditAgent), Enabled: declared},
-		{Intent: remove, Label: text.New(text.ActionRemoveAgent), Enabled: declared},
-		{Intent: ProbeAgents{}, Label: text.New(text.ActionProbeAgents), Enabled: true},
-		{Intent: Refresh{}, Label: text.New(text.ActionRefresh), Enabled: true},
+	actions := []Control{{Intent: add, Label: text.New(text.ActionAddAgent), Enabled: true}}
+	if declared {
+		actions = append(actions,
+			Control{Intent: edit, Label: text.New(text.ActionEditAgent), Enabled: true},
+			Control{Intent: remove, Label: text.New(text.ActionRemoveAgent), Enabled: true})
 	}
+	return append(actions,
+		Control{Intent: ProbeAgents{}, Label: text.New(text.ActionProbeAgents), Enabled: true},
+		Control{Intent: Refresh{}, Label: text.New(text.ActionRefresh), Enabled: true})
 }
 
 // AgentSourceText describes where a directory comes from.
