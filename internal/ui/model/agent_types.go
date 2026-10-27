@@ -109,13 +109,21 @@ type AgentPublication struct {
 	Attempts                     int
 }
 
-// AgentPreview is a planned change that was not written. Revision identifies
-// the manifest it was made from; pass it to ApplyAgentChange.
+// AgentEffect is one planned filesystem consequence, without content.
+type AgentEffect struct {
+	Path, Kind, Backup, Warning string
+	Existing                    bool
+}
+
+// AgentPreview is a planned change with the authoritative manifest path and
+// filesystem effects. Pass its Revision to ApplyAgentChange.
 type AgentPreview struct {
-	Change   AgentChange
-	Revision string
-	Title    string
-	Message  string
+	Manifest, Directory string
+	Effects             []AgentEffect
+	Change              AgentChange
+	Revision            string
+	Title               string
+	Message             string
 	// Dropped is the ~/ directory the change stops declaring, if any.
 	Dropped     string
 	Diff        []string
@@ -156,6 +164,7 @@ type (
 	OpenAgentForm struct {
 		Op                      AgentOp
 		Kind, Target, Name, Dir string
+		Adopt                   bool
 	}
 	// EditAgentField replaces the current step's text (name or directory).
 	EditAgentField struct{ Value string }

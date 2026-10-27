@@ -18,7 +18,7 @@ Hosts            all hosts
 On this host     active on this host
 Settings         merges shared settings
 Next sync        installs the shared configuration here
-↑/↓: select · Enter: edit · a: add · d: remove · p: look for more
+↑/↓: select · Enter: edit/adopt · a: add/adopt · d: remove · p: look for more
   [ Add agent ]  [ Edit ]  [ Remove ]  [ Look for more directories ]
   [ Refresh ]
 esc back · ? help · q home

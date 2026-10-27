@@ -76,13 +76,15 @@ type AgentResult struct {
 	// Sync is set after a published change was synchronized.
 	Sync *AgentSync `json:"sync"`
 	// SyncResult is the full sync report for human output.
-	SyncResult        *SyncResult `json:"-"`
-	Manifest          string      `json:"manifest"`
-	RevisionAfter     string      `json:"revision_after,omitempty"`
-	Plan              agents.Plan `json:"plan"`
-	Publication       Publication `json:"publication"`
-	AgentChangeSchema int         `json:"agent_change_schema"`
-	DryRun            bool        `json:"dry_run"`
+	SyncResult        *SyncResult   `json:"-"`
+	Effects           []AgentEffect `json:"effects"`
+	Directory         string        `json:"directory,omitempty"`
+	Manifest          string        `json:"manifest"`
+	RevisionAfter     string        `json:"revision_after,omitempty"`
+	Plan              agents.Plan   `json:"plan"`
+	Publication       Publication   `json:"publication"`
+	AgentChangeSchema int           `json:"agent_change_schema"`
+	DryRun            bool          `json:"dry_run"`
 }
 
 // Code is the result's exit classification: a sync's code, 1 when the change
@@ -150,7 +152,7 @@ func (s Service) previewAgent(ctx context.Context, change agents.Change, opts Ag
 	result.Publication.Mode, result.Publication.Branch = policy.Mode, policy.Branch
 	result.Publication.State = PublishPreview
 	result.RevisionAfter = agents.Revision(result.Plan.After)
-	return nil
+	return s.agentEffects(result)
 }
 
 // agentPlan reads the manifest and prepares change against it.
@@ -295,15 +297,7 @@ func (s Service) dropped(dir string) (func(string) bool, error) {
 	if err != nil {
 		return nil, err
 	}
-	kept := map[string]bool{}
-	for _, d := range after {
-		kept[d.Path] = true
-	}
-	root := config.Expand(home, dir)
-	return func(path string) bool {
-		rel, relErr := filepath.Rel(root, path)
-		return relErr == nil && filepath.IsLocal(rel) && !kept[path]
-	}, nil
+	return droppedPaths(config.Expand(home, dir), after), nil
 }
 
 func released(dir string, outcome undo.Outcome) *AgentRelease {

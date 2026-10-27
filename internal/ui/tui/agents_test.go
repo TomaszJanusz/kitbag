@@ -48,7 +48,9 @@ func TestAgentsAddWizardFlow(t *testing.T) {
 	s.press("shift+tab", "shift+tab", "shift+tab", keyEnter)
 	s.waitFor("(*) Do not merge shared settings")
 	s.press(keyEnter)
-	s.waitFor("Step 5/7", "+dir = \"~/.claude-new\"")
+	s.waitFor("Step 5/7", "Local configuration directory")
+	s.press(keyPageDown)
+	s.waitFor("+dir = \"~/.claude-new\"")
 	s.press(keyEnter)
 	s.waitFor("Step 6/7", "> [ Apply ]")
 	s.press(keyEnter)
@@ -111,7 +113,9 @@ func TestAgentsBusyWhileApplying(t *testing.T) {
 	s.press("5")
 	s.waitFor("claude/second")
 	s.press(keyDown, keyRemove)
-	s.waitFor("Step 1/3", "-[targets.claude.instances.second]")
+	s.waitFor("Step 1/3", "Edit the shared manifest")
+	s.press(keyPageDown)
+	s.waitFor("-[targets.claude.instances.second]")
 	s.press(keyEnter)
 	s.waitFor("Step 2/3", "> [ Apply ]")
 	s.press(keyEnter)
@@ -340,7 +344,7 @@ func TestAgentsMouse(t *testing.T) {
 	d.refuse("Step 1/3")
 	d.clickText("[ Look for more directories ]")
 	d.expect("/home/user/.claude_3")
-	d.clickText("[ Add agent ]")
+	d.clickText("[ Add this directory ]")
 	d.expect("Step 1/7")
 	d.clickText("( ) codex")
 	d.expect("(*) codex")
@@ -368,7 +372,7 @@ func TestAgentsWindowScrollsLongPreview(t *testing.T) {
 	d.press("5", keyDown, keyEnter, keyNext, "~/.claude_9", keyEnter, keyEnter)
 	d.expect("Step 3/5", "scroll ↑/↓")
 	d.refuse(`+dir = "~/.claude_9"`)
-	d.press(keyPageDown)
+	d.press(keyPageDown, keyPageDown, keyPageDown)
 	d.expect(`+dir = "~/.claude_9"`)
 	d.send(tea.MouseMsg{X: 30, Y: 10, Button: tea.MouseButtonWheelUp, Action: tea.MouseActionPress})
 	d.press(keyPageUp)
@@ -420,4 +424,69 @@ func TestAgentWizardTypingKeepsFocusAndCursorWhenNextBecomesValid(t *testing.T) 
 	d.expect("Step 2/7", "> [ Next ]")
 	d.press(keyNext, "s")
 	d.expect("Instance name: > works")
+}
+
+func TestAgentsAdoptFoundDirectory(t *testing.T) {
+	t.Parallel()
+	for _, trigger := range []string{"enter", "double-click", "button"} {
+		t.Run(trigger, func(t *testing.T) {
+			t.Parallel()
+			d := drive(t, withAgents(newFake()), 120, 35)
+			d.press("5", keyProbe)
+			d.clickText("/home/user/.claude_3")
+			d.refuse("[ Edit", "[ Remove")
+			switch trigger {
+			case "enter":
+				d.press(keyEnter)
+			case "double-click":
+				d.clickText("> /home/user/.claude_3")
+			case "button":
+				d.clickText("[ Add this directory ]")
+			}
+			d.expect("Adopt claude at /home/user/.claude_3", "Step 1/5", "Instance name")
+			d.walkAdoptToPreview()
+			d.expect("Step 3/5", "+dir = \"~/.claude_3\"")
+			d.golden("agents-adopt-preview-" + trigger)
+			_, previews, applies := d.client.agents.calls()
+			if len(previews) != 1 || previews[0].Kind != "claude" || previews[0].Dir != "/home/user/.claude_3" || len(applies) != 0 {
+				t.Fatalf("candidate lost: previews=%+v applies=%v", previews, applies)
+			}
+			d.advanceToPrimary(model.AgentStepConfirm)
+		})
+	}
+}
+
+// expectPrimaryFocus fails unless the focused control is the last, enabled
+// button of the top window, which is the wizard's primary action.
+func (d *driver) expectPrimaryFocus(step model.AgentStep) {
+	d.t.Helper()
+	w := d.m.windows.top()
+	if w == nil {
+		d.t.Fatalf("step %s: no window", step)
+	}
+	index := w.focus - w.buttons()
+	if index != len(w.view.Buttons)-1 || index < 0 || !w.view.Buttons[index].Enabled {
+		d.t.Fatalf("step %s focused %d, want enabled primary button", step, w.focus)
+	}
+}
+
+// walkAdoptToPreview types the instance name and walks the adopt wizard to its
+// preview, checking the primary button holds focus on every step after the
+// field the user typed in.
+func (d *driver) walkAdoptToPreview() {
+	d.t.Helper()
+	d.press("work")
+	d.advanceToPrimary(model.AgentStepSettings)
+	d.advanceToPrimary(model.AgentStepPreview)
+}
+
+// advanceToPrimary presses Enter and expects the wizard on step with its
+// primary button focused.
+func (d *driver) advanceToPrimary(step model.AgentStep) {
+	d.t.Helper()
+	d.press(keyEnter)
+	if d.step() != step {
+		d.t.Fatalf("step %s, want %s", d.step(), step)
+	}
+	d.expectPrimaryFocus(step)
 }

@@ -90,7 +90,8 @@ func formBody(v AgentFormView) []DialogLine {
 
 // previewBody shows the commit and route; the preview step adds the diff.
 func previewBody(p AgentPreviewView, diff bool) []DialogLine {
-	body := []DialogLine{{Text: p.Commit}, {Text: p.Route}}
+	body := lines(ToneNormal, p.Summary)
+	body = append(body, DialogLine{Text: p.Commit}, DialogLine{Text: p.Route})
 	if len(p.Next) > 0 {
 		body = append(body, DialogLine{Text: text.New(text.WizardNextCommands), Tone: ToneHeading})
 		body = append(body, lines(ToneCode, p.Next)...)

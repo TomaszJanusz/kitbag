@@ -416,7 +416,9 @@ as a/e/d/p. The detail keeps its key hint and warnings. Below 100 columns the
 panes stack; short screens reserve space for the selected row and its states,
 with actions still at the bottom. Only the declared instances of a
 target can be edited or removed; the implicit default and found directories offer
-Add, which a found directory prefills with its kind and directory.
+Add for an implicit default, or **Add this directory** for a found directory.
+Edit and Remove are hidden for both. Enter and a second click adopt a found
+directory with its kind and directory prefilled, skipping those known steps.
 
 **Wizard.** `a`, `e` (or Enter, or a second click on the selected row) and `d`
 open the model's form as a wide modal window titled with the operation and the
@@ -600,3 +602,25 @@ and forwards keys. Refresh runs locally through the service core rather than an 
 the daemon being restarted, so older API v1 daemons can be repaired too. Matching
 or uninstalled services have no repair action. No repair runs before confirmation;
 ordinary **r** only reloads views. A failed repair remains visible and retryable.
+
+### Adopting a found directory
+
+Select a **found, not declared** directory and press Enter, double-click its
+row, or click **Add this directory**. The add wizard retains its agent type
+and directory and starts at the name step when those known values are valid.
+Back returns through the shortened steps without losing the candidate. Invalid
+prefilled paths retain the full sequence so they can be corrected. Edit and
+Remove are hidden for found directories and implicit defaults.
+
+### Preview consequences
+
+**What will change** starts with sentences naming the exact `kitbag.toml` in
+the repository clone, the commit/push branch and all-host declaration scope,
+and the local directory. It lists the sync and release planner's current
+writes, replacements, backups, skipped/unchanged entries, deletions, restores
+and changed outputs retained in place. A dropped directory and unowned files
+stay. The raw manifest diff follows the summary; use PgUp/PgDn or the wheel
+when it does not fit. Apply rechecks files, and other hosts plan from their
+own contents. Pull request mode explicitly says Apply writes no manifest,
+commits nothing and does not sync. Older daemons without file effects say
+those details are unavailable.

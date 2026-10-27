@@ -326,10 +326,12 @@ const (
 	AgentsDetailScope     Key = "agents.detail.scope"
 	AgentsDetailState     Key = "agents.detail.state"
 	AgentsDetailSettings  Key = "agents.detail.settings"
+	ActionAdoptAgent      Key = "action.adopt_agent"
 	ActionAddAgent        Key = "action.add_agent"
 	ActionEditAgent       Key = "action.edit_agent"
 	ActionRemoveAgent     Key = "action.remove_agent"
 	ActionProbeAgents     Key = "action.probe_agents"
+	WizardTitleAdopt      Key = "wizard.title.adopt"
 	WizardTitleAdd        Key = "wizard.title.add"
 	WizardTitleEdit       Key = "wizard.title.edit"
 	WizardTitleRemove     Key = "wizard.title.remove"
@@ -402,7 +404,7 @@ const (
 // English returns the default catalog, including plain-language setting descriptions.
 func English() Catalog {
 	catalog := make(Catalog)
-	for _, section := range [][]entry{statusText(), outcomeText(), driftText(), formText(), terminalText(), homeText(), agentsText(), wizardText(), settingDescriptions()} {
+	for _, section := range [][]entry{statusText(), outcomeText(), driftText(), formText(), terminalText(), homeText(), agentsText(), wizardText(), previewText(), settingDescriptions()} {
 		for _, e := range section {
 			catalog[e.key] = e.template
 		}
@@ -673,3 +675,28 @@ func homeText() []entry {
 
 // StatusServiceRecovering identifies the bounded supervisor recovery notice.
 const StatusServiceRecovering Key = "status.service_recovering"
+
+// Agent preview consequence messages.
+const (
+	WizardPublicationUnavailable Key = "wizard.summary.publication_unavailable"
+	WizardPreviewSnapshot        Key = "wizard.summary.snapshot"
+	WizardEffectForget           Key = "wizard.summary.forget"
+	WizardManifestPath           Key = "wizard.summary.manifestpath"
+	WizardPublishDirect          Key = "wizard.summary.publishdirect"
+	WizardPublishManual          Key = "wizard.summary.publishmanual"
+	WizardLocalDirectory         Key = "wizard.summary.localdirectory"
+	WizardRetainedDirectory      Key = "wizard.summary.retaineddirectory"
+	WizardEffectsUnavailable     Key = "wizard.summary.effectsunavailable"
+	WizardNoEffects              Key = "wizard.summary.noeffects"
+	WizardEffectBackup           Key = "wizard.summary.effectbackup"
+	WizardEffectCreate           Key = "wizard.summary.effectcreate"
+	WizardEffectReplace          Key = "wizard.summary.effectreplace"
+	WizardEffectMerge            Key = "wizard.summary.effectmerge"
+	WizardEffectDelete           Key = "wizard.summary.effectdelete"
+	WizardEffectRestore          Key = "wizard.summary.effectrestore"
+	WizardEffectUnmerge          Key = "wizard.summary.effectunmerge"
+	WizardEffectRelease          Key = "wizard.summary.effectrelease"
+	WizardEffectSkip             Key = "wizard.summary.effectskip"
+	WizardEffectUnchanged        Key = "wizard.summary.effectunchanged"
+	WizardEffectUnknown          Key = "wizard.summary.effectunknown"
+)

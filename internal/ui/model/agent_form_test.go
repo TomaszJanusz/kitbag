@@ -85,7 +85,7 @@ func TestAgentFormAddPath(t *testing.T) {
 	expect(t, c.Op == AgentAdd && c.Kind == "claude" && c.Name == "work" && c.Dir == "/home/u/.claude-work" && c.Settings != nil && !*c.Settings, "change=%+v", c)
 	expect(t, m.View().Busy && !m.View().Next.Enabled, "previewing must disable next")
 	m.Update(AgentPreviewed{Seq: preview.Seq, Preview: AgentPreview{Revision: "r1", Title: "chore(kitbag): add", Diff: []string{"+x"}, Dropped: "~/.old", Publication: AgentPublication{Mode: "direct", Branch: "main"}}})
-	expect(t, render(m.View().Preview.Route) == "Published directly to main.", "route")
+	expect(t, render(m.View().Preview.Route) == "Publication route: direct push to main.", "route")
 	checkForm(t, m)
 	checkConfirm(t, m)
 }
@@ -259,4 +259,24 @@ func TestAgentFormEdit(t *testing.T) {
 	preview := as[PreviewAgent](t, only(t, m.Update(AgentFormNext{})))
 	expect(t, preview.Change.Op == AgentEdit && preview.Change.Dir == "" && *preview.Change.Settings, "edit change=%+v", preview.Change)
 	checkForm(t, m)
+}
+
+func TestAgentFormAdoptionSkipsKnownStepsAndBack(t *testing.T) {
+	t.Parallel()
+	m, _ := openForm(t, OpenAgentForm{Op: AgentAdd, Adopt: true, Kind: "claude", Dir: "/home/u/.claude-work"})
+	expect(t, m.View().Step == AgentStepName && len(m.View().Steps) == 5, "adoption steps %+v", m.View().Steps)
+	m.Update(EditAgentField{Value: "work"})
+	m.Update(AgentFormNext{})
+	expect(t, m.View().Step == AgentStepSettings, "known directory was not skipped")
+	m.Update(AgentFormBack{})
+	expect(t, m.View().Step == AgentStepName && m.View().Field == "work", "back lost name")
+	m.Update(AgentFormNext{})
+	cmd := as[PreviewAgent](t, only(t, m.Update(AgentFormNext{})))
+	expect(t, cmd.Change.Kind == "claude" && cmd.Change.Dir == "/home/u/.claude-work", "lost candidate %+v", cmd.Change)
+}
+
+func TestAgentFormAdoptionDoesNotSkipInvalidDirectory(t *testing.T) {
+	t.Parallel()
+	m, _ := openForm(t, OpenAgentForm{Op: AgentAdd, Adopt: true, Kind: "claude", Dir: "/srv/claude"})
+	expect(t, m.View().Step == AgentStepKind && len(m.View().Steps) == 7, "invalid directory skipped validation")
 }
