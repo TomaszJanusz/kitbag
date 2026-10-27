@@ -747,8 +747,17 @@ and `AgentForm` models and the terminal Agents screens).
   `Kitbag-Version` trailers for per-host readiness (it prints a fixed warning
   instead); the command refuses to publish when the running tool is older than
   the `min_tool_version` it writes.
-- **Remaining:** `agent add/edit --hosts` (PR 13, on the V1 slice), the
-  hosts step in the API, models and terminal wizard (PRs 14–16), and the
+- **`agent add/edit --hosts` (PR 13), 2026-10-27:** on the V1 slice's direct
+  publication. `add --hosts`, `edit --hosts` and `edit --all-hosts` write or
+  delete the instance's `hosts` list (new `manifestedit` operation
+  `SetInstanceHosts`); on a schema-1 manifest a hosts list is refused (exit 2)
+  with the hint to preview `kitbag manifest upgrade`, never written as schema
+  2. Unknown host names warn. Sync adds one warning per missing listed
+  instance with the fix hint, and doctor's Instances fix names it too.
+  **Deviation:** no `--this-host` flag yet (the TUI fills this machine's name),
+  and `remove --this-host` is not implemented.
+- **Remaining:** the hosts step in the API, models and terminal wizard (PRs
+  14–16), and the
   publication queue, `kitbag push` and `pr` mode (PRs 7–11, 17).
 
 ## Consequences

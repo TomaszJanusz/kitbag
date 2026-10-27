@@ -90,3 +90,49 @@ func TestHostEditRefusals(t *testing.T) {
 		})
 	}
 }
+
+// TestSetInstanceHosts rewrites, adds and deletes an instance's hosts list
+// and changes nothing else in the file.
+func TestSetInstanceHosts(t *testing.T) {
+	t.Parallel()
+	head := "# top\nschema = 2\n[targets.c]\nagent = \"claude\"\n\n[targets.c.instances.x]\ndir = \"~/x\" # dir\n"
+	cases := []struct {
+		name, input, want string
+		hosts             []string
+	}{
+		{"added after dir", head + "settings = false\n", head + "hosts = [\"mac\"]\nsettings = false\n", []string{"mac"}},
+		{"rewritten in place", head + "hosts = ['a'] # only a\nsettings = false\n", head + "hosts = [\"a\", \"b\"] # only a\nsettings = false\n", []string{"a", "b"}},
+		{"deleted, comment kept", head + "hosts = [\"a\"] # only a\n\n[publish]\nmode = \"direct\"\n", head + "# only a\n\n[publish]\nmode = \"direct\"\n", nil},
+		{"deleted at end of file without newline", head + "hosts = [\"a\"]", head, nil},
+		{"absent and all hosts is a no-op", head, head, nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := manifestedit.Apply("kitbag.toml", []byte(tc.input), manifestedit.Edit{Op: manifestedit.SetInstanceHosts, Target: "c", Name: "x", Hosts: tc.hosts})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != tc.want {
+				t.Fatalf("got\n%q\nwant\n%q", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestSetInstanceHostsRefusesOtherLayouts leaves lists it cannot rewrite
+// safely to a hand edit.
+func TestSetInstanceHostsRefusesOtherLayouts(t *testing.T) {
+	t.Parallel()
+	head := "schema = 2\n[targets.c]\nagent = \"claude\"\n[targets.c.instances.x]\ndir = \"~/x\"\n"
+	for _, input := range []string{
+		head + "hosts = [\n  \"a\",\n]\n",
+		head + "hosts = [\"a\", # first\n \"b\"]\n",
+		"schema = 2\n[targets.c]\nagent = \"claude\"\ninstances.x = { dir = \"~/x\" }\n",
+	} {
+		_, err := manifestedit.Apply("kitbag.toml", []byte(input), manifestedit.Edit{Op: manifestedit.SetInstanceHosts, Target: "c", Name: "x", Hosts: []string{"b"}})
+		if !errors.Is(err, manifestedit.ErrLayout) {
+			t.Fatalf("error %v for\n%s", err, input)
+		}
+	}
+}

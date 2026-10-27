@@ -1,6 +1,7 @@
 package manifestedit
 
 import (
+	"bytes"
 	"fmt"
 	"slices"
 	"strconv"
@@ -63,6 +64,40 @@ func (l *layout) editInstance(e Edit) ([]byte, error) {
 		out = slices.Concat(out[:s.from], []byte(s.text), out[s.to:])
 	}
 	return out, nil
+}
+
+// setInstanceHosts rewrites the instance's hosts list, adds it after the dir
+// line, or deletes its line; a comment on that line stays as its own line.
+func (l *layout) setInstanceHosts(e Edit) ([]byte, error) {
+	i, err := l.instance(e)
+	if err != nil {
+		return nil, err
+	}
+	keys := l.tables[i].keys
+	dir, hosts := l.key(keys, "dir"), l.key(keys, "hosts")
+	switch {
+	case hosts >= 0 && keys[hosts].from < 0:
+		return nil, layoutError(append(slices.Clone(l.tables[i].path), "hosts"))
+	case hosts >= 0 && len(e.Hosts) > 0:
+		return l.splice(keys[hosts].from, keys[hosts].to, hostList(e.Hosts)), nil
+	case hosts >= 0:
+		return l.deleteKey(keys[hosts]), nil
+	case len(e.Hosts) == 0:
+		return l.data, nil
+	case dir < 0 || keys[dir].from < 0:
+		return nil, layoutError(append(slices.Clone(l.tables[i].path), "dir"))
+	}
+	at := keys[dir].end
+	return l.splice(at, at, l.lineBreak(at)+line("hosts", hostList(e.Hosts))+l.newline), nil
+}
+
+// deleteKey deletes a key's line; a comment on it stays as its own line.
+func (l *layout) deleteKey(kv keyValue) []byte {
+	kept := ""
+	if c := bytes.IndexByte(l.data[kv.to:kv.end], '#'); c >= 0 {
+		kept = string(bytes.TrimRight(l.data[kv.to+c:kv.end], "\r\n")) + l.newline
+	}
+	return l.splice(l.lineStart(kv.key), kv.end, kept)
 }
 
 // settingsSplice rewrites an existing switch, or adds settings = false after

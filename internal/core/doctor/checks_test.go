@@ -185,7 +185,7 @@ func manifestInstanceCases() []manifestCase {
 			order: []string{"tool-version", "host", "manifest-schema", "instance-codex/first", "instance-codex/second", "instance-plain/main"},
 			expects: []expect{
 				{"instance-codex/first", filepath.Join(testHome(), "first"), "", OK},
-				{"instance-codex/second", filepath.Join(testHome(), "second"), "create or correct", Warn},
+				{"instance-codex/second", filepath.Join(testHome(), "second"), "create or correct instance directory " + filepath.Join(testHome(), "second") + "; if only some machines have it, upgrade the manifest (kitbag manifest upgrade), then restrict it: kitbag agent edit codex/second --hosts <hosts>", Warn},
 			},
 		},
 		{
@@ -213,6 +213,14 @@ func schema2InstanceCases() []manifestCase {
 			expects: []expect{
 				{"instance-hosts-codex/here", "hosts lists lapotp, which is neither this machine (laptop) nor declared under [hosts]", "correct the host name in targets.codex.instances.here.hosts", Warn},
 				{"manifest-schema", "schema 2 (supported)", "", OK},
+			},
+		},
+		{
+			name:     "schema-2 missing listed instance suggests restricting it",
+			manifest: "schema=2\n[targets.codex]\nagent=\"codex\"\n[targets.codex.instances.gone]\ndir=\"~/gone\"\n",
+			order:    []string{"tool-version", "host", "manifest-schema", "instance-codex/gone"},
+			expects: []expect{
+				{"instance-codex/gone", filepath.Join(testHome(), "gone"), "; if only some machines have it, restrict it: kitbag agent edit codex/gone --hosts <hosts>", Warn},
 			},
 		},
 	}

@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 
 	"github.com/TomaszJanusz/kitbag/pkg/manifest"
@@ -48,6 +49,10 @@ const (
 	EditInstance Op = "edit"
 	// RemoveInstance deletes the instance table and its sub-tables.
 	RemoveInstance Op = "remove"
+	// SetInstanceHosts sets the instance's hosts list (schema 2) to Hosts, or
+	// deletes the key when Hosts is empty, so the instance applies to every
+	// host again. A comment on a deleted line stays as a comment line.
+	SetInstanceHosts Op = "set_instance_hosts"
 	// SetSchema rewrites the root schema value to Schema.
 	SetSchema Op = "set_schema"
 	// SetMinToolVersion sets the root min_tool_version to Version, adding the
@@ -152,6 +157,12 @@ func changeInstances(current map[string]manifest.Instance, e Edit) (map[string]m
 		result[e.Name] = edited(instance, e)
 	case RemoveInstance:
 		delete(result, e.Name)
+	case SetInstanceHosts:
+		instance.Hosts = slices.Clone(e.Hosts)
+		if len(instance.Hosts) == 0 {
+			instance.Hosts = nil
+		}
+		result[e.Name] = instance
 	case AddTarget, SetSchema, SetMinToolVersion, AddHostPatch, RemoveHostInstance, MoveHostInstance:
 		return nil, fmt.Errorf("unexpected edit %q", e.Op)
 	default:
@@ -214,6 +225,8 @@ func rewrite(data []byte, intent *manifest.Manifest, e Edit) ([]byte, error) {
 		return l.editInstance(e)
 	case RemoveInstance:
 		return l.removeInstance(e, len(intent.Targets[e.Target].Instances) == 0)
+	case SetInstanceHosts:
+		return l.setInstanceHosts(e)
 	case SetSchema, SetMinToolVersion, AddHostPatch, RemoveHostInstance, MoveHostInstance:
 		return l.rewriteUpgrade(e)
 	default:

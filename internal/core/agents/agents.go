@@ -39,6 +39,10 @@ type Change struct {
 	Target   string `json:"target,omitempty"`
 	Name     string `json:"name"`
 	Dir      string `json:"dir,omitempty"`
+	// Hosts restricts the instance to these hosts (manifest schema 2);
+	// AllHosts, on edit, removes the restriction. Neither keeps the scope.
+	Hosts    []string `json:"hosts,omitempty"`
+	AllHosts bool     `json:"all_hosts,omitempty"`
 }
 
 // Host is what planning reads from the machine: HOME, relocation variables
@@ -51,21 +55,19 @@ type Host interface {
 
 // Input is everything Prepare needs.
 type Input struct {
-	Host   Host
-	Change Change
+	Host Host
 	// Filename labels manifest diagnostics.
 	Filename string
-	// HostName is recorded in the Kitbag-Host commit trailer.
+	// HostName is this machine's host, recorded in the Kitbag-Host commit trailer.
 	HostName string
 	Manifest []byte
 	// Kinds lists the native agent kinds; generic is refused (it needs roots).
-	Kinds discover.Table
+	Kinds  discover.Table
+	Change Change
 }
 
 // Plan is a validated change that has not been written.
 type Plan struct {
-	// Change is normalized: Kind and Target resolved, Dir in ~/ form.
-	Change Change `json:"change"`
 	// Revision identifies the manifest bytes the plan was made from.
 	Revision string `json:"revision"`
 	// Title is the generated commit title; Message adds the body and trailers.
@@ -80,6 +82,8 @@ type Plan struct {
 	// Edits are the structural edits, After the edited manifest.
 	Edits []manifestedit.Edit `json:"-"`
 	After []byte              `json:"-"`
+	// Change is normalized: Kind and Target resolved, Dir in ~/ form.
+	Change Change `json:"change"`
 }
 
 // Errors returned (wrapped) by Prepare. Both also match fs.ErrInvalid, so the

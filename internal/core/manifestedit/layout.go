@@ -33,11 +33,13 @@ type table struct {
 }
 
 // keyValue is one key = value line. value is the byte range of a string,
-// boolean or integer value; other kinds are never rewritten and have from = -1.
+// boolean or integer value, or of a one-line array of strings without
+// comments; other values are never rewritten and have from = -1.
 type keyValue struct {
 	path     []string
 	from, to int
 	end      int // offset just past the line holding the value's end
+	key      int // offset of the key
 }
 
 func scan(data []byte) (*layout, error) {
@@ -112,8 +114,8 @@ func (l *layout) comment(offset int) {
 }
 
 func (l *layout) keyValue(parser *unstable.Parser, node *unstable.Node) {
-	path, _, _ := keyPath(node)
-	kv := keyValue{path: path, from: -1, to: -1}
+	path, key, keyEnd := keyPath(node)
+	kv := keyValue{path: path, from: -1, to: -1, key: key}
 	value := node.Value()
 	switch value.Kind {
 	case unstable.String:
@@ -123,8 +125,10 @@ func (l *layout) keyValue(parser *unstable.Parser, node *unstable.Node) {
 		// Booleans and integers carry no raw range; their data references the input.
 		r := parser.Range(value.Data)
 		kv.from, kv.to = int(r.Offset), int(r.Offset+r.Length)
+	case unstable.Array:
+		kv.from, kv.to = l.stringList(value, keyEnd)
 	case unstable.Invalid, unstable.Comment, unstable.Key, unstable.Table, unstable.ArrayTable,
-		unstable.KeyValue, unstable.Array, unstable.InlineTable, unstable.Float,
+		unstable.KeyValue, unstable.InlineTable, unstable.Float,
 		unstable.LocalDate, unstable.LocalTime, unstable.LocalDateTime, unstable.DateTime:
 		// Other values are never rewritten.
 	}
@@ -133,6 +137,36 @@ func (l *layout) keyValue(parser *unstable.Parser, node *unstable.Node) {
 	}
 	last := &l.tables[len(l.tables)-1]
 	last.keys = append(last.keys, kv)
+}
+
+// stringList returns the byte range of an array of strings, from its [ to
+// just past its ], when it fits on one line without comments; otherwise -1, -1.
+// Strings in such an array cannot hold brackets or #: only host lists are
+// rewritten, and host names exclude them.
+func (l *layout) stringList(value *unstable.Node, keyEnd int) (int, int) {
+	open := bytes.IndexByte(l.data[keyEnd:], '[')
+	if open < 0 {
+		return -1, -1
+	}
+	open += keyEnd
+	last := open + 1
+	elements := value.Children()
+	for elements.Next() {
+		element := elements.Node()
+		if element.Kind != unstable.String {
+			return -1, -1
+		}
+		last = int(element.Raw.Offset + element.Raw.Length)
+	}
+	closing := bytes.IndexByte(l.data[last:], ']')
+	if closing < 0 {
+		return -1, -1
+	}
+	closing += last + 1
+	if bytes.ContainsAny(l.data[open:closing], "#\n") {
+		return -1, -1
+	}
+	return open, closing
 }
 
 // lineStart returns the offset of the line holding offset.

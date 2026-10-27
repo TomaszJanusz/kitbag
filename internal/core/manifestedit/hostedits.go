@@ -33,7 +33,7 @@ func (l *layout) rewriteUpgrade(e Edit) ([]byte, error) {
 		return l.removeHostInstance(e)
 	case MoveHostInstance:
 		return l.moveHostInstance(e)
-	case AddTarget, AddInstance, EditInstance, RemoveInstance:
+	case AddTarget, AddInstance, EditInstance, RemoveInstance, SetInstanceHosts:
 	}
 	return nil, fmt.Errorf("unexpected edit %q", e.Op)
 }
@@ -47,7 +47,7 @@ func changeUpgrade(m *manifest.Manifest, e Edit) error {
 		m.MinToolVersion = e.Version
 	case AddHostPatch, RemoveHostInstance, MoveHostInstance:
 		return changeHost(m, e)
-	case AddTarget, AddInstance, EditInstance, RemoveInstance:
+	case AddTarget, AddInstance, EditInstance, RemoveInstance, SetInstanceHosts:
 		return fmt.Errorf("unexpected edit %q", e.Op)
 	}
 	return nil

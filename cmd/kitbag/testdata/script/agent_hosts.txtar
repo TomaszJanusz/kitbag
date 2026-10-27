@@ -1,0 +1,180 @@
+# kitbag agent add/edit --hosts: refused on schema 1 (never writes schema 2),
+# written as the schema-2 hosts list after kitbag manifest upgrade, and the
+# missing-directory sync warning names the fix for each schema.
+[windows] stop 'Windows refuses commands before 1.x'
+env KITBAG_CONFIG=$WORK/machine.toml
+env KITBAG_HOST=runner02
+env CLAUDE_CONFIG_DIR=
+env CODEX_HOME=
+env GEMINI_CLI_HOME=
+env XDG_CONFIG_HOME=
+env XDG_DATA_HOME=
+env XDG_STATE_HOME=
+env XDG_CACHE_HOME=
+env KITBAG_TEST_VERSION=0.1.4
+gitremote $WORK/config.git seed
+exec git clone --quiet $WORK/config.git $HOME/checkout
+exec git -C $HOME/checkout config user.name 'Agent Owner'
+exec git -C $HOME/checkout config user.email owner@example.com
+agentdirs .claude
+
+# Schema 1: a missing listed directory warns with the upgrade-first fix.
+execstatus 1 kitbag sync
+stderr 'instance claude/second: ~/\.claude_2 is missing on this machine; if only some machines have it, upgrade the manifest \(kitbag manifest upgrade\), then restrict it: kitbag agent edit claude/second --hosts <hosts>'
+
+# Schema 1 refuses hosts lists (exit 2) and writes nothing, not even schema 2.
+execstatus 2 kitbag agent edit claude/second --hosts mac --yes
+stderr 'needs manifest schema 2, and this kitbag.toml uses schema 1; preview the upgrade with kitbag manifest upgrade --dry-run'
+execstatus 2 kitbag agent add --agent claude --name work --dir '~/.claude-work' --hosts mac --dry-run
+stderr 'needs manifest schema 2'
+cmp $HOME/checkout/kitbag.toml seed/kitbag.toml
+exec git -C $WORK/config.git log --oneline main
+stdout -count=1 '^[0-9a-f]+ '
+
+# Usage errors: an empty list, both scopes, nothing to change.
+execstatus 2 kitbag agent edit claude/second --hosts= --dry-run
+stderr '--hosts needs at least one host name'
+execstatus 2 kitbag agent edit claude/second --hosts mac --all-hosts --dry-run
+stderr 'none of the others can be'
+execstatus 2 kitbag agent edit claude/second --dry-run
+stderr 'pass --dir, --settings, --hosts or --all-hosts'
+
+# After the upgrade the same fix is direct.
+execstatus 1 kitbag manifest upgrade --yes
+stdout '^published upgrade manifest to schema 2'
+stderr 'instance claude/second: ~/\.claude_2 is missing on this machine; if only some machines have it, restrict it: kitbag agent edit claude/second --hosts <hosts>'
+
+# Wrong host names: invalid grammar is refused, an unknown name only warns.
+execstatus 2 kitbag agent edit claude/second --hosts 'my mac' --dry-run
+stderr 'host "my mac"'
+exec kitbag agent edit claude/second --hosts mac,macbok --dry-run
+stderr 'host macbok is neither this machine \(runner02\) nor declared under \[hosts\]; check its spelling'
+cmp $HOME/checkout/kitbag.toml want/upgraded.toml
+
+# Restrict it to mac: published, and runner02 stops warning about it.
+exec kitbag agent edit claude/second --hosts mac --dry-run --json
+agentchangeschema stdout
+stdout '"hosts": \['
+exec kitbag agent edit claude/second --hosts mac --yes
+stdout '^published edit claude instance second \(hosts mac\) to main as [0-9a-f]{12}$'
+cmp $HOME/checkout/kitbag.toml want/restricted.toml
+exec kitbag sync
+! stderr .
+! exists $HOME/.claude_2
+
+# Add an instance for mac only: this machine does not look for it.
+exec kitbag agent add --agent claude --name work --dir '~/.claude-work' --hosts mac --yes
+stderr '~/\.claude-work is not used on this machine \(runner02\), which its hosts list leaves out'
+exec kitbag sync
+! stderr .
+
+# --all-hosts removes the restriction again; the comment on that line stays.
+execstatus 1 kitbag agent edit claude/second --all-hosts --yes
+stdout '^published edit claude instance second \(all hosts\) to main as [0-9a-f]{12}$'
+stderr 'instance claude/second: ~/\.claude_2 is missing on this machine'
+cmp $HOME/checkout/kitbag.toml want/widened.toml
+
+-- machine.toml --
+schema=1
+[repo]
+url="local-config"
+path="~/checkout"
+branch="main"
+-- seed/kitbag.toml --
+# Shared agent configuration.
+schema = 1
+
+[instructions]
+source = "rules.md"
+
+[targets.claude]
+agent = "claude"
+
+[targets.claude.instances.main]
+dir = "~/.claude"
+
+# Only some machines have this account.
+[targets.claude.instances.second]
+dir = "~/.claude_2" # the second login
+
+[hosts.mac]
+mode = "link"
+
+[publish]
+mode = "direct"
+-- seed/rules.md --
+Shared rules.
+-- want/upgraded.toml --
+# Shared agent configuration.
+schema = 2
+min_tool_version = "0.1.4"
+
+[instructions]
+source = "rules.md"
+
+[targets.claude]
+agent = "claude"
+
+[targets.claude.instances.main]
+dir = "~/.claude"
+
+# Only some machines have this account.
+[targets.claude.instances.second]
+dir = "~/.claude_2" # the second login
+
+[hosts.mac]
+mode = "link"
+
+[publish]
+mode = "direct"
+-- want/restricted.toml --
+# Shared agent configuration.
+schema = 2
+min_tool_version = "0.1.4"
+
+[instructions]
+source = "rules.md"
+
+[targets.claude]
+agent = "claude"
+
+[targets.claude.instances.main]
+dir = "~/.claude"
+
+# Only some machines have this account.
+[targets.claude.instances.second]
+dir = "~/.claude_2" # the second login
+hosts = ["mac"]
+
+[hosts.mac]
+mode = "link"
+
+[publish]
+mode = "direct"
+-- want/widened.toml --
+# Shared agent configuration.
+schema = 2
+min_tool_version = "0.1.4"
+
+[instructions]
+source = "rules.md"
+
+[targets.claude]
+agent = "claude"
+
+[targets.claude.instances.main]
+dir = "~/.claude"
+
+# Only some machines have this account.
+[targets.claude.instances.second]
+dir = "~/.claude_2" # the second login
+
+[targets.claude.instances.work]
+dir = "~/.claude-work"
+hosts = ["mac"]
+
+[hosts.mac]
+mode = "link"
+
+[publish]
+mode = "direct"
