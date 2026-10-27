@@ -440,13 +440,49 @@ func TestAgentsAdoptFoundDirectory(t *testing.T) {
 				d.clickText("[ Add this directory ]")
 			}
 			d.expect("Adopt claude at /home/user/.claude_3", "Step 1/5", "Instance name")
-			d.press("work", keyEnter, keyEnter, keyEnter)
+			d.walkAdoptToPreview()
 			d.expect("Step 3/5", "+dir = \"~/.claude_3\"")
 			d.golden("agents-adopt-preview-" + trigger)
 			_, previews, applies := d.client.agents.calls()
 			if len(previews) != 1 || previews[0].Kind != "claude" || previews[0].Dir != "/home/user/.claude_3" || len(applies) != 0 {
 				t.Fatalf("candidate lost: previews=%+v applies=%v", previews, applies)
 			}
+			d.advanceToPrimary(model.AgentStepConfirm)
 		})
 	}
+}
+
+// expectPrimaryFocus fails unless the focused control is the last, enabled
+// button of the top window, which is the wizard's primary action.
+func (d *driver) expectPrimaryFocus(step model.AgentStep) {
+	d.t.Helper()
+	w := d.m.windows.top()
+	if w == nil {
+		d.t.Fatalf("step %s: no window", step)
+	}
+	index := w.focus - w.buttons()
+	if index != len(w.view.Buttons)-1 || index < 0 || !w.view.Buttons[index].Enabled {
+		d.t.Fatalf("step %s focused %d, want enabled primary button", step, w.focus)
+	}
+}
+
+// walkAdoptToPreview types the instance name and walks the adopt wizard to its
+// preview, checking the primary button holds focus on every step after the
+// field the user typed in.
+func (d *driver) walkAdoptToPreview() {
+	d.t.Helper()
+	d.press("work")
+	d.advanceToPrimary(model.AgentStepSettings)
+	d.advanceToPrimary(model.AgentStepPreview)
+}
+
+// advanceToPrimary presses Enter and expects the wizard on step with its
+// primary button focused.
+func (d *driver) advanceToPrimary(step model.AgentStep) {
+	d.t.Helper()
+	d.press(keyEnter)
+	if d.step() != step {
+		d.t.Fatalf("step %s, want %s", d.step(), step)
+	}
+	d.expectPrimaryFocus(step)
 }
