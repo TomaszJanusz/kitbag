@@ -197,7 +197,7 @@ func (m *Model) dialogLine(line model.DialogLine) []string {
 		return []string{m.codeStyle(content).Render(ansi.Truncate(indent+content, m.width, ellipsis))}
 	case model.ToneNormal:
 	}
-	return m.wrap(m.styles.tab, content)
+	return m.wrap(m.styles.faint, content)
 }
 
 // codeStyle colours added and removed diff lines; the +/- stays as text.

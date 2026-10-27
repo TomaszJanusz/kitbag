@@ -7,14 +7,14 @@ claude
     present · declared in kitbag.toml · all hosts · active …
   claude/second  /home/user/.claude_2
     missing · declared in kitbag.toml · only on laptop · ac…
-  [found, not declared]
 
 claude/main
-[a] Add agent  [e] Edit  [d] Remove
-[p] Look for more directories  [r] Refresh
 Directory        /home/user/.claude
 Source           declared in kitbag.toml
 Directory state  present
 Hosts            all hosts
 On this host     active on this host
+Settings         merges shared settings
+  [ Add agent ]  [ Edit ]  [ Remove ]
+  [ Look for more directories ]  [ Refresh ]
 esc back · ? help · q home

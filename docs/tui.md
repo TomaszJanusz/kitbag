@@ -208,7 +208,9 @@ Scrollable information (Help, Status or target details):
 ```
 
 Long confirm messages and forms use the same scroll hint and fixed button row.
-At 80×24 the panel caps at 72 columns; at 60×20 it has 56 columns; at the minimum
+Standard panels cap at 72 columns (wide Agent previews retain their 104-column
+request, clamped to the terminal minus four columns). At 80×24 a standard panel
+has 72 columns; at 60×20 it has 56 columns; at the minimum
 40×10 it has 36 columns. The body scrolls, long labels truncate, and focus brings
 a field into view. Many buttons wrap into right-aligned rows; the focused row
 stays visible. Esc and outside click cancel only the top dialog. Scroll wheel,
@@ -221,8 +223,9 @@ Home opens Screens, each with a small top-edge breadcrumb `kitbag › Settings`.
 Esc or q returns home; Esc first closes a dialog, editor or target detail.
 Ctrl-C quits everywhere; q quits on home. A dialog traps input until dismissed.
 Settings retains responsive master/detail panes, Drift shows list/detail and
-Activity retains its bounded scroll/follow log. Agents migrates only after the
-independent Agents TUI branch merges; its files are not edited before then.
+Activity retains its bounded scroll/follow log. The merged Agents screen uses
+the same master/detail panes and fixed bottom action buttons; its wizard stays
+in the shared dialog stack.
 
 | Context | Keys / mouse | Result |
 | --- | --- | --- |
@@ -285,7 +288,7 @@ Click the breadcrumb or press Esc/q to return home. Esc first leaves a setting
 editor or target detail; Ctrl-C quits everywhere. The deep keys remain
 1 Status, 2 Drift, 3 Settings, 4 Activity and 5 Agents; i opens Status.
 Tab/Shift-Tab also retain their screen-cycling behavior outside home/dialogs.
-The Agents renderer is connected after PR #88 merged; the final layer migrates its action buttons.
+The merged Agents renderer uses the same screen navigation and button row.
 
 | Screen | Shows | Keys |
 | --- | --- | --- |
@@ -382,13 +385,13 @@ The shared contract is in `internal/ui/model/dialog.go`, with all labels in
   requests a fixed list width, clamped to leave a usable detail pane. Call it
   after the minimum-size guard. No toolkit types enter shared models.
 
-The Agents tab does exactly this: `AgentForm.Dialog()` projects the wizard into
+The Agents screen does exactly this: `AgentForm.Dialog()` projects the wizard into
 `FormDialog` under one ID at each step, and `AgentForm.DiscardDialog()` stacks
 the discard confirmation above it under another.
 
-## Agents tab and wizard
+## Agents screen and wizard
 
-The Agents tab renders the shared `Agents` and `AgentForm` models
+The Agents screen renders the shared `Agents` and `AgentForm` models
 ([agents and instances](ui.md#agents-and-instances)); the list and the wizard
 read and write through the same API methods as `kitbag agent list/add/edit/remove`,
 with the daemon's dry-run preview and revision check. Open it from the home menu (`a`) or key `5`;
@@ -404,10 +407,12 @@ can add more found directories. The right pane describes the selected row:
 directory, source (where it is declared), directory state, hosts, whether it is
 active here, the settings merge, and what the **next sync** does with it
 (installs, skips on this host, warns and skips a missing directory, or leaves an
-undeclared or outside-HOME directory alone). Below follow the actions as
-clickable `[key] label` buttons (unavailable ones say so), a key hint and the
-listing's warnings. Below 100 columns the panes stack and the actions move
-right below the title so they stay visible. Only the declared instances of a
+undeclared or outside-HOME directory alone). Actions live in the fixed bottom
+button row: Add is the primary warm filled button; Edit/Remove/Probe are muted
+secondary buttons. They use the same intents
+as a/e/d/p. The detail keeps its key hint and warnings. Below 100 columns the
+panes stack; short screens reserve space for the selected row and its states,
+with actions still at the bottom. Only the declared instances of a
 target can be edited or removed; the implicit default and found directories offer
 Add, which a found directory prefills with its kind and directory.
 

@@ -240,4 +240,4 @@ directory alone).
 
 All texts are in `internal/ui/model/text` (`agents.*`, `wizard.*`, `agent.*`,
 `publish.*` keys). The terminal renders them in the
-[Agents tab](tui.md#agents-tab-and-wizard).
+[Agents screen](tui.md#agents-screen-and-wizard).
