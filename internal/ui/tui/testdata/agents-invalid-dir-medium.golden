@@ -1,30 +1,21 @@
- 1 Status   2 Drift   3 Settings  [4 Agents]  5 Activity
 
-2 declared instances, 1 other directories found           | claude/main
-                                                          | Directory        /home/user/.claude
-claude                                                    | Source           declared in kitbag.toml
-> claude/main  /home/user/.claude                         | Directory state  present
-    present · declared in kitbag.toml · all hosts · acti… | Hosts            all hosts
-  claude/second  /home/user/.claude_2                     | On this host     active on this host
-  +----------------------------------------------------------------------------------------------+s
+
+
+
+
+
+
+
+  +----------------------------------------------------------------------------------------------+
   | Add an agent instance: Configuration directory                                           esc |
   | Step 3/7                                                                                     |
   |                                                                                              |
-co| The agent's configuration directory below your home directory, for example ~/.claude_2.      |
+  | The agent's configuration directory below your home directory, for example ~/.claude_2.      |
   | Configuration directory: > ~/.CLAUDE_2                                                       |
   | ✗ ~/.CLAUDE_2 is already declared as claude/second.                                          |
-  | ! ~/.CLAUDE_2 does not exist. Sync warns and skips it until the agent creates it.            |:
+  | ! ~/.CLAUDE_2 does not exist. Sync warns and skips it until the agent creates it.            |
   | Directories found on this machine:                                                           |
   |   ( ) /srv/claude · from CLAUDE_CONFIG_DIR, outside the home directory; cannot be declared   |
   |                                                                                              |
   |                                               [ Cancel ]   [ Back ]   [ Next (unavailable) ] |
   +----------------------------------------------------------------------------------------------+
-                                                          |
-                                                          |
-                                                          |
-                                                          |
-                                                          |
-                                                          |
-                                                          |
-                                                          |
-? help · a add · e edit · d remove · p probe · q quit · mouse: click, wheel

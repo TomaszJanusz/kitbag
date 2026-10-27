@@ -1,4 +1,4 @@
- 1 Status   2 Drift  [3 Settings]  4 Agents   5 Activity
+kitbag › Settings
 
 Precedence: flag > KITBAG_* environment > config.toml > default          | sync.poll_interval
 Advanced [+]                                                             | How often the daemon checks Git for changes.
@@ -31,5 +31,5 @@ Advanced [+]                                                             | How o
                                                                          |
                                                                          |
                                                                          |
-                                                                         |
-? help · a advanced · q quit · mouse: click, wheel
+  [ Save ]  [ Remove (unavailable) ]  [ Revert ]
+Enter saves · Esc cancels

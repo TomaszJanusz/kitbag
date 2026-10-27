@@ -2,12 +2,14 @@ package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/TomaszJanusz/kitbag/internal/ui/model"
+	"github.com/TomaszJanusz/kitbag/internal/ui/model/text"
 )
 
 // mouse turns a mouse event into the same intents and view state changes as
-// the keyboard: tabs switch, lists select and the wheel scrolls. The overlay
+// the keyboard: screens open, lists select and the wheel scrolls. The overlay
 // swallows the mouse; the settings editor accepts only option clicks.
 // Nothing runs before the first size is known.
 func (m *Model) mouse(msg tea.MouseMsg) tea.Cmd {
@@ -20,6 +22,9 @@ func (m *Model) mouse(msg tea.MouseMsg) tea.Cmd {
 	if m.windows.Len() > 0 {
 		m.dispatch(m.windowMouse(msg))
 		return nil
+	}
+	if cmd, consumed := m.footerMouse(msg); consumed {
+		return cmd
 	}
 	if m.editing {
 		return m.editorMouse(msg)
@@ -38,18 +43,20 @@ func (m *Model) mouse(msg tea.MouseMsg) tea.Cmd {
 }
 
 func (m *Model) click(x, y int) {
-	if y == 0 {
-		_, spans := m.tabLayout()
-		for i, span := range spans {
-			if x >= span.start && x < span.end {
-				m.tab = tab(i)
-			}
-		}
+	if m.home {
+		m.clickHome(x, y)
+		return
+	}
+	if y == 0 && x < ansi.StringWidth(m.say(text.New(text.ScreenBreadcrumb, m.screenTitle()))) {
+		m.back()
+		return
+	}
+	if m.clickAction(x, y) {
 		return
 	}
 	switch m.tab {
 	case driftTab:
-		m.clickDrift(y)
+		m.clickDrift(x, y)
 	case settingsTab:
 		m.clickSetting(x, y)
 	case agentsTab:
@@ -60,11 +67,15 @@ func (m *Model) click(x, y int) {
 
 // clickDrift selects the clicked target; clicking the selected one again
 // opens its details, like Enter.
-func (m *Model) clickDrift(y int) {
+func (m *Model) clickDrift(x, y int) {
 	if m.detail {
 		return
 	}
-	layout := m.driftLayout(m.height - chromeLines)
+	screen := m.driftScreen(m.bodyHeight())
+	if !screen.panes.Master.Contains(x, y-(chromeLines-1)) {
+		return
+	}
+	layout := screen.list
 	index := layout.first + y - layout.top()
 	if y < layout.top() || y-layout.top() >= layout.rows {
 		return
@@ -79,7 +90,7 @@ func (m *Model) clickDrift(y int) {
 // clickSetting selects the clicked setting. Editing stays on Enter so a stray
 // click never starts a change.
 func (m *Model) clickSetting(x, y int) {
-	screen := m.settingsScreen(m.height - chromeLines)
+	screen := m.settingsScreen(m.bodyHeight())
 	if !screen.panes.Master.Contains(x, y-(chromeLines-1)) {
 		return
 	}
@@ -94,6 +105,14 @@ func (m *Model) clickSetting(x, y int) {
 // notch, exactly like the arrow keys.
 func (m *Model) wheel(direction int) {
 	switch {
+	case m.home:
+		if direction < 0 {
+			m.homeKey(keyUp)
+		} else {
+			m.homeKey(keyDown)
+		}
+	case m.tab == statusTab:
+		m.scrollStatus(direction)
 	case m.tab == driftTab && !m.detail:
 		m.dispatch(model.MoveDrift{Delta: direction})
 	case m.tab == agentsTab:
@@ -109,7 +128,7 @@ func (m *Model) clickOption(x, y int) tea.Cmd {
 	if field.Saving {
 		return nil
 	}
-	screen := m.settingsScreen(m.height - chromeLines)
+	screen := m.settingsScreen(m.bodyHeight())
 	for _, hit := range screen.hits {
 		if y == hit.y && x >= hit.start && x < hit.end {
 			m.dispatch(model.ChooseSetting{Key: field.Path, Index: hit.index})
@@ -126,6 +145,9 @@ func (m *Model) mouseUnavailable() bool {
 func (m *Model) outsideScreen(x, y int) bool { return x < 0 || y < 0 || x >= m.width || y >= m.height }
 
 func (m *Model) editorMouse(msg tea.MouseMsg) tea.Cmd {
+	if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft && m.clickAction(msg.X, msg.Y) {
+		return nil
+	}
 	if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft {
 		return m.clickOption(msg.X, msg.Y)
 	}

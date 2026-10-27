@@ -25,7 +25,7 @@ func (m *Model) statusView() []string {
 		lines = append(lines, m.rows(view.Rows)...)
 	}
 	lines = append(lines, m.warnings(view.Warnings)...)
-	return append(lines, "", m.controls(view.Actions))
+	return lines
 }
 
 // rows aligns labels; values wrap below their label on narrow terminals.
@@ -116,7 +116,7 @@ func (m *Model) driftDetail(detail model.DriftDetail) []string {
 }
 
 // logRows is the number of entries the log tab shows at the current size.
-func (m *Model) logRows() int { return max(m.height-chromeLines-1, 1) }
+func (m *Model) logRows() int { return max(m.bodyHeight()-1, 1) }
 
 func (m *Model) logView(height int) []string {
 	view := m.app.Log.View()

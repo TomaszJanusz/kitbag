@@ -58,6 +58,34 @@ func SettingDescription(path string) Key { return Key(settingPrefix + path) }
 
 // Static keys.
 const (
+	FooterSave             Key = "footer.save"
+	FooterCancel           Key = "footer.cancel"
+	FooterHome             Key = "footer.home"
+	FooterQuit             Key = "footer.quit"
+	FooterHelp             Key = "footer.help"
+	FooterBack             Key = "footer.back"
+	ActionDetails          Key = "action.details"
+	ActionFollow           Key = "action.follow"
+	HomeBrand              Key = "home.brand"
+	HomeCount              Key = "home.count"
+	HomeAgentCount         Key = "home.agent_count"
+	HomeVersion            Key = "home.version"
+	HomeChecked            Key = "home.checked"
+	HomeNextCheck          Key = "home.next_check"
+	HomeRepository         Key = "home.repository"
+	HomeFooter             Key = "home.footer"
+	HomeUnavailable        Key = "home.unavailable"
+	HomeCreatedBy          Key = "home.created_by"
+	HomeMadeWith           Key = "home.made_with"
+	HomeMadeWithPlain      Key = "home.made_with_plain"
+	HomeSyncKey            Key = "home.sync_key"
+	HomeAgentsKey          Key = "home.agents_key"
+	HomeDriftKey           Key = "home.drift_key"
+	HomeSettingsKey        Key = "home.settings_key"
+	HomeActivityKey        Key = "home.activity_key"
+	ScreenBreadcrumb       Key = "screen.breadcrumb"
+	ScreenFooter           Key = "screen.footer"
+	ActionRemoveShort      Key = "action.remove_short"
 	SettingCompactHint     Key = "setting.compact_hint"
 	DialogEscape           Key = "dialog.escape"
 	DialogScroll           Key = "dialog.scroll"
@@ -374,7 +402,7 @@ const (
 // English returns the default catalog, including plain-language setting descriptions.
 func English() Catalog {
 	catalog := make(Catalog)
-	for _, section := range [][]entry{statusText(), outcomeText(), driftText(), formText(), terminalText(), agentsText(), wizardText(), settingDescriptions()} {
+	for _, section := range [][]entry{statusText(), outcomeText(), driftText(), formText(), terminalText(), homeText(), agentsText(), wizardText(), settingDescriptions()} {
 		for _, e := range section {
 			catalog[e.key] = e.template
 		}
@@ -589,7 +617,7 @@ func terminalText() []entry {
 		{SettingEditing, "Editing: Enter saves, Esc cancels"},
 		{SettingListHint, "↑/↓: select · Enter: edit"},
 		{HelpTitle, "Keyboard"},
-		{HelpTabs, "Tab, Shift-Tab, 1–5: switch tabs"},
+		{HelpTabs, "Home: s/a/d/c/l; 1–5: Status/Drift/Settings/Activity/Agents; i: Status"},
 		{HelpRefresh, "r: reload status, drift, settings and agents"},
 		{HelpSync, "s: sync now"},
 		{HelpMove, "↑/↓ or k/j: move the selection"},
@@ -599,12 +627,45 @@ func terminalText() []entry {
 		{HelpChoices, "←/→/Space or click while editing: choose; Custom/Other: type"},
 		{HelpAdvanced, "a on Settings: expand or collapse Advanced"},
 		{HelpFollow, "f: follow new activity; ↑/↓, PgUp/PgDn: scroll"},
-		{HelpMouse, "Mouse: click a tab, row or action; a row again opens it; wheel: scroll"},
+		{HelpMouse, "Mouse: click home rows, breadcrumb or buttons; wheel: scroll"},
 		{HelpToggle, "?: show or hide this help"},
-		{HelpQuit, "q or Ctrl-C: quit"},
+		{HelpQuit, "q: home (quit on home); Ctrl-C: quit"},
 		{HelpAgents, "Agents: a add, e or Enter edit, d remove, p look for more directories"},
 		{FooterAgents, "? help · a add · e edit · d remove · p probe · q quit · mouse: click, wheel"},
 		{DialogChoiceHint, "Space/Enter/click: choose · ←/→: previous/next choice"},
 		{DialogScrollHint, "PgUp/PgDn or wheel: scroll"},
+	}
+}
+
+func homeText() []entry {
+	return []entry{
+		{FooterSave, "Enter saves"},
+		{FooterCancel, "Esc cancels"},
+		{FooterHome, "q home"},
+		{FooterQuit, "q quit"},
+		{FooterHelp, "? help"},
+		{FooterBack, "esc back"},
+		{ActionDetails, "Details"},
+		{ActionFollow, "Follow / pause"},
+		{HomeBrand, "kitbag"},
+		{HomeCount, "%s"},
+		{HomeAgentCount, "%s agents"},
+		{HomeVersion, "kitbag %s"},
+		{HomeChecked, "%s · checked %s"},
+		{HomeNextCheck, "Next check %s"},
+		{HomeRepository, "%s · %s"},
+		{HomeFooter, "%s · %s"},
+		{HomeUnavailable, "unavailable"},
+		{HomeCreatedBy, "Created by Tomasz Janusz"},
+		{HomeMadeWith, "Made with ❤ in 🇵🇱"},
+		{HomeMadeWithPlain, "Made with love in Poland"},
+		{HomeSyncKey, "s"},
+		{HomeAgentsKey, "a"},
+		{HomeDriftKey, "d"},
+		{HomeSettingsKey, "c"},
+		{HomeActivityKey, "l"},
+		{ScreenBreadcrumb, "kitbag › %s"},
+		{ScreenFooter, "%s · %s · %s"},
+		{ActionRemoveShort, "Remove"},
 	}
 }

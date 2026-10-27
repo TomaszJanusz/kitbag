@@ -1,24 +1,24 @@
-[1 Status]  2 Drift   3 Settings   4 Agents   5 Activity
-
-Keyboard
-
-  Tab, Shift-Tab, 1–5: switch tabs
-  r: reload status, drift, settings and agents
-  s: sync now
-  check = looked at the remote; sync = applied changes
-  ↑/↓ or k/j: move the selection
-  Enter: open drift details; Esc: close them
-  Enter: edit a setting, Enter again saves; Esc cancels
-  w: save a kept draft; u: confirm removal from config.toml
-  Dialogs: Tab/arrows focus; Enter confirms; Esc/outside click cancels
-  ←/→/Space or click while editing: choose; Custom/Other: type
-  a on Settings: expand or collapse Advanced
-  Agents: a add, e or Enter edit, d remove, p look for more directories
-  f: follow new activity; ↑/↓, PgUp/PgDn: scroll
-  Mouse: click a tab, row or action; a row again opens it; wheel: scroll
-  ?: show or hide this help
-  q or Ctrl-C: quit
-
-
-
-? help · a advanced · q quit · mouse: click, wheel
+    +----------------------------------------------------------------------+
+    | Keyboard                                                         esc |
+    |                                                                      |
+    |                                                                      |
+    | Enter: edit a setting, Enter again saves; Esc cancels                |
+    |                                                                      |
+    | w: save a kept draft; u: confirm removal from config.toml            |
+    |                                                                      |
+    | Dialogs: Tab/arrows focus; Enter confirms; Esc/outside click cancels |
+    |                                                                      |
+    | ←/→/Space or click while editing: choose; Custom/Other: type         |
+    |                                                                      |
+    | a on Settings: expand or collapse Advanced                           |
+    |                                                                      |
+    | f: follow new activity; ↑/↓, PgUp/PgDn: scroll                       |
+    |                                                                      |
+    | Mouse: click home rows, breadcrumb or buttons; wheel: scroll         |
+    |                                                                      |
+    | ?: show or hide this help                                            |
+    |                                                                      |
+    | q: home (quit on home); Ctrl-C: quit                                 |
+    | scroll ↑/↓                                                           |
+    |                                                             > [ OK ] |
+    +----------------------------------------------------------------------+

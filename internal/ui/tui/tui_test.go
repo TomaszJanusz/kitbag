@@ -30,7 +30,7 @@ func TestStatusShowsToolTooOldAndDisablesSync(t *testing.T) {
 	client.status = model.StatusSnapshot{Repository: "/repo", ToolTooOld: &model.ToolTooOld{Required: "0.3.0", Current: "0.1.0"}}
 	client.statusErr = &model.Error{Kind: model.ErrToolTooOld, Detail: "raw core detail: manifest requires 0.3.0", ExitCode: 4}
 	s := start(t, client)
-	s.waitFor("requires kitbag 0.3.0 or newer; running 0.1.0", "[s] Sync now (unavailable)")
+	s.waitFor("requires kitbag 0.3.0 or newer; running 0.1.0", "[ Sync now (unavailable) ]")
 	s.press(keySync)
 	screen := s.final()
 	if strings.Contains(screen, "raw core detail") || !strings.Contains(screen, "Showing the last known status") {
@@ -67,7 +67,7 @@ func TestSyncNowShowsLiveProgress(t *testing.T) {
 	if s.client.statusCalls.Load() <= loads {
 		t.Fatal("status was not reloaded after the sync")
 	}
-	s.press("5")
+	s.press("4")
 	s.waitFor("info Sync: pulling the repository", "info Sync succeeded, 3 changed")
 }
 
@@ -163,7 +163,7 @@ func TestSettingsShowsFailedSaveAndOverride(t *testing.T) {
 func TestSettingsUnsetRevertAndMaskSecrets(t *testing.T) {
 	t.Parallel()
 	s := start(t, newFake())
-	s.press(keyPrevious, keyPrevious, keyPrevious)
+	s.press("3")
 	s.waitFor("host  laptop · config.toml")
 	s.press(keyUnset)
 	s.waitFor("Remove stored setting?")
@@ -190,7 +190,7 @@ func TestLogFollowsWithABoundedBuffer(t *testing.T) {
 	s := start(t, newFake(), func(o *Options) { o.LogCapacity = 8 })
 	// Ten lines leave six activity rows.
 	s.tm.Send(tea.WindowSizeMsg{Width: termWidth, Height: MinHeight})
-	s.press("5")
+	s.press("4")
 	s.waitFor("Connected to the daemon")
 	for range 8 {
 		s.client.events <- model.Event{Kind: model.EventDriftDetected}
@@ -206,7 +206,7 @@ func TestLogFollowsWithABoundedBuffer(t *testing.T) {
 	s.waitFor("Following new entries", "info A newer kitbag release is available")
 	screen := s.final()
 	golden(t, "log", screen)
-	if got := strings.Count(screen, "warn The daemon detected drift"); got != 4 {
+	if got := strings.Count(screen, "warn The daemon detected drift"); got != 3 {
 		t.Fatalf("showing %d drift entries:\n%s", got, screen)
 	}
 }
@@ -216,7 +216,9 @@ func TestHelpOverlayToggles(t *testing.T) {
 	s := start(t, newFake())
 	s.waitFor("2 targets changed locally")
 	s.press(keyHelp)
-	s.waitFor("Keyboard", "q or Ctrl-C: quit", "a on Settings: expand or collapse Advanced")
+	s.waitFor("Keyboard")
+	s.press(keyPageDown)
+	s.waitFor("q: home (quit on home); Ctrl-C: quit", "a on Settings: expand or collapse Advanced")
 	golden(t, "help", s.final())
 }
 
@@ -245,7 +247,7 @@ func TestNoColourEmitsNoColourSequences(t *testing.T) {
 	for _, noColour := range []bool{false, true} {
 		s := start(t, newFake(), func(o *Options) { o.Profile, o.NoColour = termenv.TrueColor, noColour })
 		s.waitFor("2 targets changed locally")
-		s.press("5")
+		s.press("4")
 		s.waitFor("Connected to the daemon")
 		screen := s.final()
 		if coloured := colourSGR.MatchString(screen); coloured == noColour {

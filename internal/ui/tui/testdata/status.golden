@@ -1,4 +1,4 @@
-[1 Status]  2 Drift   3 Settings   4 Agents   5 Activity
+kitbag › Status
 
 2 targets changed locally
 A newer kitbag release is available
@@ -15,10 +15,10 @@ Connection    Daemon, live updates
 Warnings
 - kitbag.toml: unknown agent "zed" ignored
 
-[s] Sync now  [r] Refresh
 
 
 
 
 
-? help · a advanced · q quit · mouse: click, wheel
+  [ Sync now ]  [ Refresh ]
+esc back · ? help · q home

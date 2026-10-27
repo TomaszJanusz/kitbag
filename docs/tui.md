@@ -1,7 +1,7 @@
 # Terminal interface (`kitbag tui`)
 
-`kitbag tui` is a full-screen terminal interface for status, drift, settings,
-agent instances and activity. It renders the [shared view models](ui.md) and owns no behavior of its
+`kitbag tui` is a full-screen terminal interface for status, drift, settings and
+activity. It renders the [shared view models](ui.md) and owns no behavior of its
 own: keys become model intents, every text comes from the catalog in
 `internal/ui/model/text`, and validation stays in the settings registry
 ([ADR 5](adr/0005-ui-layers.md)). The renderer is `internal/ui/tui` (Bubble Tea,
@@ -35,9 +35,11 @@ contract for the staged implementation below.
 | Dialog panel | `#242424` | 235 | black (0) | ASCII frame `+--+`, vertical sides |
 | Text | `#dedbd4` | 253 | white (7) | plain text |
 | Muted | `#99958e` | 246 | bright black (8) | plain text, positional hierarchy |
-| Accent / primary | `#e9b872` | 180 | yellow (3) | `[ Label ]` |
+| Accent / primary | `#e9b872` | 179 | yellow (3) | `[ Label ]` |
+| Logo side | `#8e6338` | 95 | bright black (8) | omitted |
+| Logo lower edge | `#50391f` | 58 | bright black (8) | omitted |
 | Primary text | `#181818` | 234 | black (0) | plain text |
-| Warning | `#e9b872` | 180 | yellow (3) | explicit warning text |
+| Warning | `#e9b872` | 179 | yellow (3) | explicit warning text |
 | Failure | terminal red | red (1) | red (1) | explicit error text |
 | Focus | `> ` + emphasis | same | same | `> [ Label ]` |
 | Disabled | muted + unavailable label | same | same | `[ Label (unavailable) ]` |
@@ -48,12 +50,48 @@ ANSI fallback colours use the terminal palette; the two dark surfaces can be
 identical on 16-colour terminals, so spacing and focus markers still carry the
 hierarchy. No capability depends on colour alone.
 
+### Wordmark and extrusion
+
+The colour wordmark is a seven-subpixel-high pixel mask. Each terminal cell
+contains two vertical subpixels, drawn with `▀`, `▄` and `█`; mixed cells use
+foreground and background colours to preserve both shades. The accent front
+face takes precedence over every shadow pixel. Sweeping the same mask three
+subpixels right and down forms joined side faces; exposed lower shadow edges
+receive the darkest shade, suggesting light from the top left.
+
+The complete footprint is 28 columns by five terminal rows, including the
+extrusion. It occupies the original five-row logo area, so the status and menu
+do not move. The pure mask-to-cells function clips every layer to its rectangle.
+Truecolor uses the two dark shades above; 256-colour mode uses their nearest
+palette entries and 16-colour mode uses one dark shade for both. NO_COLOR and
+ui.color=never use catalog text `kitbag`, without ANSI. Below 80 columns or 24
+rows the logo is also plain text; any viewport narrower than the mask plus its
+extrusion must use that fallback. Resizing never adds a shadow beyond the edge.
+
+The shade-index golden below shows one line per **subpixel** row (two per
+terminal row): `█` front, `▓` side, `▒` lower edge, space background. Raw-ANSI
+and stripped home goldens cover 120×35, 80×24, 60×20 and 40×10 in truecolor,
+256 and 16 colours, alongside NO_COLOR goldens.
+
+```text
+█  █ █  █  █
+█▓█ ▒ ▒ █▓ █▓
+██▓▓ █ ███▓███   ███  ███
+█▓█▓▒█▓ █▓▓█▓▓█ █ ▒█▓█ ▓█▓
+█▓█▓ █▓▓█▓▓█▓▓█▓█▓ █▓▓███▓▓
+█▓▓█▓█▓▓█▓▓█▓▓█▓█▓▓█▓▓▓▓█▓▓▓
+█▓▓█▓█▓▓██▓███▓▒▓███▓███▓▓▓▓
+ ▒▓▓▒▓▓▓▓▒▓▓▒▓▓ ▒▓▒▓▓▓▓▓▓▓▒▓
+  ▒▓ ▒▓▒▓ ▒▓ ▒▓▓ ▒ ▒▓▓▓▒▓▓ ▒
+   ▒  ▒ ▒  ▒▒ ▒▒▒   ▒▒▒ ▒▒▒
+```
+
 ### Home mockups
 
 These ASCII layouts show placement in the stated viewport (blank space is
 abbreviated above and below the centered content). The implementation uses
-block pixels for the wordmark when colour is available and the viewport has
-space; ASCII/plain mode uses `kitbag`. Values are examples, never renderer text.
+block pixels for the wordmark with its darker extrusion when colour is available
+and the viewport has space; ASCII/plain mode uses `kitbag`. Values are examples, never renderer text.
 The status line is focusable above the menu; its Enter action opens Status.
 
 120×35:
@@ -211,9 +249,9 @@ No model-side dialog contract from PR #85 changes.
 
 Like `kitbag status`, the interface uses the [local API](api/README.md) when the
 daemon runs and reads this machine in-process when none listens. The Status
-tab's Connection row says which one answered:
+screen's Connection row says which one answered:
 
-- **Daemon, live updates**: the event subscription is open; the Activity tab
+- **Daemon, live updates**: the event subscription is open; the Activity screen
   receives lifecycle hints and the views reload on `sync.finished` and
   `drift.detected`.
 - **Daemon, live updates unavailable**: answers come from the daemon but the
@@ -228,26 +266,47 @@ corrupt the screen.
 ## Times
 
 Times are shown in the machine's local zone as `2006-01-02 15:04:05 MST`; the
-Status tab's last sync adds a relative hint such as `(3 min ago)` and the
-Activity tab shows `15:04:05` local time of day. The view models format them
+Status screen's last sync adds a relative hint such as `(3 min ago)` and the
+Activity screen shows `15:04:05` local time of day. The view models format them
 (`internal/timefmt` with a clock injected by `cmd/kitbag`), so renderers never
 touch zones. The API, state files and JSON keep UTC RFC 3339.
 
-## Tabs
+## Screens
 
-| Tab | Shows | Keys |
+Home shows the wordmark, a compact status summary and one menu: Sync now,
+Agents, Drift (with its nonzero count), Settings and Activity. Repository path
+and branch sit at the lower left, version at the lower right, and help/quit
+at the bottom centre. Up/Down, k/j and Tab/Shift-Tab move focus between the
+status line and menu; Enter activates it, or click directly. Shortcuts on home
+are s/a/d/c/l. Sync stays on home and respects the model's unavailable state.
+
+Screens have a small `kitbag › Settings` breadcrumb instead of a tab bar.
+Click the breadcrumb or press Esc/q to return home. Esc first leaves a setting
+editor or target detail; Ctrl-C quits everywhere. The deep keys remain
+1 Status, 2 Drift, 3 Settings, 4 Activity and 5 Agents; i opens Status.
+Tab/Shift-Tab also retain their screen-cycling behavior outside home/dialogs.
+The Agents renderer is connected after PR #88 merged; the final layer migrates its action buttons.
+
+| Screen | Shows | Keys |
 | --- | --- | --- |
-| 1 Status | Headline (in sync, drift, conflicts, syncing with the current phase, another sync running, tool too old with required and running version), last known status when a reload fails, update available, result of the last sync started here, repository, branch and upstream, working copy, last sync, target counts, connection, warnings | `s` sync now, `r` refresh |
-| 2 Drift | Targets other than in sync with their classification; Enter opens the selected target's planned actions (source, backup path, warnings) | `↑`/`↓`, `k`/`j`, Enter, Esc |
-| 3 Settings | Common settings with value, source, override note, default and plain-language description; sensitive values are redacted and never prefilled | `↑`/`↓`, Enter edit/save, Esc cancel, `←`/`→`/Space choose, `a` Advanced, `w` save a kept draft, `u` confirm removal from `config.toml` |
-| 4 Agents | Declared instances and found directories per agent kind, with the selected one's details; the add, edit and remove wizard ([below](#agents-tab-and-wizard)) | `↑`/`↓`, `k`/`j`, `a` add, `e` or Enter edit, `d` remove, `p` look for more directories, `r` refresh |
-| 5 Activity | The bounded activity log (256 entries; dropped entries are counted): daemon hints, sync phases and setting writes | `f` follow, `↑`/`↓`, PgUp/PgDn |
+| Status | Full repository/branch/upstream, working copy, last sync/check and next check, target counts, connection, service/version warnings and actions | s sync, r refresh, h repair, arrows/page keys or wheel scroll |
+| Drift | Target list and selected target details side by side on wide screens; Enter opens details on any size | arrows/k/j, Enter or Details button, Esc back |
+| Settings | Common and Advanced settings in responsive master/detail panes, registry validation and redaction | arrows/k/j, Enter edit/save, Esc cancel, a Advanced, w save, u confirm removal |
+| Activity | Bounded log, dropped count and follow state | f or Follow/pause button, arrows/page keys or wheel |
 
-`Tab`, `Shift-Tab` and `1`–`5` switch tabs, `?` shows the key help, `q` or
-`Ctrl-C` quits. While a setting is being edited, typed keys go to the editor;
-`Ctrl-C` still quits. `←`/`→`/Space cycle picker options; letters cannot change an enum or toggle. Every
-keystroke is validated with the registry rules: an invalid draft shows its
-constraint and is never saved; a failed save keeps the editor open with its draft and the reason. The editor closes only after a successful save (or Enter on an unchanged value).
+While editing, typed keys go to the editor; Ctrl-C still quits.
+Left/Right/Space cycle picker options; letters cannot change an enum or toggle.
+An invalid draft is never saved; failed saves retain the editor and its draft.
+Save/Remove/Revert buttons emit the same intents as their keys, and Remove
+always asks for confirmation. At short sizes unavailable screen actions are
+omitted to reserve room for the editor; dialog disabled controls stay explicit.
+
+Help opens a scrollable dialog with the title left, Esc right and a primary
+OK button. An open dialog clears the visible background while preserving the
+underlying screen state, so clipped background text does not compete with it.
+Page keys, control arrows and the wheel scroll the body; arrows also scroll
+read-only bodies. Tab/Shift-Tab traverse enabled fields/buttons. Esc/outside
+click cancels only the top window. Dialogs consume all other screen shortcuts.
 
 ## Layout and windows
 
@@ -261,13 +320,16 @@ scrolls to keep the selection visible. Very short screens shorten the details
 to reserve room for the editor and help. Below 40×10 the existing size notice
 replaces the content, preserving open windows and drafts until the next resize.
 
-Modal windows are titled, bordered and centered over the current content. Only
+Modal windows are centered over a cleared background, with a left title,
+right Esc hint, muted scrollable body and bottom button row. Colour uses a
+slightly lighter panel; NO_COLOR uses an ASCII frame. Only
 the top window receives input. `Tab`/`Shift-Tab`, `↑`/`↓` and arrows on buttons
 cycle through enabled fields and buttons. Left/Right within a text field move
 the cursor. `Enter` activates the focused button, or Next/Finish from a field;
 a disabled Next/Finish never activates Back. `Esc` and a primary click outside
 cancel only the top window. Clicking a field focuses it; clicking a button
-activates it. Other mouse events are ignored. Global tab, refresh, sync, help
+activates it. Wheel events inside the panel scroll its body. Releases and drags are ignored.
+Global screen, refresh, sync, help
 and quit keys stay trapped; `Ctrl-C` still exits the application. Text markers
 and borders carry focus and selection with `NO_COLOR` too.
 
@@ -329,8 +391,8 @@ the discard confirmation above it under another.
 The Agents tab renders the shared `Agents` and `AgentForm` models
 ([agents and instances](ui.md#agents-and-instances)); the list and the wizard
 read and write through the same API methods as `kitbag agent list/add/edit/remove`,
-with the daemon's dry-run preview and revision check. It sits after Settings,
-so Activity moved from `4` to `5`.
+with the daemon's dry-run preview and revision check. Open it from the home menu (`a`) or key `5`;
+Activity retains key `4`.
 
 **List.** The left pane groups rows by agent kind. Each kind shows its declared
 instances (`target/name`, or the implicit default directory), then a
@@ -427,23 +489,19 @@ changes, and reopen the TUI for its startup colour preference.
 The mouse is optional; every action keeps its key. The terminal reports clicks
 and the wheel, and the renderer turns them into the same intents as the keys:
 
-- Click a tab title to switch to it (the digits in the narrow tab bar too).
-- Click a row on the Drift tab to select it; click the selected row again to
-  open its details, like Enter. On the Agents tab the same opens the edit
-  wizard of a declared instance, and clicking an action button runs it. Click a row on the Settings tab to select it;
-  editing stays on Enter, so a stray click never starts a change.
-- The wheel moves the Drift and Agents selection, scrolls an open window and scrolls the Activity log one line per
-  notch, like `↑`/`↓`. Scrolling back to the end resumes following.
-- While a setting is edited, click an option to change the draft, including
-  Custom/Other. Enter still saves; Esc cancels. Clicks outside the options
-  are ignored while editing a setting. Dialog clicks follow the window rules
-  above. In help and open drift details the mouse is ignored. Other
-  buttons, releases and drags do nothing. Text selection and copying need the terminal's
-  override (usually Shift-drag).
+- Click a home menu row or status line to open it, or click a screen breadcrumb
+  to return home. Click action buttons to use the same intent as the key.
+- Click a Drift row to select it; click it again for details, like Enter.
+  Settings rows only select; Enter starts editing.
+- The wheel moves Drift selection and scrolls Activity/Status. On home it moves
+  menu focus. Dialog wheels scroll only inside the panel.
+- While editing a setting, click a choice or a bottom action button. Outside
+  option/button clicks are ignored. Releases, drags and other buttons never
+  act. Text selection/copying uses the terminal override (usually Shift-drag).
 
 The renderer asks for cell-motion reporting with SGR coordinates and releases
 both when the program ends: on quit, `Ctrl-C`, `SIGINT`/`SIGTERM` and recovered
-panics, like the alternate screen. The footer and the `?` help mention the mouse.
+panics, like the alternate screen. The `?` help describes mouse actions; the footer hints are clickable.
 
 ## Terminal behavior
 
@@ -451,12 +509,12 @@ panics, like the alternate screen. The footer and the `?` help mention the mouse
   exits 2 with `kitbag tui needs an interactive terminal on stdin and stdout`.
   Use `kitbag status`, `plan` and `config list` in scripts.
 - **Colour.** `NO_COLOR` (any value, even empty) and `ui.color = "never"` disable
-  colour and all other styling. No state depends on styling: the active tab is
+  colour and all other styling. No state depends on styling: buttons are
   bracketed, the selection is marked `>`, a pending draft `*` and an unavailable
   action says so. The profile comes from `TERM`/`COLORTERM`; the
   terminal is never queried, which keeps SSH sessions free of stray replies.
 - **Size.** The layout follows resizes. Below 40×10 the screen asks for a larger
-  terminal; narrow terminals wrap values and shorten the tab bar.
+  terminal; narrow terminals wrap values, stack panes and use a plain logo.
 - **Screen.** The alternate screen is used and restored on quit, `Ctrl-C`,
   `SIGINT`/`SIGTERM` and recovered panics. The cursor does not blink, so an idle
   screen is not redrawn.
@@ -477,17 +535,14 @@ panics, like the alternate screen. The footer and the `?` help mention the mouse
   displayed. Use the CLI command for the full error.
 - Settings writes through the daemon have no compare-and-swap.
 - Skills and catalog tabs follow with the skill catalog (KIT-52, KIT-46).
-- The Agents wizard edits only what `kitbag agent add/edit/remove` can (v1 slice
-  of ADR 12: all hosts, no `generic` kind, no pull requests opened in `pr`
-  mode). Host scopes, targets with several kinds and target choice stay hand
-  edits of `kitbag.toml`.
 - Windows is refused before any command runs, like every other command.
 
 ## Tests
 
 `internal/ui/tui` tests drive the program with
 [teatest](https://github.com/charmbracelet/x/tree/main/exp/teatest) against a
-scripted `model.Client`: each tab's main flow, sync progress, drift detail,
+scripted `model.Client`: home keyboard/mouse navigation, screen flows, sync
+progress, drift detail,
 settings pickers/toggles, custom validation, failed saves, Advanced visibility,
 secret masking, the bounded log, help, mouse clicks and wheel
 (with a negative control for each stray event), resize, `NO_COLOR` output
@@ -495,16 +550,6 @@ and subscription shutdown. Golden screens in `internal/ui/tui/testdata` are
 ANSI-stripped at fixed sizes; after reviewing a change, rewrite them with
 `go test ./internal/ui/tui -args -update-screens`. A testscript covers the
 non-terminal refusal.
-
-Agents flows cover list navigation and the probe, the add wizard typed through
-the real program loop, every add step at 120×35, 100×30 and 60×20 as golden
-screens, validation (taken name, invalid name, outside HOME, duplicate
-directory, `generic`), editing a directory, removal that needs Apply on the
-confirm step, the discard question, `pr` mode, a not-published result, a failed
-apply, a refused preview with its detail, a stale preview, the busy state, mouse
-rows and buttons, resizes with the wizard open and scrolling a long preview.
-Most agent screens use a synchronous driver that runs the queued commands on
-the test goroutine, so each step's screen is deterministic.
 
 Pane and window flows additionally cover the 99/100-column breakpoint, inline
 steppers, side-panel help, selection hit testing, modal focus trapping, disabled
@@ -516,7 +561,7 @@ clients and do not run KitBag against a real home directory.
 
 ## Remote check freshness
 
-The Status tab keeps separate `Last check`, `Next check` and `Last sync` rows.
+The Status screen keeps separate `Last check`, `Next check` and `Last sync` rows.
 A check looked at the remote; a sync applied changes. The help overlay repeats
 this distinction. `poll.finished` refreshes the status snapshot even when
 nothing changed. Check failure uses the shared error text catalog and appears

@@ -144,8 +144,12 @@ func TestSettingsPickerMouseAndStrayEvents(t *testing.T) {
 	s.settingRow(5)
 	s.press(keyEnter)
 	s.waitFor(" 30s [1m] 5m ")
-	// At 80×24 the stepper is inline in the selected list row.
-	s.click(33, 10)
+	// Project the same selected field to avoid stale row coordinates.
+	projection := loadedSettingsModel(t, termWidth, termHeight)
+	projection.setting = 5
+	projection.startEdit()
+	hit := projection.settingsScreen(projection.bodyHeight()).hits[2]
+	s.click(hit.start, hit.y)
 	s.waitFor("[5m]")
 	s.mouse(tea.MouseButtonRight, tea.MouseActionPress, 2, 20)
 	s.mouse(tea.MouseButtonLeft, tea.MouseActionRelease, 2, 20)
@@ -211,7 +215,7 @@ func TestSettingsNarrowFooterKeepsAdvancedShortcut(t *testing.T) {
 	s.waitFor("2 targets changed locally")
 	s.tm.Send(tea.WindowSizeMsg{Width: MinWidth, Height: termHeight})
 	s.press("3")
-	s.waitFor("Advanced [+]", "a advanced")
+	s.waitFor("Advanced [+]", "esc back")
 	s.press(keyAdvanced)
 	s.settingRow(10)
 	s.press(keyEnter)

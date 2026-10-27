@@ -18,11 +18,6 @@ import (
 const (
 	driftFirstRow  = 4
 	driftSecondRow = 5
-	driftTabX      = 13 // inside " 2 Drift "
-	settingsTabX   = 24 // inside " 3 Settings "
-	agentsTabX     = 38 // inside " 4 Agents "
-	logTabX        = 50 // inside " 5 Activity "
-	separatorX     = 10 // the blank between " 1 Status " and "[2 Drift]" (end of the first tab)
 )
 
 func (s *session) mouse(button tea.MouseButton, action tea.MouseAction, x, y int) {
@@ -33,48 +28,44 @@ func (s *session) click(x, y int) { s.mouse(tea.MouseButtonLeft, tea.MouseAction
 
 func (s *session) wheel(button tea.MouseButton) { s.mouse(button, tea.MouseActionPress, 0, 3) }
 
-func TestClickingATabSwitchesToIt(t *testing.T) {
+func TestBreadcrumbReturnsHome(t *testing.T) {
 	t.Parallel()
 	s := start(t, newFake())
-	s.waitFor("[1 Status]")
-	s.click(driftTabX, 0)
-	s.waitFor("[2 Drift]", "2 targets differ")
-	s.click(settingsTabX, 0)
-	s.waitFor("[3 Settings]", "Precedence:")
-	s.click(agentsTabX, 0)
-	s.waitFor("[4 Agents]", "No agents are declared")
-	s.click(logTabX, 0)
-	s.waitFor("[5 Activity]", "Connected to the daemon")
+	s.waitFor("kitbag › Status")
 	s.click(1, 0)
-	s.waitFor("[1 Status]", "Daemon, live updates")
-}
-
-func TestClickingATabIsLimitedToTheTabBar(t *testing.T) {
-	t.Parallel()
-	s := start(t, newFake())
-	s.press("2")
-	s.waitFor("[2 Drift]")
-	s.click(separatorX, 0)                                                         // the blank between "[1 Status]" and "[2 Drift]"
-	s.click(settingsTabX, 1)                                                       // the blank line under the bar
-	s.mouse(tea.MouseButtonRight, tea.MouseActionPress, settingsTabX, 0)           // not the primary button
-	s.mouse(tea.MouseButtonLeft, tea.MouseActionRelease, settingsTabX, 0)          // a release is not a click
-	s.mouse(tea.MouseButtonLeft, tea.MouseActionMotion, settingsTabX, 0)           // a drag is not a click
-	s.mouse(tea.MouseButtonLeft, tea.MouseActionPress, termWidth+settingsTabX, 0)  // outside the screen
-	s.mouse(tea.MouseButtonLeft, tea.MouseActionPress, settingsTabX, termHeight+3) // outside the screen
-	screen := s.final()
-	if !strings.Contains(screen, "[2 Drift]") || strings.Contains(screen, "[1 Status]") || strings.Contains(screen, "[3 Settings]") {
-		t.Fatalf("a stray mouse event switched tabs:\n%s", screen)
+	s.waitFor("? help · q quit", "> Sync now")
+	if screen := s.final(); !s.m.home {
+		t.Fatal(screen)
 	}
 }
 
-func TestClickingNarrowTabBarUsesTheShortLabels(t *testing.T) {
+func TestBreadcrumbStrayClicksKeepScreen(t *testing.T) {
+	t.Parallel()
+	s := start(t, newFake())
+	s.press("2")
+	s.waitFor("kitbag › Drift")
+	s.click(70, 0)
+	s.click(5, 1)
+	s.mouse(tea.MouseButtonRight, tea.MouseActionPress, 5, 0)
+	s.mouse(tea.MouseButtonLeft, tea.MouseActionRelease, 5, 0)
+	s.mouse(tea.MouseButtonLeft, tea.MouseActionMotion, 5, 0)
+	s.click(termWidth+1, 0)
+	s.click(5, termHeight+1)
+	if screen := s.final(); s.m.home || s.m.tab != driftTab {
+		t.Fatal(screen)
+	}
+}
+
+func TestNarrowBreadcrumbReturnsHome(t *testing.T) {
 	t.Parallel()
 	s := start(t, newFake())
 	s.tm.Send(tea.WindowSizeMsg{Width: MinWidth, Height: termHeight})
-	s.waitFor("[1 Status]")
-	// "[1 Status] 2 3 4": the digit 3 sits at column 13.
-	s.click(13, 0)
-	s.waitFor("[3 Settings]")
+	s.waitFor("kitbag › Status")
+	s.click(1, 0)
+	s.waitFor("? help · q quit")
+	if screen := s.final(); !s.m.home {
+		t.Fatal(screen)
+	}
 }
 
 func TestClickingADriftRowSelectsThenOpensIt(t *testing.T) {
@@ -102,9 +93,9 @@ func TestClickingOutsideTheDriftRowsKeepsTheSelection(t *testing.T) {
 	s := start(t, newFake())
 	s.press("2")
 	s.waitFor("> /home/user/.claude/CLAUDE.md")
-	s.click(5, 2)                // heading
-	s.click(5, driftSecondRow+1) // below the last row
-	s.click(5, termHeight-1)     // footer
+	s.click(5, 2)                      // heading
+	s.click(5, driftSecondRow+1)       // below the last row
+	s.click(termWidth-1, termHeight-1) // unused footer area
 	s.mouse(tea.MouseButtonRight, tea.MouseActionPress, 5, driftSecondRow)
 	s.mouse(tea.MouseButtonLeft, tea.MouseActionRelease, 5, driftSecondRow)
 	screen := s.final()
@@ -161,14 +152,14 @@ func TestWheelScrollsTheDriftList(t *testing.T) {
 
 func TestWheelScrollsTheActivityLog(t *testing.T) {
 	t.Parallel()
-	s := start(t, newFake())
+	s := start(t, newFake(), func(o *Options) { o.LogCapacity = 8 })
 	s.tm.Send(tea.WindowSizeMsg{Width: termWidth, Height: MinHeight})
-	s.press("5")
+	s.press("4")
 	s.waitFor("Following new entries")
 	for range 8 {
 		s.client.events <- model.Event{Kind: model.EventDriftDetected}
 	}
-	s.waitFor("warn The daemon detected drift")
+	s.waitFor("1 older entries dropped")
 	s.wheel(tea.MouseButtonWheelUp)
 	s.waitFor("Scrolling; press f to follow new entries")
 	s.wheel(tea.MouseButtonWheelDown)
@@ -197,13 +188,12 @@ func TestMouseIsIgnoredWhileEditingAndInHelp(t *testing.T) {
 	s.waitFor("Precedence:")
 	s.press(keyEnter)
 	s.waitFor("←/→/Space or click: choose")
-	s.click(driftTabX, 0)
+	s.click(1, 0)
 	s.click(5, 6)
 	s.press(keyEscape, keyHelp)
 	s.waitFor("Keyboard")
-	s.click(driftTabX, 0)
-	s.press(keyHelp)
-	if screen := s.final(); !strings.Contains(screen, "[3 Settings]") {
+	s.click(1, 0)
+	if screen := s.final(); !strings.Contains(screen, "kitbag › Settings") {
 		t.Fatalf("the mouse acted under an overlay:\n%s", screen)
 	}
 }
@@ -211,9 +201,9 @@ func TestMouseIsIgnoredWhileEditingAndInHelp(t *testing.T) {
 func TestHelpAndFooterMentionTheMouse(t *testing.T) {
 	t.Parallel()
 	s := start(t, newFake())
-	s.waitFor("? help", "a advanced", "mouse: click, wheel")
-	s.press(keyHelp)
-	s.waitFor("Mouse: click a tab, row or action", "wheel: scroll")
+	s.waitFor("esc back", "? help")
+	s.press(keyHelp, keyPageDown)
+	s.waitFor("Mouse: click home rows", "wheel: scroll")
 }
 
 // syncBuffer is an output safe to read while the program writes to it.

@@ -123,7 +123,7 @@ func TestStepperMouseUsesWideAndNarrowGeometry(t *testing.T) {
 			m := loadedSettingsModel(t, width, 30)
 			m.setting = 5
 			m.startEdit()
-			layout := m.settingsScreen(30 - chromeLines)
+			layout := m.settingsScreen(m.bodyHeight())
 			hit := layout.hits[2]
 			m.mouse(tea.MouseMsg{X: hit.start, Y: hit.y, Button: tea.MouseButtonLeft, Action: tea.MouseActionPress})
 			if m.field().Draft != "5m" {
@@ -139,7 +139,7 @@ func loadedSettingsModel(t *testing.T, width, height int) *Model {
 	t.Cleanup(m.Close)
 	m.app.Settings.Init()
 	m.app.Settings.Update(model.SettingsLoaded{Seq: 1, Values: newFake().settings})
-	m.width, m.height, m.tab = width, height, settingsTab
+	m.width, m.height, m.tab, m.home = width, height, settingsTab, false
 	return m
 }
 

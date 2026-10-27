@@ -1,4 +1,4 @@
- 1 Status   2 Drift  [3 Settings]  4 Agents   5 Activity
+kitbag › Settings
 
 Precedence: flag > KITBAG_* environment > config.toml > default
 Advanced [+]
@@ -7,7 +7,6 @@ Advanced [+]
   git.identity.email  unset · default
 > sync.poll_interval *  5m · config.toml
   daemon.update_check  true · default
-  sync.mode  copy · environment KITBAG_MODE
 
 sync.poll_interval
  30s  1m  5m  15m  1h [Custom…]
@@ -21,4 +20,5 @@ Allowed: duration from 1s to 24h (ms, s, m, h)
 
 [Help]
 Editing: Enter saves, Esc cancels
-? help · a advanced · q quit · mouse: click, wheel
+  [ Save (unavailable) ]  [ Remove ]  [ Revert ]
+Enter saves · Esc cancels

@@ -7,11 +7,10 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/TomaszJanusz/kitbag/internal/ui/model"
 	"github.com/TomaszJanusz/kitbag/internal/ui/model/text"
 )
 
-// Layout: one tab bar line, a blank separator and one footer line.
+// Layout: one breadcrumb line, a blank separator and one footer line.
 const (
 	chromeLines = 3
 	ellipsis    = "…"
@@ -29,78 +28,31 @@ func (m *Model) View() string {
 		return strings.Join(m.fit(m.wrap(m.styles.warning, m.say(text.New(text.TerminalTooSmall,
 			number(MinWidth), number(MinHeight), number(m.width), number(m.height)))), m.height), "\n")
 	}
-	body := m.height - chromeLines
+	body := m.bodyHeight()
+	lines := m.screenBody(body)
 	screen := make([]string, 0, m.height)
-	screen = append(screen, m.tabBar(), "")
-	screen = append(screen, pad(m.fit(m.body(body), body), body)...)
-	footer := text.TerminalFooter
-	if m.tab == agentsTab {
-		footer = text.FooterAgents
+	if m.home {
+		screen = pad(m.fit(lines, m.height-1), m.height-1)
+		m.homeCorners(screen)
+		screen = append(screen, m.homeFooter())
+	} else {
+		screen = append(screen, m.styles.faint.Render(m.say(text.New(text.ScreenBreadcrumb, m.screenTitle()))), "")
+		screen = append(screen, pad(m.fit(lines, body), body)...)
+		screen = append(screen, m.actionLayout().lines...)
+		screen = append(screen, m.styles.faint.Render(m.footerText()))
 	}
-	screen = append(screen, m.styles.faint.Render(m.say(text.New(footer))))
+	for i := range screen {
+		if m.windows.Len() > 0 {
+			screen[i] = ""
+		}
+		screen[i] = m.surfaceLine(screen[i])
+	}
 	return strings.Join(m.overlayWindows(m.fit(screen, m.height)), "\n")
-}
-
-// body renders the help overlay or the active tab in height lines.
-func (m *Model) body(height int) []string {
-	switch {
-	case m.help:
-		return m.helpView()
-	case m.tab == driftTab:
-		return m.driftView(height)
-	case m.tab == settingsTab:
-		return m.settingsView(height)
-	case m.tab == logTab:
-		return m.logView(height)
-	case m.tab == agentsTab:
-		return m.agentsScreen(height).lines
-	default:
-		return m.statusView()
-	}
 }
 
 func (m *Model) say(message text.Message) string { return m.catalog.Render(message) }
 
 func number(n int) text.Message { return text.Plain(strconv.Itoa(n)) }
-
-// tabBar names every tab; a narrow terminal shows only the active title.
-func (m *Model) tabBar() string {
-	bar, _ := m.tabLayout()
-	return bar
-}
-
-// tabSpan is the half-open column range [start, end) a tab occupies.
-type tabSpan struct{ start, end int }
-
-// tabLayout renders the tab bar and reports where each tab sits, so clicks
-// hit the same cells that are drawn.
-func (m *Model) tabLayout() (string, []tabSpan) {
-	titles := []text.Message{m.app.Status.View().Title, m.app.Drift.View().Title, m.app.Settings.View().Title, text.New(text.AgentsTitle), m.app.Log.View().Title}
-	full := make([]string, 0, len(titles))
-	compact := make([]string, 0, len(titles))
-	for i, title := range titles {
-		label := strconv.Itoa(i+1) + " " + m.say(title)
-		if tab(i) == m.tab {
-			active := m.styles.active.Render("[" + label + "]")
-			full, compact = append(full, active), append(compact, active)
-			continue
-		}
-		full = append(full, m.styles.tab.Render(" "+label+" "))
-		compact = append(compact, m.styles.tab.Render(strconv.Itoa(i+1)))
-	}
-	parts := full
-	if ansi.StringWidth(strings.Join(full, " ")) > m.width {
-		parts = compact
-	}
-	spans := make([]tabSpan, len(parts))
-	column := 0
-	for i, part := range parts {
-		width := ansi.StringWidth(part)
-		spans[i] = tabSpan{start: column, end: column + width}
-		column += width + 1
-	}
-	return strings.Join(parts, " "), spans
-}
 
 // wrap word-wraps plain text to the width and styles each resulting line.
 func (m *Model) wrap(style lipgloss.Style, plain string) []string {
@@ -156,53 +108,23 @@ func (m *Model) warnings(warnings []text.Message) []string {
 	return lines
 }
 
-// controls renders actions with their keys; disabled ones say so in text.
-func (m *Model) controls(controls []model.Control) string {
-	parts := make([]string, 0, len(controls))
-	for _, c := range controls {
-		label := text.New(text.ControlHint, text.Plain(intentName(c.Intent)), c.Label)
-		if !c.Enabled {
-			parts = append(parts, m.styles.faint.Render(m.say(text.New(text.ControlDisabled, label))))
-			continue
-		}
-		parts = append(parts, m.say(label))
-	}
-	return strings.Join(parts, "  ")
-}
-
-func intentName(intent model.Msg) string {
-	switch intent := intent.(type) {
-	case model.RequestServiceRefresh:
-		return "h"
-	case model.SyncNow:
-		return keySync
-	case model.Refresh:
-		return keyRefresh
-	case model.SaveSetting:
-		return keySave
-	case model.UnsetSetting:
-		return keyUnset
-	case model.RevertSetting:
-		return keyEscape
-	case model.ProbeAgents:
-		return keyProbe
-	case model.OpenAgentForm:
-		return map[model.AgentOp]string{model.AgentAdd: keyAdd, model.AgentEdit: keyEdit, model.AgentRemove: keyRemove}[intent.Op]
+func (m *Model) screenBody(body int) []string {
+	var lines []string
+	switch {
+	case m.home:
+		lines = m.homeLayout().lines
+	case m.tab == driftTab:
+		lines = m.driftScreen(body).lines
+	case m.tab == settingsTab:
+		lines = m.settingsView(body)
+	case m.tab == logTab:
+		lines = m.logView(body)
+	case m.tab == agentsTab:
+		lines = m.agentsScreen(body).lines
 	default:
-		return ""
-	}
-}
-
-func (m *Model) helpView() []string {
-	keys := []text.Key{
-		text.HelpTabs, text.HelpRefresh, text.HelpSync, text.HelpCheckSync, text.HelpMove, text.HelpDetail, text.HelpEdit,
-		text.HelpSave, text.HelpDialogs, text.HelpChoices, text.HelpAdvanced, text.HelpAgents, text.HelpFollow, text.HelpMouse, text.HelpToggle, text.HelpQuit,
-	}
-	lines := make([]string, 0, len(keys)+1)
-	lines = append(lines, m.styles.heading.Render(m.say(text.New(text.HelpTitle))))
-	lines = append(lines, "")
-	for _, key := range keys {
-		lines = append(lines, m.wrap(m.styles.tab, indent+m.say(text.New(key)))...)
+		lines = m.statusView()
+		m.statusTop = min(m.statusTop, max(len(lines)-body, 0))
+		lines = lines[m.statusTop:]
 	}
 	return lines
 }

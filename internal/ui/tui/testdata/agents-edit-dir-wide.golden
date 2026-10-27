@@ -1,18 +1,18 @@
- 1 Status   2 Drift   3 Settings  [4 Agents]  5 Activity
 
-2 declared instances, 1 other directories found                          | claude/second
-                                                                         | Directory        /home/user/.claude_2
-claude                                                                   | Source           declared in kitbag.toml
-  claude/main  /home/user/.claude                                        | Directory state  missing
-    present · declared in kitbag.toml · all hosts · active on this host  | Hosts            only on laptop
-> claude/second  /home/user/.claude_2                                    | On this host     active on this host
-    missing · declared in kitbag.toml · only on laptop · active on this… | Settings         merges shared settings
-  [found, not declared]                                                  | Next sync        warns and skips it until the
-  /srv/claude                                                            |                  directory exists
-    outs+------------------------------------------------------------------------------------------------------+
-codex   | Edit claude/second: Configuration directory                                                      esc |
-  codex | Step 1/5                                                                                             |fresh
-    pres|                                                                                                      |d:
+
+
+
+
+
+
+
+
+
+
+        +------------------------------------------------------------------------------------------------------+
+        | Edit claude/second: Configuration directory                                                      esc |
+        | Step 1/5                                                                                             |
+        |                                                                                                      |
         | The agent's configuration directory below your home directory, for example ~/.claude_2.              |
         | Configuration directory: >                                                                           |
         | Now /home/user/.claude_2; leave empty to keep it.                                                    |
@@ -21,15 +21,3 @@ codex   | Edit claude/second: Configuration directory                           
         |                                                                                                      |
         |                                                       [ Cancel ]   [ Back (unavailable) ]   [ Next ] |
         +------------------------------------------------------------------------------------------------------+
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-? help · a add · e edit · d remove · p probe · q quit · mouse: click, wheel

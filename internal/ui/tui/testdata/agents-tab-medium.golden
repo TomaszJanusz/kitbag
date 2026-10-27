@@ -1,4 +1,4 @@
- 1 Status   2 Drift   3 Settings  [4 Agents]  5 Activity
+kitbag › Agents
 
 2 declared instances, 1 other directories found           | claude/main
                                                           | Directory        /home/user/.claude
@@ -27,4 +27,4 @@ codex                                                     | [a] Add agent  [e] E
                                                           |
                                                           |
                                                           |
-? help · a add · e edit · d remove · p probe · q quit · mouse: click, wheel
+esc back · ? help · q home

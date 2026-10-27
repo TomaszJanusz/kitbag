@@ -39,6 +39,15 @@ overwrite newer state. Hints are not a journal: a connection, `sync.finished` or
 `drift.detected` reloads the snapshots. A `sync.started` hint from elsewhere is
 cleared by its finish hint or by any successful load issued after it.
 
+## Home projection
+
+`App.Home(version)` supplies one headline, at most one secondary message,
+severity, repository/branch/version edge labels and five compact menu items.
+It reuses Status and Agents snapshots without loading another source. Counts,
+check-time text and service/check-warning priorities belong here; the terminal
+owns menu focus and screen routing. `RelativeText` shares catalog-backed time
+hints with `WhenText`. Full status rows remain in `StatusView`.
+
 ## Settings presentation
 
 `ToggleAdvancedSettings` controls the shared view's expanded state.

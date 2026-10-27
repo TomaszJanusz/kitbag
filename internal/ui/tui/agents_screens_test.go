@@ -19,8 +19,8 @@ func TestAgentsAddScreens(t *testing.T) {
 		t.Run(size.name, func(t *testing.T) {
 			t.Parallel()
 			d := drive(t, withAgents(newFake()), size.width, size.height)
-			d.press("4")
-			d.expect("[4 Agents]", "claude/main", "[found, not declared]")
+			d.press("5")
+			d.expect("kitbag › Agents", "claude/main", "[found, not declared]")
 			d.golden("agents-tab-" + size.name)
 			d.press(keyProbe, keyAdd)
 			d.expect("Step 1/7", "(*) claude")

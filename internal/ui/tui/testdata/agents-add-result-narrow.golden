@@ -1,20 +1,16 @@
- 1 Status   2 Drift   3 Settings  [4 Agents]  5 Activity
 
-3 declared instances, 1 other directories found
 
-cl+------------------------------------------------------+
-> | Add an agent instance: Result                    esc |
-  | Step 7/7                                             | …
+
+
+  +------------------------------------------------------+
+  | Add an agent instance: Result                    esc |
+  | Step 7/7                                             |
   |                                                      |
-  | What happened to the change.                         |c…
+  | What happened to the change.                         |
   | ✓ Published add claude instance work at ~/.claude_3  |
   | as 9b8c7d6e5f4a.                                     |
-cl| Sync succeeded, 2 changed                            |
-[a| The agents list was reloaded.                        |
-[p|                                                      |
-Di|      [ Cancel ]   [ Back (unavailable) ] > [ Close ] |
-So+------------------------------------------------------+
-Directory state  present
-Hosts            all hosts
-On this host     active on this host
-? help · a add · e edit · d remove · p probe · q quit · mou…
+  | Sync succeeded, 2 changed                            |
+  | The agents list was reloaded.                        |
+  |                                                      |
+  |      [ Cancel ]   [ Back (unavailable) ] > [ Close ] |
+  +------------------------------------------------------+

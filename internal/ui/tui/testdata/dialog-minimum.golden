@@ -1,10 +1,9 @@
-[1 Status] 2 3 4 5
+
   +----------------------------------+
-2 | Add agent                    esc |
+  | Add agent                    esc |
   | Step 2/5                         |
-Re|                                  |ki
+  |                                  |
   | Directory:   ~/.agent draft      |
-Br|                                  |
+  |                                  |
   |            > [ Back ]   [ Next ] |
-Wo+----------------------------------+
-? help · a advanced · q quit · mouse: c…
+  +----------------------------------+

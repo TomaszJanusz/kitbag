@@ -1,18 +1,18 @@
- 1 Status   2 Drift   3 Settings  [4 Agents]  5 Activity
 
-2 declared instances, 1 other directories found                          | claude/main
-                                                                         | Directory        /home/user/.claude
-claude                                                                   | Source           declared in kitbag.toml
-> claude/main  /home/user/.claude                                        | Directory state  present
-    present · declared in kitbag.toml · all hosts · active on this host  | Hosts            all hosts
-  claude/second  /home/user/.claude_2                                    | On this host     active on this host
-    missing · declared in kitbag.toml · only on laptop · active on this… | Settings         merges shared settings
-  [found, not declared]                                                  | Next sync        installs the shared
-  /srv/claude                                                            |                  configuration here
-    outs+------------------------------------------------------------------------------------------------------+
-codex   | Add an agent instance: Result                                                                    esc |
-  codex | Step 7/7                                                                                             |fresh
-    pres|                                                                                                      |d:
+
+
+
+
+
+
+
+
+
+
+        +------------------------------------------------------------------------------------------------------+
+        | Add an agent instance: Result                                                                    esc |
+        | Step 7/7                                                                                             |
+        |                                                                                                      |
         | What happened to the change.                                                                         |
         | ! Not written: publish mode is pr for this host; nothing was written                                 |
         | To propose it:                                                                                       |
@@ -22,14 +22,3 @@ codex   | Add an agent instance: Result                                         
         |                                                                                                      |
         |                                                      [ Cancel ]   [ Back (unavailable) ] > [ Close ] |
         +------------------------------------------------------------------------------------------------------+
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-                                                                         |
-? help · a add · e edit · d remove · p probe · q quit · mouse: click, wheel
