@@ -130,3 +130,30 @@ func TestWatchExecutableRequiresAnExecutableFile(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// Model Homebrew's stable opt link rotating before cleanup deletes the old keg.
+// Stat and the digest must follow the link rather than hash its link text.
+func TestExecutableFollowsStableLinkAcrossCellarCleanup(t *testing.T) {
+	t.Parallel()
+	w := newWatchedExecutable(t)
+	old := filepath.FromSlash("/Cellar/kitbag/0.1.2/bin/kitbag")
+	next := filepath.FromSlash("/Cellar/kitbag/0.1.3/bin/kitbag")
+	mustLog(t, w.host.MkdirAll(filepath.Dir(old), privateDir))
+	mustLog(t, w.host.MkdirAll(filepath.Dir(next), privateDir))
+	mustLog(t, w.host.WriteAtomic(old, []byte("version 1"), executablePerm))
+	mustLog(t, w.host.Remove(w.path))
+	mustLog(t, w.host.Link(old, w.path))
+	watch, err := WatchExecutable(w.host, w.path, w.digest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.watch = watch
+	// An identical-content keg with a different mode is adopted without restart.
+	mustLog(t, w.host.WriteAtomic(next, []byte("version 1"), 0o700))
+	mustLog(t, w.host.Remove(w.path))
+	mustLog(t, w.host.Link(next, w.path))
+	mustLog(t, w.host.Remove(old))
+	w.expect(t, false, false, false)
+	mustLog(t, w.host.WriteAtomic(next, []byte("version 2 is longer"), 0o700))
+	w.expect(t, false, true)
+}

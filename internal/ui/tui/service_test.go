@@ -47,3 +47,17 @@ func TestServiceRefreshKeyConfirmsAndCancels(t *testing.T) {
 		t.Fatal(c.refreshes.Load(), screen)
 	}
 }
+
+func TestServiceRecoveryPendingScreen(t *testing.T) {
+	t.Parallel()
+	c := newFake()
+	c.status.ServiceInstalled, c.status.ServiceStale, c.status.ServiceRecovering = true, true, true
+	c.status.DaemonVersion, c.status.BinaryVersion = "0.1.2", "0.1.3"
+	s := start(t, c)
+	s.waitFor("Service upgrade recovery requested", "daemon 0.1.2, binary 0.1.3")
+	screen := s.final()
+	if strings.Contains(screen, "Repair service") || strings.Contains(screen, "mismatch persists") {
+		t.Fatal(screen)
+	}
+	golden(t, "status-upgrade-pending", screen)
+}
