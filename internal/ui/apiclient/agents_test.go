@@ -55,6 +55,7 @@ func TestPreviewAndApplyAgentChange(t *testing.T) {
 	t.Parallel()
 	off := false
 	result := workflow.AgentResult{
+		Manifest: "/repo/kitbag.toml", Directory: "/home/u/.claude_2", Effects: []workflow.AgentEffect{{Path: "/home/u/.claude_2/settings.json", Kind: "merge", Existing: true}},
 		AgentChangeSchema: 1, Plan: agents.Plan{Change: agents.Change{Op: agents.Edit, Kind: "claude", Target: "claude", Name: "second", Dir: "~/.claude_2", Settings: &off}, Revision: "r1", Title: "chore(kitbag): edit claude instance second (settings off)", Diff: []string{"+settings = false"}},
 		Publication: workflow.Publication{State: workflow.Published, Mode: "direct", Branch: "main", Commit: "c1", Attempts: 1, Next: []string{}},
 		Sync:        &workflow.AgentSync{ExitCode: apply.Warnings, Changed: 2, Warnings: []string{"w"}}, Released: &workflow.AgentRelease{Dir: "~/.claude_2", Changed: []string{"discard x"}, Warnings: []string{}},
@@ -64,6 +65,7 @@ func TestPreviewAndApplyAgentChange(t *testing.T) {
 	change := model.AgentChange{Op: model.AgentEdit, Target: "claude", Name: "second", Settings: &off}
 	preview, err := c.PreviewAgentChange(t.Context(), change)
 	expect(t, err == nil && preview.Revision == "r1" && preview.Diff[0] == "+settings = false", "preview %+v %v", preview, err)
+	checkAgentPreviewEffects(t, preview, result)
 	expect(t, preview.Change.Settings != nil && !*preview.Change.Settings, "settings %+v", preview.Change)
 	applied, err := c.ApplyAgentChange(t.Context(), change, "r1")
 	expect(t, err == nil && applied.Publication.State == model.PublishPublished && applied.ExitCode == 1, "applied %+v %v", applied, err)
@@ -86,4 +88,11 @@ func TestApplyAgentChangeConflictKeepsDetail(t *testing.T) {
 	var classified *model.Error
 	expect(t, errors.As(err, &classified) && classified.Kind == model.ErrConflict && classified.Detail == "kitbag.toml changed since the preview", "error %v", err)
 	expect(t, applied.ExitCode == int(apply.Conflict), "exit %d", applied.ExitCode)
+}
+
+func checkAgentPreviewEffects(t *testing.T, preview model.AgentPreview, result workflow.AgentResult) {
+	t.Helper()
+	expect(t, preview.Manifest == result.Manifest && preview.Directory == result.Directory, "paths %+v", preview)
+	expect(t, len(preview.Effects) == 1, "effects %+v", preview)
+	expect(t, preview.Effects[0].Kind == "merge" && preview.Effects[0].Existing, "effects %+v", preview)
 }

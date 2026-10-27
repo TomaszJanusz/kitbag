@@ -119,10 +119,18 @@ func candidate(c discover.ListedCandidate) model.AgentCandidate {
 func agentPreview(r workflow.AgentResult) model.AgentPreview {
 	ch := r.Plan.Change
 	p := r.Publication
-	return model.AgentPreview{
+	preview := model.AgentPreview{
+		Manifest: r.Manifest, Directory: r.Directory,
 		Change:      model.AgentChange{Op: model.AgentOp(ch.Op), Kind: ch.Kind, Target: ch.Target, Name: ch.Name, Dir: ch.Dir, Settings: ch.Settings},
 		Publication: model.AgentPublication{State: model.PublishState(p.State), Mode: p.Mode, Branch: p.Branch, Commit: p.Commit, Reason: p.Reason, Next: p.Next, Attempts: p.Attempts},
 		Revision:    r.Plan.Revision, Title: r.Plan.Title, Message: r.Plan.Message, Dropped: r.Plan.Dropped,
 		Diff: r.Plan.Diff, Warnings: r.Plan.Warnings,
 	}
+	if r.Effects != nil {
+		preview.Effects = make([]model.AgentEffect, 0, len(r.Effects))
+	}
+	for _, effect := range r.Effects {
+		preview.Effects = append(preview.Effects, model.AgentEffect{Path: effect.Path, Kind: effect.Kind, Backup: effect.Backup, Warning: effect.Warning, Existing: effect.Existing})
+	}
+	return preview
 }

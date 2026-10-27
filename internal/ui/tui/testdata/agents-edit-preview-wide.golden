@@ -2,20 +2,24 @@
 
 
 
-
-
-
-
-
         +------------------------------------------------------------------------------------------------------+
         | Edit claude/second: What will change                                                             esc |
         | Step 3/5                                                                                             |
         |                                                                                                      |
         | The change to kitbag.toml, its commit title and how it will be published.                            |
+        | Edit the shared manifest at /home/user/.local/share/kitbag/repo/kitbag.toml.                         |
+        | Apply will attempt to commit and push this change to branch main. The declaration affects all hosts  |
+        | on their next sync; Apply also syncs this machine.                                                   |
+        | Local configuration directory: /home/user/.claude_9.                                                 |
+        | These file effects describe this machine now. Apply rechecks the files; other hosts plan from their  |
+        | own files.                                                                                           |
+        | Keep directory ~/.claude_2 and files KitBag does not own. Tracked outputs are handed back as listed  |
+        | below.                                                                                               |
+        | Create shared configuration at /home/user/.claude_9/CLAUDE.md.                                       |
+        | Delete the owned output /home/user/.claude_2/CLAUDE.md.                                              |
         | Commit: chore(kitbag): move claude instance second to ~/.claude_9                                    |
-        | Published directly to main.                                                                          |
-        | ! ~/.claude_2 is handed back: KitBag removes only what it created there and restores what it         |
-        | replaced.                                                                                            |
+        | Publication route: direct push to main.                                                              |
+        | ! ~/.claude_2 is handed back according to the file effects above.                                    |
         |                                                                                                      |
         | Changes to kitbag.toml:                                                                              |
         |    [targets.claude.instances.second]                                                                 |

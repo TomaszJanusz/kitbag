@@ -206,3 +206,10 @@ workflow in-process, as it does when no daemon listens. They implement the
   longer applying upstream) and an additive `data.detail` explaining why. The
   detail contains only kinds, targets, instance names and paths the caller
   chose or the manifest declares; other failures keep the generic message.
+
+Agent change previews also include `directory` (the expanded local instance
+root) and `effects` (the read-only proposed sync and release operations on this
+machine). Each effect carries `kind`, `path`, `existing`, and optional `backup`
+and `warning`. Missing/null effects from older daemons mean unavailable, not
+an empty plan. Apply recalculates file operations; the revision guard protects
+the manifest bytes, not the filesystem snapshot.

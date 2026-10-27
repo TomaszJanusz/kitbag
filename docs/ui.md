@@ -258,3 +258,12 @@ disabled Sync during sync/service refresh activity or an unmet tool version.
 Status retains disabled service refresh during sync/refresh activity, with
 status messages explaining availability. Confirmation and information dialogs
 keep their usable Yes/No or OK actions.
+
+Agent previews retain the response's exact `manifest` path and expanded
+`directory`. Optional `effects` list the current machine's proposed sync actions
+and dry-run unmanage actions for dropped outputs (kind, path, existing entry,
+backup path and warning). The workflow plans against the proposed manifest
+without writing it; release planning uses the same ownership and backup rules
+as apply. The adapter forwards these facts to the form's sentence summary,
+above the raw diff. Older daemons omitting effects are labelled unavailable.
+Other hosts plan from their own files; Apply rechecks the local filesystem.
