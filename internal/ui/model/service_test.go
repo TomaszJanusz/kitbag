@@ -76,3 +76,25 @@ func checkRefreshCancellation(t *testing.T, m *Status) {
 		t.Fatal("cancel ran refresh")
 	}
 }
+
+func TestServiceRecoveryNoticeDoesNotDemandManualRepair(t *testing.T) {
+	t.Parallel()
+	snapshot := StatusSnapshot{Daemon: true, DaemonVersion: "0.1.2", BinaryVersion: "0.1.3", ServiceInstalled: true, ServiceStale: true, ServiceRecovering: true}
+	m := readyStatus(t, &fakeClient{status: snapshot})
+	view := m.View()
+	checkText(t, statusTexts(view)...)
+	if len(view.Warnings) != 0 || m.homeWarning().Key != text.StatusServiceRecovering || m.canRefreshService() {
+		t.Fatal(view)
+	}
+	m.Update(RequestServiceRefresh{})
+	if m.View().ConfirmRefresh {
+		t.Fatal("repair prompt during automatic recovery")
+	}
+	// The adapter ends the transient state after the core's bounded window.
+	snapshot.ServiceRecovering = false
+	m.snapshot = snapshot
+	view = m.View()
+	if len(view.Warnings) == 0 || !m.canRefreshService() || m.homeWarning().Key != text.StatusVersionMismatch {
+		t.Fatal("persistent mismatch hidden", view)
+	}
+}

@@ -13,7 +13,7 @@ localapi start-old
 exec kitbag service install
 exec kitbag status
 stdout 'Versions: daemon 0.1.1, binary 0.0.0-dev'
-stderr 'Version mismatch: daemon 0.1.1, binary 0.0.0-dev; run kitbag service refresh'
+stderr 'Version mismatch: daemon 0.1.1, binary 0.0.0-dev; automatic recovery is unavailable'
 exec kitbag status --json
 stdout '"daemon_version": "0.1.1"'
 stdout '"binary_version": "0.0.0-dev"'
