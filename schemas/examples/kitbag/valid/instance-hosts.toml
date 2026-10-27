@@ -1,0 +1,33 @@
+# Instances limited to some hosts: the second account exists only on mac and
+# ci; every other host neither uses nor looks for ~/.claude_2.
+schema = 1
+
+[targets.claude]
+agent = "claude"
+settings = "claude/settings.json"
+
+[targets.claude.instances.main]
+dir = "~/.claude"
+
+# Only these machines have the second account.
+[targets.claude.instances.second]
+dir = "~/.claude_2"
+hosts = ["mac", "ci"]
+settings = false
+
+[targets.codex]
+agent = "codex"
+
+[targets.codex.instances.work]
+dir = "~/.codex-work"
+hosts = ["runner02"]
+
+[hosts.mac]
+mode = "copy"
+
+# Target-level host overrides still apply to a target whose instances list hosts.
+[hosts.ci.targets.claude]
+mode = "copy"
+
+[hosts.runner02.targets.codex]
+enabled = false

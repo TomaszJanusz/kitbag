@@ -93,8 +93,8 @@ type instanceContext struct {
 	adapter                                           Adapter
 	intent                                            *manifest.Manifest
 	config                                            manifest.Target
-	instance                                          manifest.Instance
 	repository, name, instanceName, directory, listed string
+	instance                                          manifest.Instance
 }
 
 func (c instanceContext) policy(primitive string) manifest.Primitive {

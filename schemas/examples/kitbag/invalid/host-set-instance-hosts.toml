@@ -1,0 +1,9 @@
+# expect: /hosts/mac/targets/claude/instances/main/hosts
+schema = 1
+
+[targets.claude]
+agent = "claude"
+
+[hosts.mac.targets.claude.instances.main]
+dir = "~/.claude"
+hosts = ["mac"]

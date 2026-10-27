@@ -1,0 +1,87 @@
+# An instance limited to hosts is used only there. Other hosts never warn about
+# its missing directory, never exit 1 for it and never fall back to the default.
+env KITBAG_CONFIG=$WORK/machine.toml
+env CLAUDE_CONFIG_DIR=
+gitremote $WORK/config.git config
+exec git clone --quiet $WORK/config.git $HOME/checkout
+agentdirs .claude
+
+env KITBAG_HOST=runner02
+exec kitbag sync --no-pull
+! stderr .
+grep '^@.*/checkout/AGENTS.md$' $HOME/.claude/CLAUDE.md
+! exists $HOME/.claude_2
+exec kitbag plan
+! stdout '\.claude_2'
+! stderr .
+exec kitbag doctor
+! stdout 'instance-claude/second'
+stdout 'instance-hosts-claude/second: hosts lists mac, ci'
+exec kitbag agent list
+stdout 'second.*mac'
+
+# Where the instance applies, its missing directory warns as before.
+env KITBAG_HOST=mac
+execstatus 1 kitbag sync --no-pull
+stderr 'instance directory is missing; skipped'
+! exists $HOME/.claude_2
+agentdirs .claude_2
+exec kitbag sync --no-pull
+grep '^@.*/checkout/AGENTS.md$' $HOME/.claude_2/CLAUDE.md
+
+# Leaving a host out of the list removes KitBag's own output there, as
+# enabled = false does; the agent's directory itself stays.
+cp ci-only.toml $HOME/checkout/kitbag.toml
+exec kitbag plan
+stdout '^- remove .*/\.claude_2/CLAUDE.md'
+exec kitbag sync --no-pull
+! exists $HOME/.claude_2/CLAUDE.md
+exists $HOME/.claude_2
+
+# A host's replacement set for the same target is refused, not combined.
+cp combined.toml $HOME/checkout/kitbag.toml
+! exec kitbag plan
+stderr '/hosts/ci/targets/claude/instances: host instance set for targets.claude, whose instance second lists its hosts'
+
+-- config/kitbag.toml --
+schema = 1
+[instructions]
+source = "AGENTS.md"
+[targets.claude]
+agent = "claude"
+[targets.claude.instances.main]
+dir = "~/.claude"
+[targets.claude.instances.second]
+dir = "~/.claude_2"
+hosts = ["mac", "ci"]
+-- ci-only.toml --
+schema = 1
+[instructions]
+source = "AGENTS.md"
+[targets.claude]
+agent = "claude"
+[targets.claude.instances.main]
+dir = "~/.claude"
+[targets.claude.instances.second]
+dir = "~/.claude_2"
+hosts = ["ci"]
+-- combined.toml --
+schema = 1
+[instructions]
+source = "AGENTS.md"
+[targets.claude]
+agent = "claude"
+[targets.claude.instances.main]
+dir = "~/.claude"
+[targets.claude.instances.second]
+dir = "~/.claude_2"
+hosts = ["mac", "ci"]
+[hosts.ci.targets.claude.instances.main]
+dir = "~/.claude"
+-- config/AGENTS.md --
+Shared rules.
+-- machine.toml --
+schema=1
+[repo]
+url="local-config"
+path="~/checkout"

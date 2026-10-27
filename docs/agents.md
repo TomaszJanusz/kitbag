@@ -672,8 +672,10 @@ queues and manifest overlays arrive later in the ADR 12 rollout.
 
 Schema 1 declarations include target, instance name, directory, settings merge,
 enabled state, host scope and `active_here`. Empty `hosts` means all hosts except
-`excluded_hosts`; these exclusions represent schema 1's replacement instance
-sets. Replacement entries list the host they belong to. Disabled and other-host
+`excluded_hosts`. A target instance's `hosts` is its own
+[hosts list](manifest.md#instances-on-some-hosts); `excluded_hosts` lists the
+hosts whose replacement instance set leaves it out. Replacement entries list the
+host they belong to. Disabled and other-host
 instances stay visible. Rows in the selected host scope reflect its target
 enable/disable override. Targets without instances show an `implicit` default;
 listing explicit instances replaces that default. Candidates already represented

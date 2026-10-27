@@ -1,0 +1,1 @@
+instance-hosts-empty.toml:9:1: /targets/claude/instances/main/hosts: minItems: got 0, want 1

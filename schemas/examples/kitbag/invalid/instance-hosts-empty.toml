@@ -1,0 +1,9 @@
+# expect: minItems
+schema = 1
+
+[targets.claude]
+agent = "claude"
+
+[targets.claude.instances.main]
+dir = "~/.claude"
+hosts = []

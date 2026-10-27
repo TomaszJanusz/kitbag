@@ -116,6 +116,8 @@ type Primitive struct {
 }
 
 // Instance declares an agent directory and optional primitive destination roots.
+// Hosts limits a target's instance to the listed hosts; empty means every host.
+// Instances in a host's replacement set never have Hosts.
 type Instance struct {
 	Enabled    *bool                `toml:"enabled"`
 	Settings   *bool                `toml:"settings"`
@@ -123,6 +125,7 @@ type Instance struct {
 	Primitives map[string]Primitive `toml:"primitives"`
 	Dir        string               `toml:"dir"`
 	Mode       string               `toml:"mode"`
+	Hosts      []string             `json:",omitempty" toml:"hosts,omitempty"`
 }
 
 // Host overrides manifest defaults for one host.
@@ -132,7 +135,8 @@ type Host struct {
 	Mode    string                `toml:"mode"`
 }
 
-// HostTarget overrides a declared target. Instances replaces its entire set.
+// HostTarget overrides a declared target. Instances replaces its entire set and
+// is not allowed for a target whose instances use Hosts.
 type HostTarget struct {
 	Enabled   *bool               `toml:"enabled"`
 	Instances map[string]Instance `toml:"instances"`

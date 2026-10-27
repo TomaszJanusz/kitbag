@@ -41,9 +41,11 @@ type ListedCandidate struct {
 	ErrorClass string   `json:"error_class,omitempty"`
 }
 
-// Instance describes a declared or implicit target instance. In schema 1,
-// host replacement sets are represented by Hosts and ExcludedHosts: an empty
-// Hosts means all hosts except ExcludedHosts. ActiveHere includes Enabled.
+// Instance describes a declared or implicit target instance. It applies to
+// Hosts (empty: every host) except ExcludedHosts. Hosts is the instance's own
+// hosts list or the host whose replacement set declares it; ExcludedHosts
+// lists the hosts whose replacement set leaves a target instance out.
+// ActiveHere includes Enabled.
 type Instance struct {
 	ListedCandidate
 	Target        string   `json:"target"`
@@ -166,14 +168,18 @@ func (t Table) appendInstances(host Host, home, target string, declaration manif
 			continue
 		}
 		implicit := len(declaration.Instances) == 0
-		scope := inScope(current, hosts, excluded)
+		applies := hosts
+		if applies == nil {
+			applies = value.Hosts
+		}
+		scope := inScope(current, applies, excluded)
 		targetEnabled := declaration.Enabled
 		if scope {
 			targetEnabled = effective.Enabled
 		}
 		enabled := on(targetEnabled) && on(value.Enabled)
 		active := enabled && scope
-		result.Instances = append(result.Instances, Instance{ListedCandidate: c, Target: target, Name: name, Hosts: append([]string{}, hosts...), ExcludedHosts: append([]string{}, excluded...), Implicit: implicit, Enabled: enabled, Settings: declaration.Settings != "" && on(value.Settings), ActiveHere: active})
+		result.Instances = append(result.Instances, Instance{ListedCandidate: c, Target: target, Name: name, Hosts: append([]string{}, applies...), ExcludedHosts: append([]string{}, excluded...), Implicit: implicit, Enabled: enabled, Settings: declaration.Settings != "" && on(value.Settings), ActiveHere: active})
 	}
 	return nil
 }
