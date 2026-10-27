@@ -1,0 +1,35 @@
+# Schema 2: an instance lists the hosts it applies to; a host table only
+# patches enabled, mode or settings of an instance the target declares.
+schema = 2
+
+[targets.claude]
+agent = "claude"
+settings = "claude/settings.json"
+
+[targets.claude.instances.main]
+dir = "~/.claude"
+
+# Only some machines have this second account.
+[targets.claude.instances.second]
+dir = "~/.claude_2"
+settings = false
+hosts = ["mac", "ci"]
+
+[targets.claude.instances.work]
+dir = "~/.claude-work"
+hosts = ["runner02"]
+
+[targets.codex]
+agent = "codex"
+
+[hosts.mac]
+mode = "copy"
+
+[hosts.runner02.targets.claude.instances.work]
+mode = "copy"
+
+[hosts.ci.targets.claude.instances.main]
+enabled = false
+
+[hosts.runner02.targets.codex]
+enabled = false

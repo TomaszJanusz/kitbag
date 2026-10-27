@@ -1,0 +1,9 @@
+# expect: 'hosts'
+schema = 1
+
+[targets.claude]
+agent = "claude"
+
+[targets.claude.instances.second]
+dir = "~/.claude_2"
+hosts = ["mac"]

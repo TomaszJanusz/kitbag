@@ -193,3 +193,49 @@ func assertDeclaredDirectories(t *testing.T, main, second Instance) {
 		t.Fatalf("second directory: %+v", second)
 	}
 }
+
+func TestListSchema2HostFilters(t *testing.T) {
+	t.Parallel()
+	m, err := manifest.Parse("kitbag.toml", []byte(`schema=2
+[targets.claude]
+agent="claude"
+settings="settings.json"
+[targets.claude.instances.main]
+dir="~/.claude"
+[targets.claude.instances.second]
+dir="~/.claude_2"
+hosts=["mac"]
+[hosts.mac.targets.claude.instances.second]
+settings=false
+[hosts.ci.targets.claude.instances.main]
+enabled=false
+`))
+	must(t, err)
+	host := newHost(nil)
+	for _, tc := range []struct {
+		current                  string
+		mainActive, secondActive bool
+	}{{"mac", true, true}, {"ci", false, false}, {"other", true, false}} {
+		got, listErr := listTable().List(recorder{host, t}, m, tc.current, false)
+		must(t, listErr)
+		if len(got.Instances) != 2 {
+			t.Fatalf("%s: %+v", tc.current, got.Instances)
+		}
+		main, second := got.Instances[0], got.Instances[1]
+		if main.ActiveHere != tc.mainActive || second.ActiveHere != tc.secondActive || main.Implicit || second.Implicit {
+			t.Fatalf("%s: main %+v second %+v", tc.current, main, second)
+		}
+		assertSchema2Hosts(t, tc.current, main, second)
+	}
+}
+
+func assertSchema2Hosts(t *testing.T, current string, main, second Instance) {
+	t.Helper()
+	if len(main.Hosts) != 0 || !slices.Equal(main.ExcludedHosts, []string{"ci"}) || !slices.Equal(second.Hosts, []string{"mac"}) || len(second.ExcludedHosts) != 0 {
+		t.Fatalf("%s: hosts main %+v second %+v", current, main, second)
+	}
+	// The mac patch switches settings off only where it applies.
+	if second.Settings != (current != "mac") || !main.Enabled || !second.Enabled {
+		t.Fatalf("%s: settings/enabled %+v", current, second)
+	}
+}

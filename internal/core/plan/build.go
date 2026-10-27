@@ -11,6 +11,7 @@ import (
 	"github.com/TomaszJanusz/kitbag/internal/core/state"
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 	"github.com/TomaszJanusz/kitbag/internal/target"
+	"github.com/TomaszJanusz/kitbag/pkg/manifest"
 )
 
 type prepared struct {
@@ -81,8 +82,8 @@ func Build(fsys platform.FS, req Request) (Plan, error) {
 }
 
 func validateRequest(req Request) error {
-	if req.Manifest == nil || req.Manifest.Schema != 1 || len(req.Manifest.Hosts) != 0 {
-		return invalid("manifest must be schema 1 and host-resolved")
+	if req.Manifest == nil || req.Manifest.Schema < manifest.SchemaOldest || req.Manifest.Schema > manifest.SchemaLatest || len(req.Manifest.Hosts) != 0 {
+		return invalid("manifest must be a supported schema and host-resolved")
 	}
 	if !validPath(req.Repository) || req.State.SchemaVersion != state.CurrentVersion {
 		return invalid("repository or state schema")

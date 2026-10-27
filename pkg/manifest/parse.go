@@ -8,7 +8,7 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
-// Parse decodes a complete schema-v1 document and validates types, keys, portable
+// Parse decodes a complete schema-1 or schema-2 document and validates types, keys, portable
 // paths, names and cross-references. It never accesses the host. A schema newer
 // than SchemaLatest is rejected with a positioned error wrapping *SchemaError
 // before any other validation; call Preflight first to also check
@@ -24,7 +24,11 @@ func Parse(filename string, data []byte) (*Manifest, error) {
 	if err := d.preflightSchema(tree); err != nil {
 		return nil, err
 	}
-	if err := d.validate(manifestRule(), tree, ""); err != nil {
+	var schema int64 // A missing or mistyped schema gets schema-1 rules and its own error.
+	if value, ok := tree["schema"].(int64); ok {
+		schema = value
+	}
+	if err := d.validate(manifestRule(schema), tree, ""); err != nil {
 		return nil, err
 	}
 	if err := d.pathCollisions(); err != nil {

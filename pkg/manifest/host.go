@@ -12,8 +12,12 @@ import (
 // ResolveHost selects KITBAG_HOST, then configured (config.toml's host), then the
 // system's short hostname. env can be an internal/platform.Env. It returns an
 // independent copy with matching files, expanded instruction template and merged
-// host policy. Instance overrides replace whole sets; publish replaces both keys.
-// Mode precedence below target level remains the planner's responsibility.
+// host policy; publish replaces both keys. In schema 1 a host's instance table
+// replaces the target's whole set. In schema 2 an instance whose Hosts excludes
+// the host is kept with Enabled false, so the target still lists instances and
+// never falls back to its implicit default, and a host's instance tables patch
+// enabled, mode and settings by name. Mode precedence below target level
+// remains the planner's responsibility.
 func (m *Manifest) ResolveHost(env Environment, configured string) (*Manifest, error) {
 	host, err := hostName(env, configured)
 	if err != nil {
@@ -74,23 +78,79 @@ func hostName(env Environment, configured string) (string, error) {
 
 func (m *Manifest) hostTargets(host string) (map[string]Target, error) {
 	targets := maps.Clone(m.Targets)
+	if m.Schema >= schemaInstanceHosts {
+		for name, target := range targets {
+			target.Instances = excludeInstances(target.Instances, host)
+			targets[name] = target
+		}
+	}
 	for _, name := range slices.Sorted(maps.Keys(m.Hosts[host].Targets)) {
-		override := m.Hosts[host].Targets[name]
 		target, ok := targets[name]
-		key := pointer(pointer("/hosts", host)+"/targets", name)
 		if !ok {
-			return nil, m.doc.fail(key, "host override names an undeclared target", nil)
+			return nil, m.doc.fail(pointer(pointer("/hosts", host)+"/targets", name), "host override names an undeclared target", nil)
 		}
-		if override.Enabled != nil && (target.Enabled == nil || *target.Enabled) {
-			target.Enabled = override.Enabled
-		}
-		if override.Mode != "" {
-			target.Mode = override.Mode
-		}
-		if override.Instances != nil {
-			target.Instances = override.Instances
-		}
-		targets[name] = target
+		targets[name] = m.overrideTarget(target, m.Hosts[host].Targets[name])
 	}
 	return targets, nil
+}
+
+// overrideTarget applies one host's override of a target.
+func (m *Manifest) overrideTarget(target Target, override HostTarget) Target {
+	if override.Enabled != nil && (target.Enabled == nil || *target.Enabled) {
+		target.Enabled = override.Enabled
+	}
+	if override.Mode != "" {
+		target.Mode = override.Mode
+	}
+	switch {
+	case override.Instances == nil:
+	case m.Schema >= schemaInstanceHosts:
+		target.Instances = patchInstances(target.Instances, override.Instances)
+	default:
+		target.Instances = override.Instances
+	}
+	return target
+}
+
+// AppliesTo reports whether the instance's Hosts filter (schema 2) admits
+// host; an instance without one applies to every host.
+func (i Instance) AppliesTo(host string) bool {
+	return len(i.Hosts) == 0 || slices.Contains(i.Hosts, host)
+}
+
+// excludeInstances returns a copy of instances in which those that do not
+// apply to host are disabled.
+func excludeInstances(instances map[string]Instance, host string) map[string]Instance {
+	if instances == nil {
+		return nil
+	}
+	result := maps.Clone(instances)
+	for name, instance := range result {
+		if !instance.AppliesTo(host) {
+			instance.Enabled = new(bool)
+			result[name] = instance
+		}
+	}
+	return result
+}
+
+// patchInstances returns a copy of instances with each patch's set keys
+// applied to the instance of the same name. Validation guarantees that every
+// patched instance exists and applies to the host.
+func patchInstances(instances, patches map[string]Instance) map[string]Instance {
+	result := maps.Clone(instances)
+	for name, patch := range patches {
+		instance := result[name]
+		if patch.Enabled != nil {
+			instance.Enabled = patch.Enabled
+		}
+		if patch.Mode != "" {
+			instance.Mode = patch.Mode
+		}
+		if patch.Settings != nil {
+			instance.Settings = patch.Settings
+		}
+		result[name] = instance
+	}
+	return result
 }

@@ -1,4 +1,4 @@
-# expect: value must be 1
+# expect: /schema
 schema = 0
 
 [instructions]

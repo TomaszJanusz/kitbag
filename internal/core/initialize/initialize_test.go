@@ -119,7 +119,7 @@ func TestIdentityAndInspectionErrors(t *testing.T) {
 	if _, err = s.NeedsIdentity(context.Background(), repo); !errors.Is(err, fs.ErrPermission) {
 		t.Fatal(err)
 	}
-	write(t, s.Host, filepath.Join(repo, "kitbag.toml"), "schema=2")
+	write(t, s.Host, filepath.Join(repo, "kitbag.toml"), "schema=3")
 	if _, err = s.Inspect(repo); err == nil {
 		t.Fatal("invalid manifest accepted")
 	}

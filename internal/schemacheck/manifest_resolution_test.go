@@ -39,6 +39,24 @@ func TestManifestSchema1Resolution(t *testing.T) {
 	}
 }
 
+// TestManifestSchema2Resolution records what every valid schema-2 fixture
+// resolves to: instances outside their hosts are disabled, never dropped, and
+// host tables patch instances by name.
+func TestManifestSchema2Resolution(t *testing.T) {
+	t.Parallel()
+	fsys := os.DirFS(schemasDir)
+	for _, name := range examples(t, fsys, "examples/kitbag/v2/valid") {
+		t.Run(path.Base(name), func(t *testing.T) {
+			t.Parallel()
+			m, err := manifest.Parse(path.Base(name), read(t, fsys, name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			golden(t, "testdata/resolution/v2/"+strings.TrimSuffix(path.Base(name), ".toml")+".golden", resolutions(t, m))
+		})
+	}
+}
+
 // resolutions renders the host-resolved manifest for each host as TOML.
 func resolutions(t *testing.T, m *manifest.Manifest) string {
 	t.Helper()

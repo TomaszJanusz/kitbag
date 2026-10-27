@@ -3,8 +3,11 @@
 KitBag reads two TOML files. `kitbag.toml` is committed at the root of a
 configuration repository and describes, for every machine, which repository
 files become which agent primitives. `config.toml` lives on one machine and
-describes that machine only. This document is the schema version 1 contract
-for both; [`schemas/kitbag.schema.json`](../schemas/kitbag.schema.json) and
+describes that machine only. This document is the contract for `kitbag.toml`
+schema 1 and 2 and `config.toml` schema 1;
+[`schemas/kitbag.schema.json`](../schemas/kitbag.schema.json) (schema 1 and 2),
+[`schemas/kitbag.v1.schema.json`](../schemas/kitbag.v1.schema.json) (schema 1
+alone, for editors of older files) and
 [`schemas/config.schema.json`](../schemas/config.schema.json) are the
 machine-readable form (JSON Schema draft 2020-12), and the TOML files under
 [`schemas/examples`](../schemas/examples) are validated against them by
@@ -50,7 +53,10 @@ destructive rewrite (ADR 9, condition 3).
   update kitbag`. Both exit 4 and report `tool-too-old`
   ([self-update.md](self-update.md#minimum-versions-and-verified-updates)).
   An older `schema` stays a validation error (exit 2) that asks for the
-  explicit migration. This release reads schema 1 only.
+  explicit migration. This release reads `kitbag.toml` schema 1 and 2; see
+  [schema 2](#schema-2-instances-per-host).
+- A schema-1 file keeps schema-1 meaning under a tool that reads schema 2:
+  nothing is converted, warned about or rewritten implicitly.
 - Unknown keys are errors everywhere (`additionalProperties: false`), including
   misspelled optional keys. A new key arrives only with a new schema version;
   the N/N−1 window gives repositories a release in which every machine can
@@ -69,7 +75,7 @@ destructive rewrite (ADR 9, condition 3).
 | repository path | Relative to the repository root, `/` separated, no leading `/`, `~` or `$`, no `.` or `..` segment, no backslash, no trailing `/`. | every `src`, `source`, `dir`, `dirs`, `include`, `settings`, `per_agent` value |
 | home path | Starts with `~/`, same segment rules. `~` is the applying user's home directory on that machine. Absolute paths are rejected. | `dest`, instance `dir`, `roots`, `repo.path` |
 | name | `^[a-z0-9][a-z0-9_.-]{0,63}$` | target, instance, server and import names |
-| host name | `^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$` | `hosts.<name>`, `files[].hosts`, config `host` |
+| host name | `^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$` | `hosts.<name>`, `files[].hosts`, instance `hosts` (schema 2), config `host` |
 | agent kind | `claude`, `codex`, `cursor`, `gemini`, `opencode`, `copilot`, `windsurf`, `generic` | `agent`, `per_agent` keys, `mcp.servers.<n>.agents` |
 | primitive name | `instructions`, `skills`, `commands`, `agents`, `hooks`, `rules`, `mcp` | `roots` keys, `primitives` keys |
 | semantic version | `MAJOR.MINOR.PATCH` with optional pre-release and build | `min_tool_version` |
@@ -85,7 +91,7 @@ fragments. No other placeholder or environment variable is expanded.
 
 | Key | Type | Required | Default | Meaning |
 | --- | --- | --- | --- | --- |
-| `schema` | integer | yes | — | Must be `1`. |
+| `schema` | integer | yes | — | `1` or `2`. Schema 2 adds the instance [`hosts`](#schema-2-instances-per-host) filter and makes host instance tables patches. |
 | `min_tool_version` | semantic version | no | none | Lowest tool release allowed to apply the manifest. |
 | `mode` | `link` \| `copy` | no | unset | Manifest-wide materialization default; see [mode](#materialization-mode). |
 | `instructions` | table | no | not managed | Global instructions. |
@@ -209,6 +215,7 @@ plan reports MCP as unsupported for that instance.
 | `instances.<name>.settings` | boolean | no | `true` | `false` skips the settings merge for this instance (today's `settings=off`). |
 | `instances.<name>.roots.<primitive>` | home path | `generic`: yes | adapter default | Replaces the adapter's documented root for one primitive on this instance. For `generic` only primitives with a root are applied. |
 | `instances.<name>.primitives.<primitive>` | table | no | target value | Same keys as the target level; wins over it. |
+| `instances.<name>.hosts` | array of host names | no (schema 2 only) | every host | Non-empty, unique. The instance is used only on these hosts; see [schema 2](#schema-2-instances-per-host). Rejected in schema 1. |
 
 Two targets may use the same agent kind (for example two `generic` targets).
 Instance identity is the pair (agent kind, `dir`); the same pair declared twice
@@ -257,11 +264,52 @@ until the fragment changes ([adopt.md](adopt.md)).
 | `publish` | publish table | no | top-level `publish` | Per-host publication policy. |
 | `targets.<target>.enabled` | boolean | no | target value | Drop or keep a target on this host. |
 | `targets.<target>.mode` | `link` \| `copy` | no | target value | |
-| `targets.<target>.instances.<name>` | instance table | no | target instances | Replaces the target's whole instance set on this host (no partial merge). |
+| `targets.<target>.instances.<name>` | instance table | no | target instances | Schema 1: replaces the target's whole instance set on this host (no partial merge). Schema 2: a patch with only `enabled`, `mode` and `settings` for the target's instance `<name>`; see below. |
 
 The host name comes from `config.toml` `host`, else the machine's short host
 name. A host without a `hosts.<name>` table uses the defaults; this is not an
-error. `files[].hosts` and `instructions.hosts` use the same name.
+error. `files[].hosts`, instance `hosts` and `instructions.hosts` use the same
+name.
+
+### Schema 2: instances per host
+
+Schema 2 is schema 1 plus these rules ([ADR 12](adr/0012-agent-instance-discovery.md#schema-2-definition));
+every other key keeps its schema-1 meaning.
+
+- `targets.<t>.instances.<n>.hosts` lists the hosts that use the instance, with
+  the grammar and exact matching of `files[].hosts`. Absent means every host.
+- On a host the list excludes, the instance is inactive: it produces no
+  operations, sync and doctor do not look for its directory, and a missing
+  directory there is not a warning. Like `enabled = false`, outputs KitBag
+  previously wrote into it on that host are removed. The target still counts
+  the instance as listed, so it **never falls back to the implicit default
+  directory**, even when every listed instance excludes the host.
+- `[hosts.<h>.targets.<t>.instances.<n>]` patches instance `<n>` on host `<h>`:
+  it may set only `enabled`, `mode` and `settings`, each replacing the
+  target-level value there (`enabled = true` re-enables an instance switched
+  off at target level). `<n>` must be declared at target level and its `hosts`
+  list, if any, must include `<h>`. `dir`, `roots`, `primitives` and `hosts`
+  are rejected in a patch with a message pointing at the target-level `hosts`
+  key. A schema-1 replacement table, which always has `dir`, is therefore an
+  error rather than misread when only `schema` is changed by hand.
+- Instance identity is still checked across all hosts: two instances of one
+  kind cannot declare the same `dir`, even for disjoint hosts.
+- A host name in an instance `hosts` list that is neither this machine nor
+  declared under `[hosts]` is a [doctor](doctor.md) warning (a likely typo),
+  not an error: hosts without a table are valid.
+
+```toml
+[targets.claude.instances.second]
+dir = "~/.claude_2"
+hosts = ["mac"]        # only the machines that have this account
+
+[hosts.mac.targets.claude.instances.second]
+settings = false       # patch: no settings merge for this account on mac
+```
+
+Converting a schema-1 file, including its host replacement tables, is a
+separate, explicit step; a tool that reads schema 2 never rewrites a schema-1
+file on its own.
 
 ### `[publish]`
 
@@ -303,7 +351,9 @@ Link capability is tracked per primitive and operating system in
 - MCP: manifest definitions overwrite same-name native servers; `policy`
   decides whether unmentioned native servers survive.
 - Settings: repository scalars win, arrays union, managed hooks replaced.
-- Instances: `hosts.<name>.targets.<t>.instances` replaces the target's set;
+- Instances: in schema 1, `hosts.<name>.targets.<t>.instances` replaces the
+  target's set; in schema 2, an instance's `hosts` filter selects the hosts
+  and a host instance table patches `enabled`, `mode` and `settings`.
   `enabled = false` at any level removes the operations below it.
 - Mode: most specific manifest level, then machine default, and `copy` wins.
 - Publish: `hosts.<name>.publish` over `publish`.
@@ -539,10 +589,15 @@ notifications = false
 
 ## Validation in the quality gate
 
-`internal/schemacheck` compiles both schemas with a draft 2020-12 validator,
+`internal/schemacheck` compiles every schema with a draft 2020-12 validator,
 decodes every TOML example into the JSON data model and checks that each
 `valid` example passes and each `invalid` example fails with the error named on
-its first line (`# expect: <fragment>`). It also checks that the example blocks
+its first line (`# expect: <fragment>`). Manifest examples live in
+`schemas/examples/kitbag/v1` and `v2`: both directories are checked against
+`kitbag.schema.json` and the Go reader, `v1` also against
+`kitbag.v1.schema.json`, which must reject every `v2` example. What each valid
+example resolves to on every declared host and on an undeclared one is pinned
+by goldens; the schema-1 goldens were recorded before schema 2 existed. It also checks that the example blocks
 above are byte-identical to the fixtures. `mise run check` runs it, so CI does
 too once KIT-9 lands. Adding a key to a schema therefore requires an example
 that uses it and, where a constraint is added, an invalid example that violates

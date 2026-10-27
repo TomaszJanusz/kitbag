@@ -201,7 +201,7 @@ func (d *document) validateSchema(value any, key string) error {
 	if !ok {
 		return d.wrongType(key, value, "integer")
 	}
-	if n != 1 {
+	if n < SchemaOldest {
 		return d.fail(key, "value must be 1 (unsupported older schema; run an explicit migration)", nil)
 	}
 	return nil
@@ -214,6 +214,9 @@ func (d *document) validateProperty(r *rule, name string, value any, key string)
 		next = r.properties[name]
 	}
 	if next == nil {
+		if reason, ok := r.refused[name]; ok {
+			return d.fail(child, reason, nil)
+		}
 		return d.unknown(child, name, r.properties)
 	}
 	if r.names != nil {

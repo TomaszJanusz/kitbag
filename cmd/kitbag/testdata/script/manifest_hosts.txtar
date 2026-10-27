@@ -1,0 +1,70 @@
+# Schema 2: an instance limited to hosts is used only there. Other hosts never
+# warn about its missing directory and never fall back to the default.
+env KITBAG_CONFIG=$WORK/machine.toml
+env CLAUDE_CONFIG_DIR=
+gitremote $WORK/config.git config
+exec git clone --quiet $WORK/config.git $HOME/checkout
+agentdirs .claude
+
+env KITBAG_HOST=runner02
+exec kitbag sync --no-pull
+! stderr .
+grep '^@.*/checkout/AGENTS.md$' $HOME/.claude/CLAUDE.md
+! exists $HOME/.claude_2
+exec kitbag plan
+! stdout '\.claude_2'
+! stderr .
+exec kitbag agent list
+stdout 'second.*mac'
+
+# Where the instance applies, its missing directory warns as in schema 1.
+env KITBAG_HOST=mac
+execstatus 1 kitbag sync --no-pull
+stderr 'instance directory is missing; skipped'
+! exists $HOME/.claude_2
+agentdirs .claude_2
+exec kitbag sync --no-pull
+grep '^@.*/checkout/AGENTS.md$' $HOME/.claude_2/CLAUDE.md
+
+# A host patch switches an instance off on one host, like enabled = false:
+# KitBag's own output there is removed, the other instance is untouched.
+cp patched.toml $HOME/checkout/kitbag.toml
+env KITBAG_HOST=ci
+exec kitbag plan
+stdout '^- remove .*/\.claude/CLAUDE.md'
+! stdout '\.claude_2'
+env KITBAG_HOST=mac
+exec kitbag plan
+stdout '^No changes.$'
+
+-- config/kitbag.toml --
+schema = 2
+[instructions]
+source = "AGENTS.md"
+[targets.claude]
+agent = "claude"
+[targets.claude.instances.main]
+dir = "~/.claude"
+[targets.claude.instances.second]
+dir = "~/.claude_2"
+hosts = ["mac", "ci"]
+-- patched.toml --
+schema = 2
+[instructions]
+source = "AGENTS.md"
+[targets.claude]
+agent = "claude"
+[targets.claude.instances.main]
+dir = "~/.claude"
+[targets.claude.instances.second]
+dir = "~/.claude_2"
+hosts = ["mac", "ci"]
+[hosts.ci.targets.claude.instances.main]
+enabled = false
+-- config/AGENTS.md --
+Shared rules.
+-- machine.toml --
+schema=1
+[repo]
+url="local-config"
+path="~/checkout"

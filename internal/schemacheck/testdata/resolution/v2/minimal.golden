@@ -1,0 +1,15 @@
+# host undeclared-host
+min_tool_version = ""
+mode = ""
+files = []
+schema = 2
+
+[instructions]
+  source = "AGENTS.md"
+  hosts = ""
+
+[targets]
+  [targets.claude]
+    agent = "claude"
+    mode = ""
+    settings = ""

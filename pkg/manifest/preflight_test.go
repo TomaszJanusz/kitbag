@@ -15,7 +15,7 @@ func TestParseRejectsNewerSchemaFirst(t *testing.T) {
 		found      int64
 		line       int
 	}{
-		{"next schema with unknown keys", "# future\nschema = 2\n[targets.claude.instances.second]\ndir = \"~/.claude_2\"\nhosts = [\"mac\"]\n", 2, 2},
+		{"next schema with unknown keys", "# future\nschema = 3\n[targets.claude.instances.second]\ndir = \"~/.claude_2\"\nfuture = [\"mac\"]\n", 3, 2},
 		{"far future schema", "schema = 9223372036854775807\n", 9223372036854775807, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -42,7 +42,7 @@ func TestParseKeepsOlderSchemaInvalid(t *testing.T) {
 			t.Fatalf("%s: error %v, want a validation error without *SchemaError", body, err)
 		}
 	}
-	if manifest.SchemaOldest != 1 || manifest.SchemaLatest != 1 {
+	if manifest.SchemaOldest != 1 || manifest.SchemaLatest != 2 {
 		t.Fatalf("supported schemas %d..%d", manifest.SchemaOldest, manifest.SchemaLatest)
 	}
 }
@@ -56,7 +56,7 @@ type preflightCase struct {
 
 func preflightCases() []preflightCase {
 	return []preflightCase{
-		{name: "minimum wins over unknown keys and schema", body: "schema = 2\nmin_tool_version = \"99.0.0\"\nfuture = { a = 1 }\n", current: "1.0.0", required: "99.0.0", line: 2},
+		{name: "minimum wins over unknown keys and schema", body: "schema = 3\nmin_tool_version = \"99.0.0\"\nfuture = { a = 1 }\n", current: "1.0.0", required: "99.0.0", line: 2},
 		{name: "minimum with invalid values", body: "schema = 1\nmode = \"teleport\"\nmin_tool_version = \"2.0.0\"\n", current: "1.0.0", required: "2.0.0", line: 3},
 		{name: "release outranks prerelease", body: "schema = 1\nmin_tool_version = \"1.0.0\"\n", current: "1.0.0-rc.1", required: "1.0.0", line: 2},
 		{name: "schema after satisfied minimum", body: "min_tool_version = \"0.1.0\"\nschema = 3\n", current: "1.0.0", schema: 3, line: 2},

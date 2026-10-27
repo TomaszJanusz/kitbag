@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kitbag.sh/schemas/kitbag.schema.json",
   "title": "KitBag manifest (kitbag.toml)",
-  "description": "Schema version 1 of the manifest a configuration repository commits as kitbag.toml. The manifest declares intent only: which repository files become which agent primitives, on which hosts and instances. Resolved pins live in the separately versioned provenance contract; destination paths, applied hashes and ownership live in machine-local state. See docs/manifest.md.",
+  "description": "Schema versions 1 and 2 of the manifest a configuration repository commits as kitbag.toml; kitbag.v1.schema.json describes schema 1 alone. Schema 2 adds a hosts filter on instances and makes host instance tables patches. The manifest declares intent only: which repository files become which agent primitives, on which hosts and instances. Resolved pins live in the separately versioned provenance contract; destination paths, applied hashes and ownership live in machine-local state. See docs/manifest.md.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema"],
@@ -10,7 +10,7 @@
     "schema": {
       "description": "Manifest schema version. A tool that knows version N reads N and N-1 and rejects everything else.",
       "type": "integer",
-      "const": 1
+      "enum": [1, 2]
     },
     "min_tool_version": {
       "description": "Lowest kitbag release allowed to apply this manifest (semantic version). An older tool stops before planning.",
@@ -49,17 +49,31 @@
       "description": "Agents that receive the primitives, keyed by a target name of your choice.",
       "type": "object",
       "minProperties": 1,
-      "propertyNames": { "$ref": "#/$defs/name" },
-      "additionalProperties": { "$ref": "#/$defs/target" }
+      "propertyNames": { "$ref": "#/$defs/name" }
     },
     "hosts": {
       "description": "Per-host overrides, keyed by the host name from config.toml (default: the machine's short host name).",
       "type": "object",
       "minProperties": 1,
-      "propertyNames": { "$ref": "#/$defs/hostName" },
-      "additionalProperties": { "$ref": "#/$defs/host" }
+      "propertyNames": { "$ref": "#/$defs/hostName" }
     },
     "publish": { "$ref": "#/$defs/publish" }
+  },
+  "if": {
+    "properties": { "schema": { "const": 2 } },
+    "required": ["schema"]
+  },
+  "then": {
+    "properties": {
+      "targets": { "additionalProperties": { "$ref": "#/$defs/targetV2" } },
+      "hosts": { "additionalProperties": { "$ref": "#/$defs/hostV2" } }
+    }
+  },
+  "else": {
+    "properties": {
+      "targets": { "additionalProperties": { "$ref": "#/$defs/target" } },
+      "hosts": { "additionalProperties": { "$ref": "#/$defs/host" } }
+    }
   },
   "$defs": {
     "semver": {
@@ -426,7 +440,7 @@
         "enabled": { "type": "boolean" },
         "mode": { "$ref": "#/$defs/mode" },
         "instances": {
-          "description": "Replaces the target's instance set on this host.",
+          "description": "Schema 1: replaces the target's instance set on this host.",
           "$ref": "#/$defs/instances"
         }
       }
@@ -443,6 +457,119 @@
           "minProperties": 1,
           "propertyNames": { "$ref": "#/$defs/name" },
           "additionalProperties": { "$ref": "#/$defs/hostTarget" }
+        }
+      }
+    },
+    "instancesV2": {
+      "description": "Schema 2: configuration directories of one agent, keyed by an instance name; each may be limited to hosts.",
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "$ref": "#/$defs/name" },
+      "additionalProperties": { "$ref": "#/$defs/instanceV2" }
+    },
+    "instanceV2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dir"],
+      "properties": {
+        "dir": {
+          "description": "The agent's configuration directory itself (for example ~/.claude_2), never a relocation variable.",
+          "$ref": "#/$defs/homePath"
+        },
+        "hosts": {
+          "description": "Use this instance only on these hosts. Default: every host. On other hosts it is inactive, and the target still does not fall back to its implicit default.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/hostName" }
+        },
+        "enabled": { "type": "boolean" },
+        "mode": { "$ref": "#/$defs/mode" },
+        "settings": {
+          "description": "Whether the target's settings fragment is merged into this instance. false corresponds to today's settings=off.",
+          "type": "boolean"
+        },
+        "roots": {
+          "description": "Per-primitive destination roots that replace the adapter's documented default for this instance. Required for generic.",
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/primitiveName" },
+          "additionalProperties": { "$ref": "#/$defs/homePath" }
+        },
+        "primitives": { "$ref": "#/$defs/primitives" }
+      }
+    },
+    "targetV2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agent"],
+      "properties": {
+        "agent": { "$ref": "#/$defs/agentKind" },
+        "enabled": { "type": "boolean" },
+        "mode": { "$ref": "#/$defs/mode" },
+        "settings": {
+          "description": "Native settings fragment merged into every instance that has settings enabled, with the documented merge rules.",
+          "$ref": "#/$defs/repoPath"
+        },
+        "primitives": { "$ref": "#/$defs/primitives" },
+        "instances": {
+          "description": "Instances, each on every host unless its hosts key limits it. Omitted: the adapter's single documented default directory.",
+          "$ref": "#/$defs/instancesV2"
+        }
+      },
+      "if": {
+        "properties": { "agent": { "const": "generic" } },
+        "required": ["agent"]
+      },
+      "then": {
+        "description": "generic has no adapter knowledge: every instance must declare its roots and settings merging is unavailable.",
+        "required": ["instances"],
+        "properties": {
+          "settings": false,
+          "instances": {
+            "additionalProperties": { "required": ["dir", "roots"] }
+          }
+        }
+      }
+    },
+    "instancePatch": {
+      "description": "Schema 2: changes enabled, mode or settings of the target's instance of the same name on this host. It never declares an instance: dir, roots, primitives and hosts belong on the target's instance.",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "mode": { "$ref": "#/$defs/mode" },
+        "settings": { "type": "boolean" }
+      }
+    },
+    "hostTargetV2": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "mode": { "$ref": "#/$defs/mode" },
+        "instances": {
+          "description": "Patches the target's instances on this host, by name; each name must be declared on the target and active on this host.",
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/name" },
+          "additionalProperties": { "$ref": "#/$defs/instancePatch" }
+        }
+      }
+    },
+    "hostV2": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "mode": { "$ref": "#/$defs/mode" },
+        "publish": { "$ref": "#/$defs/publish" },
+        "targets": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/name" },
+          "additionalProperties": { "$ref": "#/$defs/hostTargetV2" }
         }
       }
     },

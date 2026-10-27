@@ -1,0 +1,1 @@
+host-patch-empty.toml:10:37: /hosts/mac/targets/claude/instances/main: table must not be empty

@@ -14,6 +14,9 @@ local association instead. Confirm the scoped glob against each target client.
 Schema identifiers and planned catalog URLs are already consistent:
 
 - `schemas/kitbag.schema.json`: `https://kitbag.sh/schemas/kitbag.schema.json`
+  (manifest schema 1 and 2; the catalog default)
+- `schemas/kitbag.v1.schema.json`: `https://kitbag.sh/schemas/kitbag.v1.schema.json`
+  (manifest schema 1 alone, listed under `versions` for editors of older files)
 - `schemas/config.schema.json`: `https://kitbag.sh/schemas/config.schema.json`
 
 After this KitBag PR merges, raw GitHub distribution alternatives are:

@@ -8,7 +8,7 @@ import (
 )
 
 func FuzzParse(f *testing.F) {
-	for _, seed := range []string{"schema=1", "schema=1\n[skills]\ndirs=['skills']", "schema=2", "schema=1\n[[files]]\nsrc='a'\ndest='~/a'", "schema=1\n[targets.c]\nagent='claude'", "schema=[", "schema=1\n[hosts.mac]\nmode='copy'"} {
+	for _, seed := range []string{"schema=1", "schema=1\n[skills]\ndirs=['skills']", "schema=2", "schema=3", "schema=2\n[targets.c]\nagent='claude'\n[targets.c.instances.a]\ndir='~/.a'\nhosts=['mac']\n[hosts.mac.targets.c.instances.a]\nenabled=false", "schema=1\n[[files]]\nsrc='a'\ndest='~/a'", "schema=1\n[targets.c]\nagent='claude'", "schema=[", "schema=1\n[hosts.mac]\nmode='copy'"} {
 		f.Add([]byte(seed))
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
@@ -23,7 +23,7 @@ func FuzzParse(f *testing.F) {
 			}
 			return
 		}
-		if first.Schema != 1 || !reflect.DeepEqual(first, second) {
+		if first.Schema < manifest.SchemaOldest || first.Schema > manifest.SchemaLatest || !reflect.DeepEqual(first, second) {
 			t.Fatal("nondeterministic model")
 		}
 	})

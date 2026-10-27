@@ -11,7 +11,7 @@ mise run manifest:api:update
 mise exec -- bash scripts/manifest-api.sh
 ```
 
-`Parse(filename, data)` checks the entire schema-v1 document without host access.
+`Parse(filename, data)` checks the entire schema-1 or schema-2 document without host access.
 `Load(fsys, filename)` also checks repository source existence, file types,
 symlink confinement, portable directory entries and skill uniqueness. Pass a
 `platform.FS` (or its read-only subset); the tests use `platform/fake`. Paths must
@@ -30,14 +30,21 @@ adapter or policy defaults. No public signature exposes an internal package type
 tool is reported as such even when the rest of the document uses keys or values
 this version does not know. An unmet minimum wins over a newer schema. `Parse`
 and `Load` reject a `schema` above `SchemaLatest` the same way before any other
-check; `SchemaOldest` and `SchemaLatest` (both 1 in this release) bound the
-readable window, and an older schema remains a validation error. Before
+check; `SchemaOldest` (1) and `SchemaLatest` (2) bound the readable window,
+and an older schema remains a validation error. `Manifest.Schema` says which
+rules apply: `Instance.Hosts` exists only in schema 2, and `HostTarget.Instances`
+replaces the target's set in schema 1 but patches instances by name in schema 2,
+so code reading host overrides directly must branch on `Schema`;
+`ResolveHost` applies either rule. Before
 planning, call `Preflight` (or `m.CheckVersion(current)` after loading) and
 `m.ResolveHost(env, configuredHost)`; a `platform.Env` satisfies `Environment`.
 Host precedence is nonempty `KITBAG_HOST`, configured host, then the system's
 short hostname. Explicit configured/override names are used verbatim. Host
-resolution copies the model, replaces instance sets and the whole publish table,
-filters host-specific files and expands `{host}`. Lower-level materialization
+resolution copies the model, applies host instance tables (schema-1
+replacement or schema-2 patch), keeps schema-2 instances whose `Hosts` exclude
+the host with `Enabled` false (the target never falls back to its implicit
+default), replaces the whole publish table, filters host-specific files and
+expands `{host}`. `Instance.AppliesTo(host)` reports the `Hosts` filter alone. Lower-level materialization
 mode precedence and agent capability checks belong to the planner. Source paths
 and skills are checked across all hosts, including disabled declarations.
 
@@ -62,9 +69,10 @@ lines it rewrites with the same parser, and the exact library version is pinned.
 remains the independent schema test decoder: its public metadata API exposes
 keys but not key positions. JSON Schema remains test-only.
 
-`internal/schemacheck` feeds the same three valid and 32 invalid manifest
-fixtures to both readers, checks each intended rejection, compares diagnostic
-goldens, and tests wrong-type/unknown-key mutations throughout the full fixture.
+`internal/schemacheck` feeds the same manifest fixtures (`v1`: four valid,
+32 invalid; `v2`: three valid, 11 invalid) to both readers, checks each
+intended rejection, compares diagnostic and per-host resolution goldens, and
+tests wrong-type/unknown-key mutations throughout both full fixtures.
 The ten invalid machine-config fixtures retain their separate schema gate;
 `config.toml` parsing is outside this package. Re-run diagnostic updates with:
 

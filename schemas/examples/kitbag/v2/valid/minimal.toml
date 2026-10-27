@@ -1,0 +1,8 @@
+# The smallest schema-2 manifest: one instructions file for Claude Code.
+schema = 2
+
+[instructions]
+source = "AGENTS.md"
+
+[targets.claude]
+agent = "claude"

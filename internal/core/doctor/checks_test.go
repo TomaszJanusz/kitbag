@@ -197,9 +197,30 @@ func manifestInstanceCases() []manifestCase {
 	}
 }
 
+// schema2InstanceCases cover the schema-2 hosts filter.
+func schema2InstanceCases() []manifestCase {
+	return []manifestCase{
+		{
+			name: "schema-2 hosts filter and unknown host names",
+			manifest: "schema=2\n[targets.codex]\nagent=\"codex\"\n" +
+				"[targets.codex.instances.main]\ndir=\"~/main\"\n" +
+				"[targets.codex.instances.elsewhere]\ndir=\"~/elsewhere\"\nhosts=[\"desk\"]\n" +
+				"[targets.codex.instances.here]\ndir=\"~/here\"\nhosts=[\"laptop\", \"lapotp\", \"desk\"]\n" +
+				"[hosts.desk]\nmode=\"copy\"\n",
+			flag: "laptop", dirs: []string{filepath.Join(testHome(), "main"), filepath.Join(testHome(), "here")},
+			// elsewhere, missing but not for this host, is not checked at all.
+			order: []string{"tool-version", "host", "manifest-schema", "instance-hosts-codex/here", "instance-codex/here", "instance-codex/main"},
+			expects: []expect{
+				{"instance-hosts-codex/here", "hosts lists lapotp, which is neither this machine (laptop) nor declared under [hosts]", "correct the host name in targets.codex.instances.here.hosts", Warn},
+				{"manifest-schema", "schema 2 (supported)", "", OK},
+			},
+		},
+	}
+}
+
 func TestManifestChecks(t *testing.T) {
 	t.Parallel()
-	for _, tc := range append(manifestVersionCases(), manifestInstanceCases()...) {
+	for _, tc := range slices.Concat(manifestVersionCases(), manifestInstanceCases(), schema2InstanceCases()) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			s, host := subjectWith(t, tc.env, tc.manifest)
@@ -697,8 +718,8 @@ func TestNewerManifestStopsBeforeProbes(t *testing.T) {
 		name, manifest string
 		want           expect
 	}{
-		{"next schema", "schema=2\n[targets.claude.instances.second]\ndir=\"~/.claude_2\"\nhosts=[\"mac\"]\n", expect{"manifest-schema", "manifest schema 2; kitbag 1.0.0 reads schema 1", "upgrade kitbag", Fail}},
-		{"far future schema", "schema=9223372036854775807\n", expect{"manifest-schema", "manifest schema 9223372036854775807; kitbag 1.0.0 reads schema 1", "upgrade kitbag", Fail}},
+		{"next schema", "schema=3\n[targets.claude.instances.second]\ndir=\"~/.claude_2\"\nfuture=[\"mac\"]\n", expect{"manifest-schema", "manifest schema 3; kitbag 1.0.0 reads schema 2", "upgrade kitbag", Fail}},
+		{"far future schema", "schema=9223372036854775807\n", expect{"manifest-schema", "manifest schema 9223372036854775807; kitbag 1.0.0 reads schema 2", "upgrade kitbag", Fail}},
 		{"minimum before validation", "schema=1\nmin_tool_version=\"99.0.0\"\nfuture_key=true\n", expect{"tool-version", "min_tool_version 99.0.0", "upgrade kitbag", Fail}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

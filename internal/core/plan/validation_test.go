@@ -148,7 +148,7 @@ func stringFlag(value bool) string {
 
 func TestInvalidRequest(t *testing.T) {
 	t.Parallel()
-	for _, scenario := range []string{"nil manifest", "manifest schema", "host unresolved", "relative root", "state schema", "duplicate state", "unsafe state", "state source"} {
+	for _, scenario := range []string{"nil manifest", "manifest schema", "older manifest schema", "host unresolved", "relative root", "state schema", "duplicate state", "unsafe state", "state source"} {
 		t.Run(scenario, func(t *testing.T) {
 			t.Parallel()
 			req := invalidRequest(scenario)
@@ -167,7 +167,9 @@ func invalidRequest(scenario string) plan.Request {
 	case "nil manifest":
 		req.Manifest = nil
 	case "manifest schema":
-		req.Manifest.Schema = 2
+		req.Manifest.Schema = manifest.SchemaLatest + 1
+	case "older manifest schema":
+		req.Manifest.Schema = manifest.SchemaOldest - 1
 	case "host unresolved":
 		req.Manifest.Hosts = map[string]manifest.Host{"unresolved": {}}
 	case "relative root":

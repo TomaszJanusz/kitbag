@@ -18,7 +18,8 @@ func TestParseRules(t *testing.T) {
 	cases := []struct{ name, body, want string }{
 		{"minimal", "schema=1", ""},
 		{"missing schema", "", "missing property 'schema'"},
-		{"future schema", "schema=2", "manifest schema 2 is newer than this kitbag reads (schema 1); update kitbag"},
+		{"schema 2", "schema=2", ""},
+		{"future schema", "schema=3", "manifest schema 3 is newer than this kitbag reads (schema 2); update kitbag"},
 		{"old schema", "schema=0", "value must be 1"},
 		{"type", "schema=true", "want integer"},
 		{"syntax", "schema=[", "toml:"},

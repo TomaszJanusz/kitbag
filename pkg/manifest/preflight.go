@@ -9,7 +9,7 @@ import (
 // Manifest schema versions this package reads.
 const (
 	SchemaOldest = 1
-	SchemaLatest = 1
+	SchemaLatest = 2
 )
 
 // SchemaError means the manifest declares a schema newer than SchemaLatest, so

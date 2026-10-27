@@ -8,26 +8,26 @@ cp source $HOME/checkout/source
 cp machine.toml $HOME/machine.toml
 treesnap $HOME before
 execstatus 4 kitbag sync
-stderr '/schema: manifest schema 2 is newer than this kitbag reads \(schema 1\); update kitbag'
+stderr '/schema: manifest schema 3 is newer than this kitbag reads \(schema 2\); update kitbag'
 ! stderr 'not allowed|value must be'
 execstatus 4 kitbag sync --no-pull
 execstatus 4 kitbag plan
-stderr 'manifest schema 2 is newer'
+stderr 'manifest schema 3 is newer'
 execstatus 4 kitbag plan --json
 ! stdout .
 execstatus 4 kitbag status
-stdout '^tool too old: manifest schema 2 needs a newer kitbag; running \S+, which reads schema 1$'
+stdout '^tool too old: manifest schema 3 needs a newer kitbag; running \S+, which reads schema 2$'
 execstatus 4 kitbag status --json
 stdout '"type": "tool-too-old"'
-stdout '"schema": 2'
-stdout '"supported_schema": 1'
+stdout '"schema": 3'
+stdout '"supported_schema": 2'
 ! stdout '"required"'
 execstatus 4 kitbag adopt
 execstatus 4 kitbag unmanage
 execstatus 4 kitbag revert
 execstatus 4 kitbag revert --list
 execstatus 4 kitbag doctor
-stdout 'manifest-schema: manifest schema 2; kitbag \S+ reads schema 1'
+stdout 'manifest-schema: manifest schema 3; kitbag \S+ reads schema 2'
 stdout 'fix: upgrade kitbag to a release that reads this manifest schema'
 execstatus 4 kitbag doctor --json
 doctorschema stdout
@@ -93,7 +93,7 @@ exec git -C $WORK/upstream add --all
 exec git -C $WORK/upstream commit --quiet -m 'Bump schema'
 exec git -C $WORK/upstream push --quiet
 execstatus 4 kitbag sync
-stderr 'manifest schema 2 is newer than this kitbag reads'
+stderr 'manifest schema 3 is newer than this kitbag reads'
 ! stdout .
 content $HOME/pulled-output first
 ! exists $HOME/should-not-exist
@@ -113,13 +113,13 @@ dest="~/pulled-output"
 -- seed/source --
 first
 -- next-schema-pulled --
-schema = 2
+schema = 3
 [[files]]
 src = "source"
 dest = "~/should-not-exist"
 [targets.claude.instances.second]
 dir = "~/.claude_2"
-hosts = ["mac"]
+future_key = true
 -- machine.toml --
 schema=1
 [repo]
@@ -128,7 +128,7 @@ path="~/checkout"
 [migration]
 legacy_roots=["~/legacy"]
 -- next-schema --
-schema = 2
+schema = 3
 [[files]]
 src = "source"
 dest = "~/output"
@@ -136,12 +136,12 @@ dest = "~/output"
 agent = "claude"
 [targets.claude.instances.second]
 dir = "~/.claude_2"
-hosts = ["mac"]
+future_key = true
 -- far-future --
 schema = 9223372036854775807
 future_key = true
 -- minimum-first --
-schema = 2
+schema = 3
 min_tool_version = "99.0.0"
 future_key = true
 -- current --

@@ -27,8 +27,8 @@ func TestManifestSchemaParity(t *testing.T) {
 	fsys := os.DirFS(schemasDir)
 	schema := compile(t, fsys, "kitbag.schema.json")
 	for _, status := range []string{"valid", "invalid"} {
-		for _, name := range examples(t, fsys, path.Join("examples/kitbag/v1", status)) {
-			t.Run(status+"/"+path.Base(name), func(t *testing.T) {
+		for _, name := range kindExamples(t, fsys, kind{dirs: manifestVersions()}, status) {
+			t.Run(path.Base(path.Dir(path.Dir(name)))+"/"+status+"/"+path.Base(name), func(t *testing.T) {
 				t.Parallel()
 				raw := read(t, fsys, name)
 				m, err := manifest.Parse(path.Base(name), raw)
@@ -87,18 +87,20 @@ func TestManifestSchemaMutations(t *testing.T) {
 	t.Parallel()
 	fsys := os.DirFS(schemasDir)
 	schema := compile(t, fsys, "kitbag.schema.json")
-	raw := read(t, fsys, "examples/kitbag/v1/valid/full.toml")
-	for i, mutation := range manifestMutations(t, raw) {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			t.Parallel()
-			oracle := validate(schema, mutation)
-			_, err := manifest.Parse("mutation.toml", mutation)
-			if oracle == nil {
-				t.Fatal("mutation did not invalidate the schema")
-			}
-			if err == nil {
-				t.Fatalf("parser accepted schema-invalid mutation:\n%s", mutation)
-			}
-		})
+	for _, dir := range manifestVersions() {
+		raw := read(t, fsys, path.Join(dir, "valid/full.toml"))
+		for i, mutation := range manifestMutations(t, raw) {
+			t.Run(path.Base(dir)+"/"+strconv.Itoa(i), func(t *testing.T) {
+				t.Parallel()
+				oracle := validate(schema, mutation)
+				_, err := manifest.Parse("mutation.toml", mutation)
+				if oracle == nil {
+					t.Fatal("mutation did not invalidate the schema")
+				}
+				if err == nil {
+					t.Fatalf("parser accepted schema-invalid mutation:\n%s", mutation)
+				}
+			})
+		}
 	}
 }

@@ -1,0 +1,1 @@
+host-patch-roots.toml:11:1: /hosts/mac/targets/claude/instances/main/roots: 'roots' is not allowed in a host instance patch, which sets only enabled, mode and settings; declare it on the target's instance and limit that instance to hosts with its 'hosts' key

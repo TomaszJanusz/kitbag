@@ -1,0 +1,11 @@
+# expect: 'primitives'
+schema = 2
+
+[targets.claude]
+agent = "claude"
+
+[targets.claude.instances.main]
+dir = "~/.claude"
+
+[hosts.mac.targets.claude.instances.main]
+primitives = { hooks = { enabled = false } }

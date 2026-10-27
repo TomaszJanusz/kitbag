@@ -1,0 +1,1 @@
+instance-hosts.toml:9:1: /targets/claude/instances/second/hosts: additional properties 'hosts' not allowed; did you mean 'roots'?

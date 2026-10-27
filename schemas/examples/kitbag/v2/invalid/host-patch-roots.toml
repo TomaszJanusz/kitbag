@@ -1,0 +1,11 @@
+# expect: 'roots'
+schema = 2
+
+[targets.claude]
+agent = "claude"
+
+[targets.claude.instances.main]
+dir = "~/.claude"
+
+[hosts.mac.targets.claude.instances.main]
+roots = { skills = "~/.claude/skills" }

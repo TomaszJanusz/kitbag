@@ -1,5 +1,5 @@
 # expect: /schema
-schema = 2
+schema = 3
 
 [instructions]
 source = "AGENTS.md"

@@ -1,20 +1,27 @@
 package manifest
 
-// rule mirrors only the schema-v1 vocabulary. Keeping the schema interpreter out
+// rule mirrors only the schema-1 and schema-2 vocabulary. Keeping the schema interpreter out
 // of production avoids a second public model and a JSON Schema runtime dependency.
 type rule struct {
 	properties map[string]*rule
-	item       *rule
-	names      *rule
-	kind       string
-	pattern    string
-	role       string
-	required   []string
-	values     []string
-	minimum    int
-	maximum    int
-	unique     bool
+	// refused maps a key that is not allowed here to the reason that replaces
+	// the generic unknown-key message.
+	refused  map[string]string
+	item     *rule
+	names    *rule
+	kind     string
+	pattern  string
+	role     string
+	required []string
+	values   []string
+	minimum  int
+	maximum  int
+	unique   bool
 }
+
+// schemaInstanceHosts is the first schema with instance hosts filters and
+// host instance patches.
+const schemaInstanceHosts = 2
 
 const (
 	maxPathLength  = 4096
@@ -77,18 +84,37 @@ func primitivesRule() *rule {
 	return r
 }
 
-func instancesRule() *rule {
-	return dictionary(textRule(namePattern), object(map[string]*rule{
+func instancesRule(schema int64) *rule {
+	properties := map[string]*rule{
 		"dir": pathRule("home"), "enabled": {kind: "boolean"}, "mode": enum("link", "copy"),
 		"settings": {kind: "boolean"}, "roots": dictionary(primitiveRule(), pathRule("home"), 1),
 		"primitives": primitivesRule(),
-	}, "dir"), 1)
+	}
+	if schema >= schemaInstanceHosts {
+		properties["hosts"] = hostsRule()
+	}
+	return dictionary(textRule(namePattern), object(properties, "dir"), 1)
 }
 
-func targetRule() *rule {
+func hostsRule() *rule { return array(textRule(hostPattern), 1, true) }
+
+// instancePatchesRule is schema 2's [hosts.<h>.targets.<t>.instances.<n>]:
+// it patches a target-level instance and never declares one.
+func instancePatchesRule() *rule {
+	patch := object(map[string]*rule{"enabled": {kind: "boolean"}, "mode": enum("link", "copy"), "settings": {kind: "boolean"}})
+	patch.minimum = 1
+	patch.refused = map[string]string{}
+	for _, key := range []string{"dir", "roots", "primitives", "hosts"} {
+		patch.refused[key] = "'" + key + "' is not allowed in a host instance patch, which sets only enabled, mode and settings; " +
+			"declare it on the target's instance and limit that instance to hosts with its 'hosts' key"
+	}
+	return dictionary(textRule(namePattern), patch, 1)
+}
+
+func targetRule(schema int64) *rule {
 	return object(map[string]*rule{
 		"agent": agentRule(), "enabled": {kind: "boolean"}, "mode": enum("link", "copy"),
-		"settings": pathRule("file"), "primitives": primitivesRule(), "instances": instancesRule(),
+		"settings": pathRule("file"), "primitives": primitivesRule(), "instances": instancesRule(schema),
 	}, "agent")
 }
 
@@ -98,11 +124,15 @@ func publishRule() *rule {
 	return r
 }
 
-func hostRule() *rule {
+func hostRule(schema int64) *rule {
+	instances := instancesRule(schema)
+	if schema >= schemaInstanceHosts {
+		instances = instancePatchesRule()
+	}
 	r := object(map[string]*rule{
 		"mode": enum("link", "copy"), "publish": publishRule(),
 		"targets": dictionary(textRule(namePattern), object(map[string]*rule{
-			"enabled": {kind: "boolean"}, "mode": enum("link", "copy"), "instances": instancesRule(),
+			"enabled": {kind: "boolean"}, "mode": enum("link", "copy"), "instances": instances,
 		}), 1),
 	})
 	r.minimum = 1
@@ -131,7 +161,9 @@ func serverRule() *rule {
 	})
 }
 
-func manifestRule() *rule {
+// manifestRule returns the vocabulary of schema; any value other than 2
+// selects schema 1, whose own check rejects unsupported values.
+func manifestRule(schema int64) *rule {
 	return object(map[string]*rule{
 		"schema": {kind: "integer"}, "min_tool_version": textRule(versionPattern), "mode": enum("link", "copy"),
 		"instructions": object(map[string]*rule{
@@ -144,10 +176,10 @@ func manifestRule() *rule {
 		}, "servers"),
 		"files": array(object(map[string]*rule{
 			"src": pathRule("source"), "dest": pathRule("home"), "mode": enum("link", "copy"),
-			"hosts": array(textRule(hostPattern), 1, true),
+			"hosts": hostsRule(),
 		}, "src", "dest"), 0, false),
 		"git":     object(map[string]*rule{"include": array(pathRule("file"), 1, true)}, "include"),
-		"targets": dictionary(textRule(namePattern), targetRule(), 1),
-		"hosts":   dictionary(textRule(hostPattern), hostRule(), 1), "publish": publishRule(),
+		"targets": dictionary(textRule(namePattern), targetRule(schema), 1),
+		"hosts":   dictionary(textRule(hostPattern), hostRule(schema), 1), "publish": publishRule(),
 	}, "schema")
 }

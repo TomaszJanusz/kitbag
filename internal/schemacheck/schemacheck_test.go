@@ -33,7 +33,8 @@ type kind struct {
 
 func kinds() []kind {
 	return []kind{
-		{name: "kitbag", schema: "kitbag.schema.json", dirs: []string{"examples/kitbag/v1"}},
+		{name: "kitbag", schema: "kitbag.schema.json", dirs: manifestVersions()},
+		{name: "kitbag.v1", schema: "kitbag.v1.schema.json", dirs: []string{"examples/kitbag/v1"}},
 		{name: "config", schema: "config.schema.json", dirs: []string{"examples/config"}},
 	}
 }
@@ -85,6 +86,27 @@ func TestInvalidExamples(t *testing.T) {
 				})
 			}
 		})
+	}
+}
+
+// manifestVersions lists the example directories of every manifest schema the
+// reader supports, oldest first.
+func manifestVersions() []string {
+	return []string{"examples/kitbag/v1", "examples/kitbag/v2"}
+}
+
+// TestV1SchemaRejectsSchema2 keeps the schema-1 JSON Schema for editors of old
+// files: every schema-2 example, valid or not, fails it.
+func TestV1SchemaRejectsSchema2(t *testing.T) {
+	t.Parallel()
+	fsys := os.DirFS(schemasDir)
+	schema := compile(t, fsys, "kitbag.v1.schema.json")
+	for _, status := range []string{"valid", "invalid"} {
+		for _, name := range examples(t, fsys, path.Join("examples/kitbag/v2", status)) {
+			if err := validate(schema, read(t, fsys, name)); err == nil {
+				t.Errorf("%s: accepted by the schema-1 JSON Schema", name)
+			}
+		}
 	}
 }
 

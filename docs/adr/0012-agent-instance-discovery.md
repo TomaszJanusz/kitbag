@@ -7,6 +7,8 @@
   commits or messages) and discovery breadth (`--probe` on explicit request).
 - V1 slice implemented: 2026-10-26, ahead of the rollout; see
   [V1 slice](#v1-slice-shipped-first).
+- Schema 2 reader implemented: 2026-10-27 (plan PR 6, without the `publish`
+  keys); see [Rollout status](#rollout-status).
 
 ## Context and Problem Statement
 
@@ -716,6 +718,31 @@ in this record stays the plan.
 
 Not in the slice: schema 2, `--probe` in the wizard, the queue, held changes,
 `kitbag push`, `kitbag manifest upgrade` and pull requests.
+
+## Rollout status
+
+Tracked in KIT-82. In `main` before the schema-2 work: plan PRs 1–5 (preflight
+and `SchemaError` with exit 4, shared discovery, `kitbag agent list` with
+`--probe`, the `Check*` validators, `internal/core/manifestedit`) and the
+[V1 slice](#v1-slice-shipped-first) of PRs 13–16 (all-hosts `agent
+add/edit/remove` with direct publication, `agents.*` API methods, the `Agents`
+and `AgentForm` models and the terminal Agents screens).
+
+- **Schema 2 reader (PR 6), 2026-10-27:** `pkg/manifest` reads schema 1 and 2
+  (`SchemaLatest = 2`): instance `hosts`, host instance patches with positioned
+  errors, `Instance.AppliesTo`; instances outside their hosts resolve as
+  disabled, so a target never falls back to its implicit default. The planner,
+  `agent list` and doctor (including the WARN for unknown host names) use it.
+  Schema-1 resolution is pinned by goldens recorded before the change. JSON
+  Schemas `kitbag.schema.json` (1 and 2) and `kitbag.v1.schema.json`, examples
+  under `schemas/examples/kitbag/v1` and `v2`. **Deviation:** `publish.auto_merge`
+  and `publish.message` are not part of schema 2 as shipped; they belong to the
+  publication queue (PRs 7–11) and need a decision on whether they wait for a
+  schema 3 or are added to schema 2 before any file is upgraded.
+- **Remaining:** `kitbag manifest upgrade` and `agent add/edit --hosts` (PRs 12
+  and 13, on the V1 slice's direct publication instead of the queue), the
+  hosts step in the API, models and terminal wizard (PRs 14–16), and the
+  publication queue, `kitbag push` and `pr` mode (PRs 7–11, 17).
 
 ## Consequences
 

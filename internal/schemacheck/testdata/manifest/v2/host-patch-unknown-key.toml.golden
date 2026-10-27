@@ -1,0 +1,1 @@
+host-patch-unknown-key.toml:12:1: /hosts/mac/targets/claude/instances/main/only: additional properties 'only' not allowed

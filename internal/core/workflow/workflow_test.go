@@ -173,7 +173,7 @@ func TestSyncFailureRecords(t *testing.T) {
 		}, apply.ToolTooOld},
 		"newer schema": {func(t *testing.T, f *fixture) {
 			t.Helper()
-			f.write(t, "kitbag.toml", "schema=2\n[future]\nkey=true")
+			f.write(t, "kitbag.toml", "schema=3\n[future]\nkey=true")
 		}, apply.ToolTooOld},
 		"version before validation": {func(t *testing.T, f *fixture) {
 			t.Helper()
@@ -356,7 +356,7 @@ func TestPulledManifestForNewerTool(t *testing.T) {
 	t.Parallel()
 	for name, body := range map[string]string{
 		"minimum before validation": "schema=1\nmin_tool_version='9.0.0'\nfuture=true",
-		"newer schema":              "schema=2\n[future]\nkey=true",
+		"newer schema":              "schema=3\n[future]\nkey=true",
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()

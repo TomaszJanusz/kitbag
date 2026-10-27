@@ -22,7 +22,7 @@ func TestCheck(t *testing.T) {
 		{"schema=1", "", 0, false},
 		{"invalid", "", 0, false},
 		{"schema=1\nmin_tool_version='9.0.0'\nfuture=true", "9.0.0", 0, true},
-		{"schema=2\n[future]\nkey=1", "", 2, true},
+		{"schema=3\n[future]\nkey=1", "", 3, true},
 		{"schema=1\nfuture=true", "", 0, false},
 	} {
 		t.Run(tc.manifest, func(t *testing.T) {
@@ -73,7 +73,7 @@ func TestLoad(t *testing.T) {
 		{"current", "schema=1\nmin_tool_version='0.1.0'", false},
 		{"minimum before validation", "schema=1\nmin_tool_version='9.0.0'\nfuture=true", true},
 		{"valid with minimum", "schema=1\nmin_tool_version='9.0.0'", true},
-		{"newer schema", "schema=2\nfuture=true", true},
+		{"newer schema", "schema=3\nfuture=true", true},
 		{"invalid", "schema=1\nfuture=true", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

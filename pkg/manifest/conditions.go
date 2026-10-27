@@ -99,15 +99,13 @@ func (m *Manifest) validateRelations() error {
 	if err := m.validateFileDestinations(); err != nil {
 		return err
 	}
-	if m.Skills != nil {
-		for _, name := range slices.Sorted(maps.Keys(m.Skills.Imports)) {
-			imp := m.Skills.Imports[name]
-			if imp.Dir != "" && !slices.Contains(m.Skills.Dirs, imp.Dir) {
-				return m.doc.fail(pointer("/skills/imports", name)+"/dir", "import dir must be one of skills.dirs", nil)
-			}
-		}
+	if err := m.validateImports(); err != nil {
+		return err
 	}
 	if err := m.validateInstances(m.Targets, "/targets"); err != nil {
+		return err
+	}
+	if err := m.validatePatches(); err != nil {
 		return err
 	}
 	for _, host := range slices.Sorted(maps.Keys(m.Hosts)) {
@@ -117,6 +115,46 @@ func (m *Manifest) validateRelations() error {
 		}
 		if err = m.validateInstances(targets, pointer("/hosts", host)+"/targets"); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func (m *Manifest) validateImports() error {
+	if m.Skills == nil {
+		return nil
+	}
+	for _, name := range slices.Sorted(maps.Keys(m.Skills.Imports)) {
+		imp := m.Skills.Imports[name]
+		if imp.Dir != "" && !slices.Contains(m.Skills.Dirs, imp.Dir) {
+			return m.doc.fail(pointer("/skills/imports", name)+"/dir", "import dir must be one of skills.dirs", nil)
+		}
+	}
+	return nil
+}
+
+// validatePatches requires every schema-2 host instance patch to name an
+// instance its target declares and whose hosts filter admits that host.
+func (m *Manifest) validatePatches() error {
+	if m.Schema < schemaInstanceHosts {
+		return nil
+	}
+	for _, host := range slices.Sorted(maps.Keys(m.Hosts)) {
+		for _, name := range slices.Sorted(maps.Keys(m.Hosts[host].Targets)) {
+			target, ok := m.Targets[name]
+			if !ok {
+				continue // hostTargets reports the undeclared target.
+			}
+			for _, instanceName := range slices.Sorted(maps.Keys(m.Hosts[host].Targets[name].Instances)) {
+				key := pointer(pointer(pointer("/hosts", host)+"/targets", name)+"/instances", instanceName)
+				instance, ok := target.Instances[instanceName]
+				switch {
+				case !ok:
+					return m.doc.fail(key, "host instance patch names an instance that targets."+name+" does not declare; declare it there with its dir and limit it to hosts with its 'hosts' key", nil)
+				case !instance.AppliesTo(host):
+					return m.doc.fail(key, "host instance patch for a host that the instance's hosts list ("+strings.Join(instance.Hosts, ", ")+") excludes; add "+host+" to that list or remove this patch", nil)
+				}
+			}
 		}
 	}
 	return nil

@@ -3,7 +3,11 @@
     "name": "KitBag manifest",
     "description": "KitBag shared agent configuration manifest (kitbag.toml)",
     "fileMatch": ["kitbag.toml"],
-    "url": "https://kitbag.sh/schemas/kitbag.schema.json"
+    "url": "https://kitbag.sh/schemas/kitbag.schema.json",
+    "versions": {
+      "schema 1": "https://kitbag.sh/schemas/kitbag.v1.schema.json",
+      "schema 1 and 2": "https://kitbag.sh/schemas/kitbag.schema.json"
+    }
   },
   {
     "name": "KitBag machine configuration",

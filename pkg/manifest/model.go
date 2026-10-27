@@ -17,7 +17,7 @@ type Environment interface {
 	Hostname() (string, error)
 }
 
-// Manifest is schema-v1 repository intent. Empty optional fields are unmanaged;
+// Manifest is schema-1 or schema-2 repository intent; Schema says which. Empty optional fields are unmanaged;
 // nil Enabled and Settings switches mean true. No machine default mode is inferred.
 type Manifest struct {
 	Instructions   *Instructions     `toml:"instructions"`
@@ -116,6 +116,8 @@ type Primitive struct {
 }
 
 // Instance declares an agent directory and optional primitive destination roots.
+// Hosts (schema 2 only) limits the instance to the listed hosts; empty means
+// every host. As a schema-2 host patch, only Enabled, Mode and Settings are set.
 type Instance struct {
 	Enabled    *bool                `toml:"enabled"`
 	Settings   *bool                `toml:"settings"`
@@ -123,6 +125,7 @@ type Instance struct {
 	Primitives map[string]Primitive `toml:"primitives"`
 	Dir        string               `toml:"dir"`
 	Mode       string               `toml:"mode"`
+	Hosts      []string             `json:",omitempty" toml:"hosts,omitempty"`
 }
 
 // Host overrides manifest defaults for one host.
@@ -132,7 +135,10 @@ type Host struct {
 	Mode    string                `toml:"mode"`
 }
 
-// HostTarget overrides a declared target. Instances replaces its entire set.
+// HostTarget overrides a declared target. In schema 1, Instances replaces the
+// target's entire set; in schema 2, it patches the target's instances by name.
+// Library users reading host overrides directly must branch on Manifest.Schema;
+// Manifest.ResolveHost applies either rule.
 type HostTarget struct {
 	Enabled   *bool               `toml:"enabled"`
 	Instances map[string]Instance `toml:"instances"`

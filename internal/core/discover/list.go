@@ -41,9 +41,12 @@ type ListedCandidate struct {
 	ErrorClass string   `json:"error_class,omitempty"`
 }
 
-// Instance describes a declared or implicit target instance. In schema 1,
-// host replacement sets are represented by Hosts and ExcludedHosts: an empty
-// Hosts means all hosts except ExcludedHosts. ActiveHere includes Enabled.
+// Instance describes a declared or implicit target instance. It applies to
+// Hosts (empty: every host) except ExcludedHosts. In schema 1 they represent
+// host replacement sets; in schema 2 Hosts is the instance's own filter and
+// ExcludedHosts lists the hosts whose patch sets enabled = false. Enabled is
+// this host's value when the instance applies here, else the declared one;
+// ActiveHere includes Enabled.
 type Instance struct {
 	ListedCandidate
 	Target        string   `json:"target"`
@@ -129,27 +132,41 @@ func (t Table) instances(host Host, home string, m *manifest.Manifest, current s
 	}
 	for _, resolver := range t {
 		for _, target := range slices.Sorted(maps.Keys(m.Targets)) {
-			base := m.Targets[target]
-			if base.Agent != resolver.Agent {
+			if m.Targets[target].Agent != resolver.Agent {
 				continue
 			}
-			excluded := replacementHosts(m, target, result.KnownHosts)
-			if err = t.appendInstances(host, home, target, base, nil, excluded, effective.Targets[target], current, result); err != nil {
+			if err = t.targetInstances(host, home, m, target, effective.Targets[target], current, result); err != nil {
 				return err
-			}
-			for _, name := range excluded {
-				resolved, resolveErr := m.ResolveHost(selectedHost{host, name}, name)
-				if resolveErr != nil {
-					return resolveErr
-				}
-				if err = t.appendInstances(host, home, target, resolved.Targets[target], []string{name}, nil, effective.Targets[target], current, result); err != nil {
-					return err
-				}
 			}
 		}
 	}
 	return nil
 }
+
+// targetInstances lists one target's instances for every host scope.
+func (t Table) targetInstances(host Host, home string, m *manifest.Manifest, target string, effective manifest.Target, current string, result *Snapshot) error {
+	base := m.Targets[target]
+	if m.Schema >= schemaInstanceHosts && len(base.Instances) > 0 {
+		return t.filteredInstances(host, home, m, target, effective, current, result)
+	}
+	excluded := replacementHosts(m, target, result.KnownHosts)
+	if err := t.appendInstances(host, home, target, base, nil, excluded, effective, current, result); err != nil {
+		return err
+	}
+	for _, name := range excluded {
+		resolved, err := m.ResolveHost(selectedHost{host, name}, name)
+		if err != nil {
+			return err
+		}
+		if err = t.appendInstances(host, home, target, resolved.Targets[target], []string{name}, nil, effective, current, result); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// schemaInstanceHosts is the first manifest schema with instance hosts.
+const schemaInstanceHosts = 2
 
 func (t Table) appendInstances(host Host, home, target string, declaration manifest.Target, hosts, excluded []string, effective manifest.Target, current string, result *Snapshot) error {
 	instances := declaration.Instances
@@ -176,6 +193,39 @@ func (t Table) appendInstances(host Host, home, target string, declaration manif
 		result.Instances = append(result.Instances, Instance{ListedCandidate: c, Target: target, Name: name, Hosts: append([]string{}, hosts...), ExcludedHosts: append([]string{}, excluded...), Implicit: implicit, Enabled: enabled, Settings: declaration.Settings != "" && on(value.Settings), ActiveHere: active})
 	}
 	return nil
+}
+
+// filteredInstances lists a schema-2 target's declared instances with their
+// hosts filters and host patches.
+func (t Table) filteredInstances(host Host, home string, m *manifest.Manifest, target string, effective manifest.Target, current string, result *Snapshot) error {
+	declaration := m.Targets[target]
+	for _, name := range slices.Sorted(maps.Keys(declaration.Instances)) {
+		value := declaration.Instances[name]
+		c, err := t.instanceCandidate(host, home, declaration.Agent, value.Dir)
+		if err != nil {
+			return err
+		}
+		excluded := disablingHosts(m, target, name, result.KnownHosts)
+		scope := inScope(current, value.Hosts, excluded)
+		enabled, settings := on(declaration.Enabled) && on(value.Enabled), value.Settings
+		if scope {
+			resolved := effective.Instances[name]
+			enabled, settings = on(effective.Enabled) && on(resolved.Enabled), resolved.Settings
+		}
+		result.Instances = append(result.Instances, Instance{ListedCandidate: c, Target: target, Name: name, Hosts: append([]string{}, value.Hosts...), ExcludedHosts: excluded, Enabled: enabled, Settings: declaration.Settings != "" && on(settings), ActiveHere: enabled && scope})
+	}
+	return nil
+}
+
+// disablingHosts lists the hosts whose schema-2 patch disables an instance.
+func disablingHosts(m *manifest.Manifest, target, name string, known []string) []string {
+	result := []string{}
+	for _, h := range known {
+		if patch := m.Hosts[h].Targets[target].Instances[name]; patch.Enabled != nil && !*patch.Enabled {
+			result = append(result, h)
+		}
+	}
+	return result
 }
 
 func inScope(current string, hosts, excluded []string) bool {

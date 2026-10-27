@@ -1,0 +1,1 @@
+schema-unsupported-version.toml:2:1: /schema: manifest schema 3 is newer than this kitbag reads (schema 2); update kitbag

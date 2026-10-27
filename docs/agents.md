@@ -679,6 +679,12 @@ enable/disable override. Targets without instances show an `implicit` default;
 listing explicit instances replaces that default. Candidates already represented
 by an instance of the same kind and directory are omitted.
 
+In schema 2, `hosts` is the instance's own `hosts` filter (empty: every host)
+and `excluded_hosts` lists the hosts whose host table patches it to
+`enabled = false`; the instance is active here when this host is in `hosts`
+(or `hosts` is empty) and not in `excluded_hosts`. `enabled` and `settings`
+show this host's patched values when the instance applies here.
+
 | Presence | Meaning |
 | --- | --- |
 | `present` | Real directory. |
