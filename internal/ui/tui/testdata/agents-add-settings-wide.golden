@@ -15,9 +15,9 @@
         | Step 4/7                                                                                             |
         |                                                                                                      |
         | Whether this instance receives the target's shared settings fragment.                                |
-        | > (*) Default (merge shared settings)                                                                |
+        |   (*) Default (merge shared settings)                                                                |
         |   ( ) Merge shared settings                                                                          |
         |   ( ) Do not merge shared settings                                                                   |
         |                                                                                                      |
-        |                                                                     [ Cancel ]   [ Back ]   [ Next ] |
+        |                                                                     [ Cancel ]   [ Back ] > [ Next ] |
         +------------------------------------------------------------------------------------------------------+

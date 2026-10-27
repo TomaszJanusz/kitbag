@@ -19,5 +19,5 @@
         | ! ~/.claude_2 is handed back: KitBag removes only what it created there and restores what it         |
         | replaced.                                                                                            |
         |                                                                                                      |
-        |                                                                    [ Cancel ] > [ Back ]   [ Apply ] |
+        |                                                                    [ Cancel ]   [ Back ] > [ Apply ] |
         +------------------------------------------------------------------------------------------------------+

@@ -4,7 +4,9 @@ Precedence: flag > KITBAG_* environment
 > config.toml > default
 Advanced [-]
 
+    git.backend  auto · default
 >   daemon.debounce  500ms · default
+    ui.color  auto · default
 
 daemon.debounce
  100ms  250ms [500ms] 1s  5s  30s  1m
@@ -15,10 +17,8 @@ after saving. Custom: 100ms to 1m.
 Value: 500ms
 Source: default
 Default: 500ms
+
 [Help]
 ←/→/Space or click: choose · Enter saves
 · Esc cancels
-  [ Save (unavailable) ]
-  [ Remove (unavailable) ]
-  [ Revert (unavailable) ]
 Enter saves · Esc cancels

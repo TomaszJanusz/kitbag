@@ -29,7 +29,9 @@ func (m *Model) screenControls() []model.Control {
 			return m.field().Actions
 		}
 	case driftTab:
-		return []model.Control{{Label: text.New(text.ActionDetails), Enabled: m.app.Drift.View().Detail != nil}}
+		if m.app.Drift.View().Detail != nil {
+			return []model.Control{{Label: text.New(text.ActionDetails), Enabled: true}}
+		}
 	case logTab:
 		return []model.Control{{Label: text.New(text.ActionFollow), Enabled: true}}
 	case agentsTab:

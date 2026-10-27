@@ -44,3 +44,15 @@ crash-stale endpoints, and runs `api.Serve` with the existing handlers.
 - Release checks emit an existing API hint. They have no download/install path.
 - The short Linux resource measurement is reproducible; the ten-minute runner02
   acceptance run remains manual. See [daemon.md](../daemon.md).
+
+## Upgrade recovery in installed clients
+
+Status RPCs remain read-only on the daemon. The installed CLI/TUI client may
+reconcile its own enabled daemon service after observing an older daemon,
+through core service policy and platform supervisor contracts, outside the
+process it stops. This covers older daemons and stale Cellar definitions that
+cannot reach new startup code. A durable cooldown and bounded pending notice
+prevent restart loops and indefinite transient warnings. Stopped/disabled jobs,
+timers, other configs and downgrades are excluded. See the
+[upgrade investigation](../service-upgrades.md) for source evidence and the
+unverified live-launchd migration case.

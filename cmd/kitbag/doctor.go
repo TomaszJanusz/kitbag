@@ -22,7 +22,7 @@ const reportPerm fs.FileMode = 0o600
 func (c *commandLine) doctorCommand() *cobra.Command {
 	var asJSON, strict bool
 	var reportPath string
-	cmd := &cobra.Command{Use: "doctor", Short: "Explain synchronization problems and suggest fixes", Long: "Check local sync prerequisites and remote reachability without applying changes. --report writes redacted local JSON and skips network probes. WARN exits 0 unless --strict; FAIL exits 1, or 4 when min_tool_version is unmet.", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+	cmd := &cobra.Command{Use: "doctor", Short: "Explain synchronization problems and suggest fixes", Long: "Check local sync prerequisites and remote reachability without applying a sync plan. An eligible older daemon is automatically refreshed after an upgrade. --report writes redacted local JSON and skips network probes. WARN exits 0 unless --strict; FAIL exits 1, or 4 when min_tool_version is unmet.", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		service, err := c.doctorService(reportPath != "")
 		if err != nil {
 			return classified(err)
@@ -52,7 +52,7 @@ func (c *commandLine) doctorService(offline bool) (doctor.Service, error) {
 		return doctor.Service{}, err
 	}
 	return doctor.Service{
-		DaemonVersion: (client.Client{Host: c.host}).DaemonVersion, Now: time.Now, ServiceConfig: c.configPath, Host: c.host, Store: store, Repository: repo, Config: c.config, Homes: agentHomes(), Version: toolVersion(), HostFlag: c.flags.host, ModeFlag: c.flags.mode, Offline: offline,
+		DaemonVersion: (client.Client{Host: c.host}).RecoveryDaemonVersion, Now: time.Now, ServiceConfig: c.configPath, Host: c.host, Store: store, Repository: repo, Config: c.config, Homes: agentHomes(), Version: toolVersion(), HostFlag: c.flags.host, ModeFlag: c.flags.mode, Offline: offline,
 		Open: func(ctx context.Context) (vcs.Backend, vcs.Resolution, error) {
 			return vcs.Open(ctx, c.selection, gitFactories(c.host, c.config.Git.Identity))
 		},
