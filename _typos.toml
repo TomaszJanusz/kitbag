@@ -1,3 +1,11 @@
+[default]
+# Release Please changelog entries link commits by hash; typos splits hashes
+# such as 26ba6eb into words.
+extend-ignore-re = [
+  "\\[[0-9a-f]{7,40}\\]",
+  "/commit/[0-9a-f]{40}",
+]
+
 [default.extend-words]
 # Standard in-toto provenance filename extension required by the SLSA generator.
 intoto = "intoto"
