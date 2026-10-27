@@ -57,7 +57,7 @@ and digest comparison. This shortens future passive detection to roughly
 5–10 seconds before active-work/supervisor delays. It does not change code
 already running in a 0.1.2 daemon.
 
-New installed status/TUI clients automatically use
+New installed status/doctor/TUI clients automatically use
 [service.RecoverVersion](../internal/core/service/recovery.go), outside the
 process being stopped. Recovery reuses Refresh's saved-input rewrite and
 systemd reload/restart or launchd bootout/bootstrap sequence. It acts only on
@@ -76,8 +76,8 @@ recovery. Normal upgrades require no user-side refresh command.
 
 Core/fake-host tests prove policy guards, desired supervisor calls, rewriting
 of a removed saved Cellar path, cooldown across new clients, the bounded notice,
-and visible failures. Adapter and shared-model tests prove automatic invocation
-and pending versus persistent presentation. TUI goldens cover both states.
+and visible failures. Doctor, adapter and shared-model tests prove automatic
+invocation and pending versus persistent presentation. TUI goldens cover both states.
 Temporary mutations prove the new regressions detect broken guards.
 
 Not verified here: native launchd restart, throttle and process-group behavior;
