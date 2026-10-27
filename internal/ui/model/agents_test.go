@@ -141,3 +141,26 @@ func TestAgentTextFallbacks(t *testing.T) {
 		checkText(t, AgentSourceText(s, "X"))
 	}
 }
+
+// TestAgentsDetailAlwaysNamesHosts covers explicit, unrestricted and legacy
+// implicit scopes, independent of whether an instance is active here.
+func TestAgentsDetailAlwaysNamesHosts(t *testing.T) {
+	t.Parallel()
+	m := loadedAgents(t)
+	for _, tc := range []struct {
+		want  string
+		index int
+	}{
+		{"all hosts", 0}, {"only on mac", 1}, {"all hosts except runner", 4},
+	} {
+		m.Update(SelectAgent{Index: tc.index})
+		found := false
+		for _, row := range m.View().Detail.Rows {
+			if render(row.Label) == "Hosts" {
+				expect(t, render(row.Value) == tc.want, "hosts %q, want %q", render(row.Value), tc.want)
+				found = true
+			}
+		}
+		expect(t, found, "instance %d has no Hosts detail", tc.index)
+	}
+}

@@ -17,14 +17,7 @@ func (m *AgentForm) Dialog() *DialogView {
 		return nil
 	}
 	v := m.View()
-	var fields []DialogField
-	if v.TextEntry {
-		field := DialogField{ID: string(v.Step), Value: v.Field, Label: v.Title, Enabled: !v.Busy}
-		if v.Step == AgentStepDir && v.Placeholder != "" {
-			field.Hint = text.New(text.WizardCurrentDir, text.Plain(v.Placeholder))
-		}
-		fields = []DialogField{field}
-	}
+	fields := m.dialogFields(v)
 	dialog := FormDialog(AgentFormDialog, text.New(text.WizardWindowTitle, v.Heading, v.Title), v.StepIndex+1, len(v.Steps), fields, v.Back, v.Next, v.Cancel.Intent)
 	dialog.Message, dialog.Wide = v.Explanation, true
 	dialog.Buttons = []Control{v.Cancel}
@@ -44,6 +37,23 @@ func (m *AgentForm) Dialog() *DialogView {
 		dialog.Buttons = nil
 	}
 	return &dialog
+}
+
+func (m *AgentForm) dialogFields(v AgentFormView) []DialogField {
+	var fields []DialogField
+	if v.TextEntry {
+		field := DialogField{ID: string(v.Step), Value: v.Field, Label: v.Title, Enabled: !v.Busy}
+		if v.Step == AgentStepDir && v.Placeholder != "" {
+			field.Hint = text.New(text.WizardCurrentDir, text.Plain(v.Placeholder))
+		}
+		if v.Step == AgentStepHosts {
+			// The field stays in place so choosing does not move the focus;
+			// it takes input only for a typed list.
+			field.Hint, field.Enabled = text.New(text.WizardHostsPickHint), field.Enabled && m.picking()
+		}
+		fields = []DialogField{field}
+	}
+	return fields
 }
 
 // initialFocus offers the primary action on every ready, valid step. An

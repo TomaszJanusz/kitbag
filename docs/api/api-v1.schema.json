@@ -767,7 +767,7 @@
     },
     "agentChange": {
       "type": "object",
-      "description": "An instance change; the method sets op. add needs kind, name and dir; edit and remove need target (a target, or a kind with one target) and name.",
+      "description": "An instance change; the method sets op. add needs kind, name and dir; edit and remove need target (a target, or a kind with one target) and name. hosts limits the instance to those hosts (the instance's hosts key in kitbag.toml) and all_hosts (edit) removes the limit; without either, add applies to every host and edit keeps the current hosts. Daemons before this field ignore it, so check the preview's change.hosts.",
       "properties": {
         "op": {
           "enum": [
@@ -791,6 +791,18 @@
           "minLength": 1
         },
         "settings": {
+          "type": "boolean"
+        },
+        "hosts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+          }
+        },
+        "all_hosts": {
           "type": "boolean"
         }
       },
@@ -1312,14 +1324,15 @@
     },
     {
       "name": "agents.add",
-      "summary": "Declare an instance for all hosts. With dry_run, preview the manifest diff, commit title and route; otherwise publish like kitbag agent add --yes (revision guards a confirmed preview) and sync.",
+      "summary": "Declare an instance, optionally limited to hosts (default every host). With dry_run, preview the manifest diff, commit title and route; otherwise publish like kitbag agent add --yes (revision guards a confirmed preview) and sync.",
       "request": "agents_addRequest",
       "result": "agentChangeResult",
       "valid": {
         "agent": {
           "kind": "claude",
           "name": "third",
-          "dir": "~/.claude_3"
+          "dir": "~/.claude_3",
+          "hosts": ["mac"]
         },
         "dry_run": true
       },
@@ -1330,14 +1343,15 @@
     },
     {
       "name": "agents.edit",
-      "summary": "Change an instance's directory or settings switch; dry_run previews, otherwise publishes and syncs like kitbag agent edit --yes.",
+      "summary": "Change an instance's directory, settings switch or hosts; dry_run previews, otherwise publishes and syncs like kitbag agent edit --yes.",
       "request": "agents_editRequest",
       "result": "agentChangeResult",
       "valid": {
         "agent": {
           "target": "claude",
           "name": "second",
-          "dir": "~/.claude-work"
+          "dir": "~/.claude-work",
+          "hosts": ["mac", "runner02"]
         },
         "dry_run": true
       },

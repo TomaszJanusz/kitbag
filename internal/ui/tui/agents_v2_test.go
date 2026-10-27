@@ -18,7 +18,7 @@ func TestAgentsHomeButtonFlow(t *testing.T) {
 	s.press("a")
 	s.waitFor("kitbag › Agents", "claude/main")
 	s.click(hit.rect.X+len(indent), hit.rect.Y)
-	s.waitFor("Step 1/7", "Add an agent instance")
+	s.waitFor("Step 1/8", "Add an agent instance")
 	s.press(keyEscape)
 	s.waitFor("kitbag › Agents")
 	s.press(keyEscape)
@@ -38,7 +38,7 @@ func TestAgentsV2ScreensAndChoiceDialog(t *testing.T) {
 			d.expect("kitbag › Agents", "claude/main", "Add agent")
 			d.golden(fmt.Sprintf("v2-agents-%dx%d", size[0], size[1]))
 			d.press(keyAdd)
-			d.expect("Step 1/7", "esc", "> [ Next ]")
+			d.expect("Step 1/8", "esc", "> [ Next ]")
 			if size[1] > MinHeight {
 				d.expect("(*) claude")
 			}

@@ -129,19 +129,10 @@ func (a *agentFake) plan(change model.AgentChange) (model.AgentPreview, error) {
 		preview.Title = fmt.Sprintf("chore(kitbag): add %s instance %s at %s", change.Kind, change.Name, dir)
 		preview.Diff = []string{"@@ kitbag.toml @@", fmt.Sprintf("+[targets.%s.instances.%s]", change.Kind, change.Name), fmt.Sprintf("+dir = %q", dir)}
 	case model.AgentEdit:
-		i := a.find(change)
-		if i < 0 {
-			return model.AgentPreview{}, &model.Error{Kind: model.ErrInvalid, Detail: "no instance " + change.Target + "/" + change.Name}
-		}
-		old := tilde(a.snapshot.Instances[i].Dir)
-		dir := old
-		if change.Dir != "" {
-			dir = tilde(absolute(change.Dir))
-		}
-		preview.Title = fmt.Sprintf("chore(kitbag): move %s instance %s to %s", change.Target, change.Name, dir)
-		preview.Diff = []string{fmt.Sprintf(" [targets.%s.instances.%s]", change.Target, change.Name), fmt.Sprintf("-dir = %q", old), fmt.Sprintf("+dir = %q", dir)}
-		if dir != old {
-			preview.Dropped = old
+		var err error
+		preview, err = a.editPreview(change, preview)
+		if err != nil {
+			return model.AgentPreview{}, err
 		}
 	case model.AgentRemove:
 		i := a.find(change)
@@ -154,6 +145,7 @@ func (a *agentFake) plan(change model.AgentChange) (model.AgentPreview, error) {
 		preview.Dropped = old
 		preview.Change.Dir = old
 	}
+	fakeHostsDiff(&preview, change.Hosts)
 	return fakePreviewEffects(preview, change.Op), nil
 }
 
@@ -231,7 +223,9 @@ func (a *agentFake) publish(preview model.AgentPreview) {
 		dir := absolute(change.Dir)
 		a.snapshot.Candidates = slices.DeleteFunc(a.snapshot.Candidates, func(c model.AgentCandidate) bool { return c.Dir == dir })
 		a.probed = slices.DeleteFunc(a.probed, func(c model.AgentCandidate) bool { return c.Dir == dir })
-		a.snapshot.Instances = append(a.snapshot.Instances, instance(change.Kind, change.Name, strings.TrimPrefix(dir, fakeHome), model.PresencePresent, change.Settings == nil || *change.Settings))
+		added := instance(change.Kind, change.Name, strings.TrimPrefix(dir, fakeHome), model.PresencePresent, change.Settings == nil || *change.Settings)
+		added.Hosts = model.SplitHosts(change.Hosts)
+		a.snapshot.Instances = append(a.snapshot.Instances, added)
 	case model.AgentEdit:
 		i := a.find(change)
 		if change.Dir != "" {
@@ -239,6 +233,9 @@ func (a *agentFake) publish(preview model.AgentPreview) {
 		}
 		if change.Settings != nil {
 			a.snapshot.Instances[i].Settings = *change.Settings
+		}
+		if change.Hosts != "" || change.AllHosts {
+			a.snapshot.Instances[i].Hosts = model.SplitHosts(change.Hosts)
 		}
 	case model.AgentRemove:
 		a.snapshot.Instances = slices.Delete(a.snapshot.Instances, a.find(change), a.find(change)+1)
@@ -278,4 +275,35 @@ func (f *fakeClient) PreviewAgentChange(_ context.Context, change model.AgentCha
 func (f *fakeClient) ApplyAgentChange(_ context.Context, change model.AgentChange, revision string) (model.AgentApplied, error) {
 	defer f.enter()()
 	return f.agents.apply(change, revision)
+}
+
+func (a *agentFake) editPreview(change model.AgentChange, preview model.AgentPreview) (model.AgentPreview, error) {
+	i := a.find(change)
+	if i < 0 {
+		return model.AgentPreview{}, &model.Error{Kind: model.ErrInvalid, Detail: "no instance " + change.Target + "/" + change.Name}
+	}
+	old := tilde(a.snapshot.Instances[i].Dir)
+	if change.Hosts == "" && !change.AllHosts {
+		preview.Change.Hosts = strings.Join(a.snapshot.Instances[i].Hosts, ",")
+	}
+	dir := old
+	if change.Dir != "" {
+		dir = tilde(absolute(change.Dir))
+	}
+	preview.Title = fmt.Sprintf("chore(kitbag): move %s instance %s to %s", change.Target, change.Name, dir)
+	preview.Diff = []string{fmt.Sprintf(" [targets.%s.instances.%s]", change.Target, change.Name), fmt.Sprintf("-dir = %q", old), fmt.Sprintf("+dir = %q", dir)}
+	if dir != old {
+		preview.Dropped = old
+	}
+	return preview, nil
+}
+
+func fakeHostsDiff(preview *model.AgentPreview, value string) {
+	if hosts := model.SplitHosts(value); len(hosts) > 0 {
+		quoted := make([]string, len(hosts))
+		for i, host := range hosts {
+			quoted[i] = fmt.Sprintf("%q", host)
+		}
+		preview.Diff = append(preview.Diff, "+hosts = ["+strings.Join(quoted, ", ")+"]")
+	}
 }

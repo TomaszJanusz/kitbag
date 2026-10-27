@@ -424,15 +424,26 @@ directory with its kind and directory prefilled, skipping those known steps.
 open the model's form as a wide modal window titled with the operation and the
 step, for example **Add an agent instance: Instance name**, with **Step n/N**:
 
-- add: agent, instance name, directory, settings merge, preview, confirm, result;
+- add: agent, instance name, directory, machines, settings merge, preview, confirm, result;
 - edit: directory (empty keeps the current one, which the field's hint shows),
-  settings merge, preview, confirm, result;
+  machines, settings merge, preview, confirm, result;
 - remove: preview, confirm, result.
+
+**Machines** is always offered, including when adopting a found directory and
+when editing a schema-1 manifest. Choose **This machine only**, **All machines**
+or **Choose machines…** and type comma-separated host names. Add defaults to this
+machine; edit also offers **Keep the current machines**, selected by default.
+If this machine's name is unavailable, add defaults to all machines and omits the
+this-machine choice. An empty picked list, duplicate or invalid name disables
+Next; an unknown name warns about spelling. **What will change** names the
+selected machines and explains that other machines ignore the instance, or that
+all machines use it and missing directories warn. The detail pane always shows
+**Hosts**, even for an inactive or implicit instance.
 
 Text steps validate every keystroke with the model's catalog messages (name
 grammar and taken names, `~/` or absolute directories, outside HOME,
 directories another instance declares, `generic` refused); an invalid step keeps
-**Next** unavailable. Choice steps (agent, settings, and the directory step's
+**Next** unavailable. Choice steps (agent, machines, settings, and the directory step's
 **Directories found on this machine**) are option lists marked `(*)`: Space,
 Enter or a click chooses, `←`/`→` step to the previous/next choice, and Enter on
 an option moves the focus to Next, so Enter, Enter accepts a choice and goes on.

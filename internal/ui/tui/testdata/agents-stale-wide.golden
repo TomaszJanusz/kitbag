@@ -3,16 +3,16 @@
 
 
 
-
         +------------------------------------------------------------------------------------------------------+
         | Add an agent instance: What will change                                                          esc |
-        | Step 5/7                                                                                             |
+        | Step 6/8                                                                                             |
         |                                                                                                      |
         | The change to kitbag.toml, its commit title and how it will be published.                            |
         | ✗ kitbag.toml changed since the preview. Review the new preview.                                     |
         | Edit the shared manifest at /home/user/.local/share/kitbag/repo/kitbag.toml.                         |
-        | Apply will attempt to commit and push this change to branch main. The declaration affects all hosts  |
-        | on their next sync; Apply also syncs this machine.                                                   |
+        | Apply will attempt to commit and push this change to branch main. Every host reads it on its next    |
+        | sync; Apply also syncs this machine.                                                                 |
+        | Used only on laptop; other machines ignore this instance.                                            |
         | Local configuration directory: /home/user/.claude_3.                                                 |
         | These file effects describe this machine now. Apply rechecks the files; other hosts plan from their  |
         | own files.                                                                                           |
@@ -24,6 +24,7 @@
         |   @@ kitbag.toml @@                                                                                  |
         |   +[targets.claude.instances.extra]                                                                  |
         |   +dir = "~/.claude_3"                                                                               |
+        |   +hosts = ["laptop"]                                                                                |
         |                                                                                                      |
         |                                                                     [ Cancel ]   [ Back ] > [ Next ] |
         +------------------------------------------------------------------------------------------------------+

@@ -4,12 +4,13 @@
 
         +------------------------------------------------------------------------------------------------------+
         | Edit claude/second: What will change                                                             esc |
-        | Step 3/5                                                                                             |
+        | Step 4/6                                                                                             |
         |                                                                                                      |
         | The change to kitbag.toml, its commit title and how it will be published.                            |
         | Edit the shared manifest at /home/user/.local/share/kitbag/repo/kitbag.toml.                         |
-        | Apply will attempt to commit and push this change to branch main. The declaration affects all hosts  |
-        | on their next sync; Apply also syncs this machine.                                                   |
+        | Apply will attempt to commit and push this change to branch main. Every host reads it on its next    |
+        | sync; Apply also syncs this machine.                                                                 |
+        | Used only on laptop; other machines ignore this instance.                                            |
         | Local configuration directory: /home/user/.claude_9.                                                 |
         | These file effects describe this machine now. Apply rechecks the files; other hosts plan from their  |
         | own files.                                                                                           |

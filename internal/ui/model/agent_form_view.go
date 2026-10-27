@@ -83,7 +83,7 @@ func (m *AgentForm) View() AgentFormView {
 		Open: true, Op: m.draft.Op, Step: step, Steps: m.steps, StepIndex: m.step, Heading: m.heading(),
 		Title: stepText(step, false), Explanation: stepText(step, true), Invalid: m.invalid(),
 		Warnings: m.warnings(), Discarding: m.asking, Busy: m.loading || m.applying, Problem: m.problemText(),
-		TextEntry: step == AgentStepName || step == AgentStepDir, Options: m.options(), Placeholder: m.currentDir,
+		TextEntry: step == AgentStepName || step == AgentStepDir || step == AgentStepHosts, Options: m.options(), Placeholder: m.currentDir,
 	}
 	view.Field = m.field()
 	if m.preview != nil && (step == AgentStepPreview || step == AgentStepConfirm) {
@@ -102,6 +102,8 @@ func (m *AgentForm) field() string {
 		return m.draft.Name
 	case AgentStepDir:
 		return m.draft.Dir
+	case AgentStepHosts:
+		return m.hosts.text
 	case AgentStepKind, AgentStepSettings, AgentStepPreview, AgentStepConfirm, AgentStepResult:
 	}
 	return ""
@@ -126,6 +128,7 @@ func stepText(step AgentStep, explain bool) text.Message {
 	titles := map[AgentStep][2]text.Key{
 		AgentStepKind: {text.WizardStepKind, text.WizardExplainKind}, AgentStepName: {text.WizardStepName, text.WizardExplainName},
 		AgentStepDir: {text.WizardStepDir, text.WizardExplainDir}, AgentStepSettings: {text.WizardStepSettings, text.WizardExplainSettings},
+		AgentStepHosts:   {text.WizardStepHosts, text.WizardExplainHosts},
 		AgentStepPreview: {text.WizardStepPreview, text.WizardExplainPreview}, AgentStepConfirm: {text.WizardStepConfirm, text.WizardExplainConfirm},
 		AgentStepResult: {text.WizardStepResult, text.WizardExplainResult},
 	}
@@ -165,6 +168,8 @@ func (m *AgentForm) options() []AgentOption {
 		}
 	case AgentStepSettings:
 		options = m.settingsOptions()
+	case AgentStepHosts:
+		options = m.hostsOptions()
 	case AgentStepName, AgentStepPreview, AgentStepConfirm, AgentStepResult:
 	}
 	return options
@@ -203,7 +208,7 @@ func (m *AgentForm) nextControl(valid bool) Control {
 		label, enabled = text.WizardApply, !m.applying && m.preview != nil
 	case AgentStepResult:
 		label = text.WizardClose
-	case AgentStepKind, AgentStepName, AgentStepDir, AgentStepSettings:
+	case AgentStepKind, AgentStepName, AgentStepDir, AgentStepSettings, AgentStepHosts:
 	}
 	return Control{Intent: AgentFormNext{}, Label: text.New(label), Enabled: enabled}
 }

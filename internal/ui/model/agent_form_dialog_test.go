@@ -49,7 +49,7 @@ func TestAgentFormDialogDraftSteps(t *testing.T) {
 	d := m.Dialog()
 	checkDialog(t, d)
 	expect(t, render(d.Title) == "Add an agent instance: Agent" && len(d.Fields) == 0, "kind %+v", d)
-	expect(t, d.Step == 1 && d.Steps == 7, "steps %d/%d", d.Step, d.Steps)
+	expect(t, d.Step == 1 && d.Steps == 8, "steps %d/%d", d.Step, d.Steps)
 	expect(t, len(d.Options) == 3 && d.Options[0].Selected && d.InitialFocus == len(d.Options)+len(d.Buttons)-1, "kind options %+v", d.Options)
 	expect(t, d.Options[1].Intent == ChooseAgentOption{Index: 1}, "option intent %+v", d.Options[1])
 	m.Update(AgentFormNext{})
@@ -72,6 +72,7 @@ func TestAgentFormDialogDirAndSettings(t *testing.T) {
 	m.Update(EditDialogField{Dialog: AgentFormDialog, Value: "~/.claude_2"})
 	expect(t, strings.Contains(bodyText(m.Dialog()), "already declared as claude/second"), "duplicate")
 	m.Update(ChooseAgentOption{Index: 0})
+	m.Update(AgentFormNext{})
 	m.Update(AgentFormNext{})
 	d = m.Dialog()
 	expect(t, d.Options[0].Selected && d.InitialFocus == 5 && render(d.Options[0].Label) == "Default (merge shared settings)", "settings %+v", d.Options)
@@ -120,7 +121,7 @@ func TestAgentFormDialogEditRemoveAndResults(t *testing.T) {
 	t.Parallel()
 	m, _ := openForm(t, OpenAgentForm{Op: AgentEdit, Kind: "claude", Target: "claude", Name: "second", Dir: "/home/u/.claude_2"})
 	d := m.Dialog()
-	expect(t, render(d.Fields[0].Hint) == "Now /home/u/.claude_2; leave empty to keep it." && d.Steps == 5, "edit %+v", d.Fields)
+	expect(t, render(d.Fields[0].Hint) == "Now /home/u/.claude_2; leave empty to keep it." && d.Steps == 6, "edit %+v", d.Fields)
 	m, cmds := openForm(t, OpenAgentForm{Op: AgentRemove, Kind: "claude", Target: "claude", Name: "second"})
 	m.Update(AgentPreviewed{Seq: as[PreviewAgent](t, only(t, cmds)).Seq, Err: &Error{Kind: ErrInvalid, Detail: "refused"}})
 	d = m.Dialog()
@@ -180,7 +181,7 @@ func TestAgentDetailSaysWhatSyncDoes(t *testing.T) {
 func TestAgentFormInitialFocusEveryStep(t *testing.T) {
 	t.Parallel()
 	m, _ := openForm(t, OpenAgentForm{Op: AgentAdd, Kind: "claude", Name: "work", Dir: "~/.claude-work"})
-	for _, step := range []AgentStep{AgentStepKind, AgentStepName, AgentStepDir, AgentStepSettings, AgentStepPreview, AgentStepConfirm, AgentStepResult} {
+	for _, step := range []AgentStep{AgentStepKind, AgentStepName, AgentStepDir, AgentStepHosts, AgentStepSettings, AgentStepPreview, AgentStepConfirm, AgentStepResult} {
 		d := m.Dialog()
 		expect(t, m.current() == step, "step %s, want %s", m.current(), step)
 		assertStepFocus(t, d, step)
@@ -192,7 +193,7 @@ func TestAgentFormInitialFocusEveryStep(t *testing.T) {
 			m.Update(AgentChangeApplied{Applied: AgentApplied{}})
 		case AgentStepResult:
 			expect(t, len(d.Buttons) == 1 && render(d.Buttons[0].Label) == "Close", "result buttons %+v", d.Buttons)
-		case AgentStepKind, AgentStepName, AgentStepDir, AgentStepPreview:
+		case AgentStepKind, AgentStepName, AgentStepDir, AgentStepHosts, AgentStepPreview:
 		}
 	}
 }

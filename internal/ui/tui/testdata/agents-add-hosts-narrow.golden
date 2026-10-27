@@ -1,0 +1,17 @@
+
+
+  +------------------------------------------------------+
+  | Add an agent instance: Machines                  esc |
+  | Step 4/8                                             |
+  |                                                      |
+  | Which machines use this instance. Other machines     |
+  | ignore it and never warn about its directory.        |
+  | Machines:                                            |
+  | Host names separated by commas, for example mac,     |
+  | runner02.                                            |
+  |   (*) This machine only (laptop)                     |
+  |   ( ) All machines                                   |
+  |   ( ) Choose machines… · Machines named in kitbag.t… |
+  |                                                      |
+  |                     [ Cancel ]   [ Back ] > [ Next ] |
+  +------------------------------------------------------+

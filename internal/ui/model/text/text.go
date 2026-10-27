@@ -401,10 +401,29 @@ const (
 	WizardDiscardConfirm  Key = "wizard.discard_confirm"
 )
 
+// Hosts step keys (ADR 12): the machines an instance applies to.
+const (
+	WizardStepHosts        Key = "wizard.step.hosts"
+	WizardExplainHosts     Key = "wizard.explain.hosts"
+	WizardHostsKeep        Key = "wizard.hosts.keep"
+	WizardHostsHere        Key = "wizard.hosts.here"
+	WizardHostsAll         Key = "wizard.hosts.all"
+	WizardHostsPick        Key = "wizard.hosts.pick"
+	WizardHostsPickHint    Key = "wizard.hosts.pick_hint"
+	WizardHostsKnown       Key = "wizard.hosts.known"
+	AgentInvalidHosts      Key = "agent.invalid.hosts"
+	AgentInvalidHost       Key = "agent.invalid.host"
+	AgentInvalidHostTwice  Key = "agent.invalid.host_twice"
+	AgentWarnUnknownHost   Key = "agent.warn.unknown_host"
+	WizardPreviewHosts     Key = "wizard.preview.hosts"
+	WizardPreviewAllHosts  Key = "wizard.preview.all_hosts"
+	WizardPreviewEveryHost Key = "wizard.preview.every_host"
+)
+
 // English returns the default catalog, including plain-language setting descriptions.
 func English() Catalog {
 	catalog := make(Catalog)
-	for _, section := range [][]entry{statusText(), outcomeText(), driftText(), formText(), terminalText(), homeText(), agentsText(), wizardText(), previewText(), settingDescriptions()} {
+	for _, section := range [][]entry{statusText(), outcomeText(), driftText(), formText(), terminalText(), homeText(), agentsText(), wizardText(), previewText(), hostsText(), settingDescriptions()} {
 		for _, e := range section {
 			catalog[e.key] = e.template
 		}
