@@ -20,5 +20,5 @@
         |   git -C '/home/user/.local/share/kitbag/repo' push -u origin kitbag/claude-extra                    |
         | The agents list was reloaded.                                                                        |
         |                                                                                                      |
-        |                                                      [ Cancel ]   [ Back (unavailable) ] > [ Close ] |
+        |                                                                                          > [ Close ] |
         +------------------------------------------------------------------------------------------------------+

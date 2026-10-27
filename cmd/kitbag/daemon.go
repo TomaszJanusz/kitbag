@@ -37,8 +37,9 @@ const (
 	// target bounds heap growth within a cycle (idle budget in docs/daemon.md).
 	daemonProcs     = 2
 	daemonGCPercent = 50
-	// daemonExecutableCheck is the slow poll for a replaced executable.
-	daemonExecutableCheck = time.Minute
+	// daemonExecutableCheck polls file identity cheaply; content is hashed only
+	// after a changed identity settles across two observations.
+	daemonExecutableCheck = 5 * time.Second
 )
 
 func (c *commandLine) daemonCommand() *cobra.Command {

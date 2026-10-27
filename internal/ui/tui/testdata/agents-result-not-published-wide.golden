@@ -20,5 +20,5 @@
         |   git -C '/home/user/.local/share/kitbag/repo' push                                                  |
         | The agents list was reloaded.                                                                        |
         |                                                                                                      |
-        |                                                      [ Cancel ]   [ Back (unavailable) ] > [ Close ] |
+        |                                                                                          > [ Close ] |
         +------------------------------------------------------------------------------------------------------+

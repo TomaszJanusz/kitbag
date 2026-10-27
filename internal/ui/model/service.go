@@ -4,7 +4,7 @@ import "github.com/TomaszJanusz/kitbag/internal/ui/model/text"
 
 func (m *Status) needsServiceRefresh() bool {
 	s := m.snapshot
-	return s.ServiceInstalled && (s.ServiceStale || s.Daemon && s.DaemonVersion != s.BinaryVersion)
+	return !s.ServiceRecovering && s.ServiceInstalled && (s.ServiceStale || s.Daemon && s.DaemonVersion != s.BinaryVersion)
 }
 
 func (m *Status) serviceRefresh(msg Msg) []Cmd {
@@ -29,16 +29,7 @@ func (m *Status) serviceRefresh(msg Msg) []Cmd {
 }
 
 func (m *Status) serviceRefreshView(view *StatusView) {
-	s := m.snapshot
-	if s.Daemon && s.BinaryVersion != "" {
-		view.Notices = append(view.Notices, text.New(text.StatusVersions, text.Plain(s.DaemonVersion), text.Plain(s.BinaryVersion)))
-		if s.DaemonVersion != s.BinaryVersion {
-			view.Warnings = append(view.Warnings, text.New(text.StatusVersionMismatch))
-		}
-	}
-	if s.ServiceStale {
-		view.Warnings = append(view.Warnings, text.New(text.StatusServiceStale))
-	}
+	m.serviceVersionView(view)
 	view.ConfirmRefresh = m.confirmRefresh
 	view.Dialog = m.Dialog()
 	switch {
@@ -67,4 +58,20 @@ func (m *Status) Dialog() *DialogView {
 
 func (m *Status) canRefreshService() bool {
 	return m.needsServiceRefresh() && !m.refreshingService && !m.syncing && !m.otherSync
+}
+
+func (m *Status) serviceVersionView(view *StatusView) {
+	s := m.snapshot
+	if s.Daemon && s.BinaryVersion != "" {
+		view.Notices = append(view.Notices, text.New(text.StatusVersions, text.Plain(s.DaemonVersion), text.Plain(s.BinaryVersion)))
+		if s.DaemonVersion != s.BinaryVersion && !s.ServiceRecovering {
+			view.Warnings = append(view.Warnings, text.New(text.StatusVersionMismatch))
+		}
+	}
+	if s.ServiceRecovering {
+		view.Notices = append(view.Notices, text.New(text.StatusServiceRecovering))
+	}
+	if s.ServiceStale && !s.ServiceRecovering {
+		view.Warnings = append(view.Warnings, text.New(text.StatusServiceStale))
+	}
 }
