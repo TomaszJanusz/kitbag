@@ -6,8 +6,8 @@ Remove an instance from kitbag.toml and publish it
 
 Remove an instance declaration. Neither the directory nor any file in it is deleted: the next sync removes only the links and unchanged copies KitBag made there and releases ownership; modified or unmanaged files stay and are reported. The last listed instance of a target cannot be removed, because the target would then manage its default directory.
 
-Changes are written to the shared kitbag.toml in the working copy and apply
-to every host (per-host instances need manifest schema 2). The working copy must
+Changes are written to the shared kitbag.toml in the working copy. An instance
+applies to every host unless --hosts restricts it. The working copy must
 be clean, on its configured branch and without unpublished commits. KitBag
 fast-forwards it, edits only the affected lines (comments and layout stay),
 commits with a generated Conventional Commit message (Kitbag-Host and Kitbag-Op

@@ -47,14 +47,27 @@ func subjectOf(c Change, edits []manifestedit.Edit) string {
 	switch c.Op {
 	case Add:
 		subject += " at " + c.Dir
+		if len(c.Hosts) > 0 {
+			subject += " (hosts " + strings.Join(c.Hosts, ", ") + ")"
+		}
 	case Edit:
-		subject += " (" + strings.Join(editDetails(edits[0]), ", ") + ")"
+		details := make([]string, 0, len(edits))
+		for _, e := range edits {
+			details = append(details, editDetails(e)...)
+		}
+		subject += " (" + strings.Join(details, ", ") + ")"
 	case Remove:
 	}
 	return subject
 }
 
 func editDetails(e manifestedit.Edit) []string {
+	if e.Op == manifestedit.SetInstanceHosts {
+		if len(e.Hosts) == 0 {
+			return []string{"all hosts"}
+		}
+		return []string{"hosts " + strings.Join(e.Hosts, ", ")}
+	}
 	var details []string
 	if e.Dir != "" {
 		details = append(details, "dir "+e.Dir)

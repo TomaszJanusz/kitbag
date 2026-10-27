@@ -241,6 +241,10 @@ const (
 
 func (b *builder) manifestMode() string { return b.mode }
 
+// MissingInstance is the warning of an operation skipped because its listed
+// instance directory does not exist on this machine.
+const MissingInstance = "instance directory is missing; skipped"
+
 func (b *builder) instance(d *target.Target) error {
 	if d.InstanceDir == "" {
 		return nil
@@ -248,7 +252,7 @@ func (b *builder) instance(d *target.Target) error {
 	info, err := b.fsys.Lstat(d.InstanceDir)
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
-		d.Warning = "instance directory is missing; skipped"
+		d.Warning = MissingInstance
 	case err != nil:
 		return err
 	case !info.IsDir():

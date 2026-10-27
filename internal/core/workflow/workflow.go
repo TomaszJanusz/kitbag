@@ -119,7 +119,7 @@ func (s Service) syncLocked(ctx context.Context, session *state.Session, noPull,
 	if err = apply.Recover(s.Host, session); err != nil {
 		return err
 	}
-	p, err := s.build(session, m, mode, force, &result.Warnings)
+	p, err := s.syncPlan(session, m, mode, force, &result.Warnings)
 	if err != nil {
 		return err
 	}

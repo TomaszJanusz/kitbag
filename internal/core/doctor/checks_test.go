@@ -185,7 +185,7 @@ func manifestInstanceCases() []manifestCase {
 			order: []string{"tool-version", "host", "manifest-schema", "instance-codex/first", "instance-codex/second", "instance-plain/main"},
 			expects: []expect{
 				{"instance-codex/first", filepath.Join(testHome(), "first"), "", OK},
-				{"instance-codex/second", filepath.Join(testHome(), "second"), "create or correct", Warn},
+				{"instance-codex/second", filepath.Join(testHome(), "second"), "create or correct instance directory " + filepath.Join(testHome(), "second") + "; if only some machines have it, restrict it: kitbag agent edit codex/second --hosts <hosts>", Warn},
 			},
 		},
 		{
@@ -740,5 +740,16 @@ func TestNewerManifestStopsBeforeProbes(t *testing.T) {
 				t.Fatalf("code %d, event %+v, emitted %+v", r.Code(false), r.ToolTooOld, events)
 			}
 		})
+	}
+}
+
+// TestMissingDefaultHasNoRestrictHint keeps the hosts hint to declared
+// instances: an implicit default has no name to edit.
+func TestMissingDefaultHasNoRestrictHint(t *testing.T) {
+	t.Parallel()
+	s, _ := subjectWith(t, nil, "schema=1\n[targets.claude]\nagent=\"claude\"\n")
+	check := find(t, Report{Checks: s.manifestChecks(t.Context())}, "instance-claude/default")
+	if check.Status != Warn || strings.Contains(check.Fix, "agent edit") {
+		t.Fatalf("default instance check: %+v", check)
 	}
 }

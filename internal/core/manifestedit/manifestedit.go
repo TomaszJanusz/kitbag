@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 
 	"github.com/TomaszJanusz/kitbag/pkg/manifest"
@@ -41,13 +42,18 @@ const (
 	// AddTarget declares [targets.<Target>] with agent = Agent.
 	AddTarget Op = "add_target"
 	// AddInstance declares [targets.<Target>.instances.<Name>] with Dir and,
-	// when Settings is set, the settings switch.
+	// when Settings is set, the settings switch, and when Hosts is not empty,
+	// the hosts list.
 	AddInstance Op = "add"
 	// EditInstance replaces Dir when it is not empty and sets Settings when it
 	// is not nil. Settings on keeps an absent key absent (absent means on).
 	EditInstance Op = "edit"
 	// RemoveInstance deletes the instance table and its sub-tables.
 	RemoveInstance Op = "remove"
+	// SetInstanceHosts sets the instance's hosts list to Hosts, or deletes the
+	// key when Hosts is empty, so the instance applies to every host again. A
+	// comment on a deleted line stays as a comment line.
+	SetInstanceHosts Op = "set_instance_hosts"
 )
 
 // Edit is one change. Fields other than Op and Target apply as Op documents.
@@ -58,6 +64,7 @@ type Edit struct {
 	Name     string
 	Agent    string
 	Dir      string
+	Hosts    []string
 }
 
 // Apply applies edits in order to data, a manifest that manifest.Parse
@@ -123,17 +130,28 @@ func changeInstances(current map[string]manifest.Instance, e Edit) (map[string]m
 	}
 	switch e.Op {
 	case AddInstance:
-		result[e.Name] = manifest.Instance{Dir: e.Dir, Settings: e.Settings}
+		result[e.Name] = manifest.Instance{Dir: e.Dir, Settings: e.Settings, Hosts: hostsOf(e)}
 	case EditInstance:
 		result[e.Name] = edited(instance, e)
 	case RemoveInstance:
 		delete(result, e.Name)
+	case SetInstanceHosts:
+		instance.Hosts = hostsOf(e)
+		result[e.Name] = instance
 	case AddTarget:
 		return nil, fmt.Errorf("unexpected edit %q", e.Op)
 	default:
 		return nil, fmt.Errorf("unknown edit %q", e.Op)
 	}
 	return result, nil
+}
+
+// hostsOf returns a copy of e.Hosts; empty means every host, an absent key.
+func hostsOf(e Edit) []string {
+	if len(e.Hosts) == 0 {
+		return nil
+	}
+	return slices.Clone(e.Hosts)
 }
 
 func presence(e Edit, exists bool) error {
@@ -190,6 +208,8 @@ func rewrite(data []byte, intent *manifest.Manifest, e Edit) ([]byte, error) {
 		return l.editInstance(e)
 	case RemoveInstance:
 		return l.removeInstance(e, len(intent.Targets[e.Target].Instances) == 0)
+	case SetInstanceHosts:
+		return l.setInstanceHosts(e)
 	default:
 		return nil, fmt.Errorf("unknown edit %q", e.Op)
 	}
