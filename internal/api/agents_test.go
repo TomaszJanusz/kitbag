@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -14,6 +16,7 @@ import (
 	"github.com/TomaszJanusz/kitbag/internal/platform"
 	"github.com/TomaszJanusz/kitbag/internal/platform/fake"
 	"github.com/TomaszJanusz/kitbag/internal/vcs"
+	"github.com/TomaszJanusz/kitbag/pkg/manifest"
 )
 
 type headOnly struct{ vcs.Backend }
@@ -118,5 +121,65 @@ func TestAgentErrorHidesOtherDiagnostics(t *testing.T) {
 	}
 	if agentError(nil) != nil {
 		t.Fatal("nil error")
+	}
+}
+
+// TestManifestUpgrade previews the schema-1 fixture, which this tool (0.1.0)
+// could not read after the upgrade, so the preview warns.
+func TestManifestUpgrade(t *testing.T) {
+	t.Parallel()
+	h := agentHandlers(t)
+	data, problem := h.call(t.Context(), "manifest.upgrade", Params{DryRun: true}, nil, func(Event) {})
+	if problem != nil {
+		t.Fatal(problem)
+	}
+	preview, ok := data.(workflow.UpgradeResult)
+	if !ok || preview.ManifestUpgradeSchema != 1 || preview.Upgrade.SchemaBefore != 1 || preview.Upgrade.Current || preview.Publication.State != workflow.PublishPreview {
+		t.Fatalf("preview: %+v", data)
+	}
+	if !slices.Contains(preview.Upgrade.Conversions, "set schema = 2") || !strings.Contains(strings.Join(preview.Upgrade.Warnings, "\n"), "this kitbag (0.1.0) could not read the upgraded manifest") {
+		t.Fatalf("conversions %q warnings %q", preview.Upgrade.Conversions, preview.Upgrade.Warnings)
+	}
+	if !slices.Contains(methods(), "manifest.upgrade") {
+		t.Fatal("version.get does not list manifest.upgrade")
+	}
+}
+
+// TestUpgradeErrorDetail shows why publishing was refused, and nothing for
+// operational errors.
+func TestUpgradeErrorDetail(t *testing.T) {
+	t.Parallel()
+	tooOld := fmt.Errorf("this kitbag (0.1.0) could not read the upgraded manifest; update this machine first: %w", &manifest.VersionError{Required: "0.1.4", Current: "0.1.0"})
+	if problem := upgradeError(tooOld); problem == nil || problem.Data.ExitCode != apply.ToolTooOld || !strings.Contains(problem.Data.Detail, "update this machine first") {
+		t.Fatalf("too old: %+v", problem)
+	}
+	if problem := upgradeError(context.DeadlineExceeded); problem.Data.Detail != "" {
+		t.Fatalf("operational error leaked detail: %+v", problem)
+	}
+}
+
+func TestManifestUpgradeRefusalsCarryDetail(t *testing.T) {
+	t.Parallel()
+	h := agentHandlers(t)
+	service, err := h.Service(t.Context(), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ambiguous := "schema=1\n[targets.claude]\nagent='claude'\n[targets.claude.instances.main]\ndir='~/.claude'\n[hosts.mac.targets.claude.instances.other]\ndir='~/.claude'\n"
+	if err = service.Host.WriteAtomic(filepath.Join(service.Repository, "kitbag.toml"), []byte(ambiguous), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, problem := h.call(t.Context(), "manifest.upgrade", Params{DryRun: true}, nil, func(Event) {})
+	if problem == nil || problem.Data.ExitCode != apply.Usage || !strings.Contains(problem.Data.Detail, "name the same directory ~/.claude") {
+		t.Fatalf("refused layout: %+v", problem)
+	}
+}
+
+func TestAgentHostsNeedSchema2(t *testing.T) {
+	t.Parallel()
+	h := agentHandlers(t)
+	_, problem := h.call(t.Context(), "agents.edit", Params{DryRun: true, Agent: &agents.Change{Target: "claude", Name: "main", Hosts: []string{"mac"}}}, nil, func(Event) {})
+	if problem == nil || problem.Data.ExitCode != apply.Usage || !strings.Contains(problem.Data.Detail, "kitbag manifest upgrade --dry-run") {
+		t.Fatalf("schema-1 hosts: %+v", problem)
 	}
 }

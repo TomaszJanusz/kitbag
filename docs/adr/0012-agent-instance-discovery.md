@@ -756,8 +756,12 @@ and `AgentForm` models and the terminal Agents screens).
   instance with the fix hint, and doctor's Instances fix names it too.
   **Deviation:** no `--this-host` flag yet (the TUI fills this machine's name),
   and `remove --this-host` is not implemented.
-- **Remaining:** the hosts step in the API, models and terminal wizard (PRs
-  14–16), and the
+- **API (PR 14), 2026-10-27:** additive v1.0 method `manifest.upgrade`
+  (`dry_run`, `revision`; `manifest_upgrade_schema` result) and `hosts` /
+  `all_hosts` in the `agent` of `agents.add/edit`, instead of the planned
+  v1.1 `agents.preview/apply`.
+- **Remaining:** the hosts step and the manifest upgrade in the models and
+  terminal wizard (PRs 15–16), and the
   publication queue, `kitbag push` and `pr` mode (PRs 7–11, 17).
 
 ## Consequences

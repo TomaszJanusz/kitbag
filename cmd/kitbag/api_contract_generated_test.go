@@ -47,6 +47,10 @@ func TestGeneratedAPIContracts(t *testing.T) {
 		t.Parallel()
 		testAPIContract(t, "agents.remove", "{\"agent\":{\"target\":\"claude\",\"name\":\"second\"},\"dry_run\":true}", "{\"dry_run\":\"yes\"}", -32602, "agents_removeRequest", "agentChangeResult")
 	})
+	t.Run("manifest.upgrade", func(t *testing.T) {
+		t.Parallel()
+		testAPIContract(t, "manifest.upgrade", "{\"dry_run\":true}", "{\"dry_run\":\"yes\"}", -32602, "manifest_upgradeRequest", "manifestUpgradeResult")
+	})
 	t.Run("events.subscribe", func(t *testing.T) {
 		t.Parallel()
 		testAPIContract(t, "events.subscribe", "{}", "{\"options\":5}", -32602, "events_subscribeRequest", "subscription")

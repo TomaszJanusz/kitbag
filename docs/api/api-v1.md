@@ -103,7 +103,7 @@ Example method arguments (add `token` and `api_version`):
 
 ## `agents.edit`
 
-Change an instance's directory or settings switch; dry_run previews, otherwise publishes and syncs like kitbag agent edit --yes.
+Change an instance's directory, settings switch or hosts; dry_run previews, otherwise publishes and syncs like kitbag agent edit --yes.
 
 Request: `$defs/agents_editRequest`; result data: `$defs/agentChangeResult`.
 
@@ -123,6 +123,18 @@ Example method arguments (add `token` and `api_version`):
 
 ```json
 {"agent":{"target":"claude","name":"second"},"dry_run":true}
+```
+
+## `manifest.upgrade`
+
+Convert kitbag.toml from schema 1 to schema 2 losslessly (manifest_upgrade_schema 1); dry_run previews the conversions and diff, otherwise publishes and syncs like kitbag manifest upgrade --yes. A manifest already on schema 2 returns already_current.
+
+Request: `$defs/manifest_upgradeRequest`; result data: `$defs/manifestUpgradeResult`.
+
+Example method arguments (add `token` and `api_version`):
+
+```json
+{"dry_run":true}
 ```
 
 ## `events.subscribe`

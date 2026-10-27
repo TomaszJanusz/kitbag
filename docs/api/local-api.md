@@ -178,8 +178,9 @@ that is serving the request could cut the operation off midway.
 
 ## Agent instances (additive v1 methods)
 
-`agents.list`, `agents.add`, `agents.edit` and `agents.remove` are optional v1
-methods listed by `version.get`; the API version stays 1.0. A daemon without
+`agents.list`, `agents.add`, `agents.edit`, `agents.remove` and
+`manifest.upgrade` are optional v1 methods listed by `version.get`; the API
+version stays 1.0. A daemon without
 them answers `-32601`, and `internal/ui/apiclient` then runs the same core
 workflow in-process, as it does when no daemon listens. They implement the
 [v1 slice of ADR 12](../adr/0012-agent-instance-discovery.md#v1-slice-shipped-first).
@@ -192,7 +193,8 @@ workflow in-process, as it does when no daemon listens. They implement the
   unset, uses them for this request only and stores nothing. Without `env`
   the daemon's own environment applies.
 - `agents.add`, `agents.edit` and `agents.remove` take `agent` (`kind`,
-  `target`, `name`, `dir`, `settings`; the method sets the operation) and
+  `target`, `name`, `dir`, `settings`, and on a schema-2 manifest `hosts` or,
+  for edit, `all_hosts: true`; the method sets the operation) and
   return `agent_change_schema: 1` exactly like `kitbag agent <op> --json`.
   `dry_run: true` previews (diff, generated commit title and message,
   publication route, `revision`) without writing. Otherwise the change is
@@ -201,6 +203,16 @@ workflow in-process, as it does when no daemon listens. They implement the
   preview fails with exit code 3 instead of being changed blindly. The
   mutations use the daemon's environment, like `sync.run`. A sync they ran is
   announced to subscribers as `sync.finished`.
+- `manifest.upgrade` converts `kitbag.toml` from schema 1 to schema 2 and
+  returns `manifest_upgrade_schema: 1` exactly like `kitbag manifest upgrade
+  --json`. `dry_run: true` previews (conversions, diff, checked hosts,
+  `revision`, warnings such as "every machine must run 0.1.4 or later")
+  without writing; otherwise it publishes and synchronizes like `kitbag
+  manifest upgrade --yes`, guarded by the preview's `revision`. A manifest
+  already on schema 2 returns `already_current: true`. A layout the upgrade
+  cannot convert exactly is exit code 2, and a daemon too old to read the
+  upgraded manifest refuses to publish it with exit code 4; both carry
+  `data.detail`.
 - A refused change is `-32002` with `exit_code` 2 (validation, refused layout,
   unsupported scope, unsafe working copy) or 3 (stale preview, change no
   longer applying upstream) and an additive `data.detail` explaining why. The

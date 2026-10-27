@@ -444,6 +444,7 @@
             "agents.add",
             "agents.edit",
             "agents.remove",
+            "manifest.upgrade",
             "events.subscribe",
             "version.get"
           ]
@@ -767,7 +768,7 @@
     },
     "agentChange": {
       "type": "object",
-      "description": "An instance change; the method sets op. add needs kind, name and dir; edit and remove need target (a target, or a kind with one target) and name.",
+      "description": "An instance change; the method sets op. add needs kind, name and dir; edit and remove need target (a target, or a kind with one target) and name. hosts restricts the instance to those hosts and all_hosts (edit) removes the restriction; both need manifest schema 2.",
       "properties": {
         "op": {
           "enum": [
@@ -791,6 +792,18 @@
           "minLength": 1
         },
         "settings": {
+          "type": "boolean"
+        },
+        "hosts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+          }
+        },
+        "all_hosts": {
           "type": "boolean"
         }
       },
@@ -1185,6 +1198,188 @@
           }
         }
       ]
+    },
+    "manifestUpgradeResult": {
+      "description": "manifest_upgrade_schema 1, as kitbag manifest upgrade --json (schemas/manifest-upgrade.schema.json).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifest_upgrade_schema",
+        "dry_run",
+        "manifest",
+        "upgrade",
+        "publication",
+        "sync"
+      ],
+      "properties": {
+        "manifest_upgrade_schema": {
+          "const": 1
+        },
+        "dry_run": {
+          "type": "boolean"
+        },
+        "manifest": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision_after": {
+          "$ref": "#/$defs/manifestUpgradeRevision"
+        },
+        "upgrade": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "revision",
+            "title",
+            "message",
+            "min_tool_version",
+            "conversions",
+            "diff",
+            "warnings",
+            "checked_hosts",
+            "schema_before",
+            "already_current"
+          ],
+          "properties": {
+            "revision": {
+              "$ref": "#/$defs/manifestUpgradeRevision"
+            },
+            "title": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "min_tool_version": {
+              "type": "string"
+            },
+            "conversions": {
+              "description": "One line per change the upgrade makes, in order.",
+              "$ref": "#/$defs/manifestUpgradeStrings"
+            },
+            "diff": {
+              "description": "Unified diff of kitbag.toml, one line per entry.",
+              "$ref": "#/$defs/manifestUpgradeStrings"
+            },
+            "warnings": {
+              "$ref": "#/$defs/manifestUpgradeStrings"
+            },
+            "checked_hosts": {
+              "description": "Hosts whose active instances were compared before and after, including one the file does not name.",
+              "$ref": "#/$defs/manifestUpgradeStrings"
+            },
+            "schema_before": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "already_current": {
+              "type": "boolean"
+            }
+          }
+        },
+        "publication": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "mode",
+            "branch",
+            "next",
+            "attempts"
+          ],
+          "properties": {
+            "state": {
+              "enum": [
+                "",
+                "dry_run",
+                "published",
+                "not_published",
+                "manual",
+                "conflict"
+              ]
+            },
+            "mode": {
+              "enum": [
+                "",
+                "direct",
+                "pr"
+              ]
+            },
+            "branch": {
+              "type": "string"
+            },
+            "commit": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{40,64}$"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "next": {
+              "$ref": "#/$defs/manifestUpgradeStrings"
+            },
+            "attempts": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2
+            }
+          },
+          "description": "How the upgrade reached the repository; state is empty when the manifest already used schema 2."
+        },
+        "sync": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "exit_code",
+                "changed",
+                "warnings"
+              ],
+              "properties": {
+                "exit_code": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "changed": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "warnings": {
+                  "$ref": "#/$defs/manifestUpgradeStrings"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "manifestUpgradeRevision": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "manifestUpgradeStrings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "manifest_upgradeRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/request"
+        },
+        {
+          "properties": {
+            "method": {
+              "const": "manifest.upgrade"
+            }
+          }
+        }
+      ]
     }
   },
   "x-api-version": "1.0",
@@ -1295,7 +1490,7 @@
     },
     {
       "name": "agents.edit",
-      "summary": "Change an instance's directory or settings switch; dry_run previews, otherwise publishes and syncs like kitbag agent edit --yes.",
+      "summary": "Change an instance's directory, settings switch or hosts; dry_run previews, otherwise publishes and syncs like kitbag agent edit --yes.",
       "request": "agents_editRequest",
       "result": "agentChangeResult",
       "valid": {
@@ -1323,6 +1518,19 @@
           "target": "claude",
           "name": "second"
         },
+        "dry_run": true
+      },
+      "invalid": {
+        "dry_run": "yes"
+      },
+      "invalid_error": -32602
+    },
+    {
+      "name": "manifest.upgrade",
+      "summary": "Convert kitbag.toml from schema 1 to schema 2 losslessly (manifest_upgrade_schema 1); dry_run previews the conversions and diff, otherwise publishes and syncs like kitbag manifest upgrade --yes. A manifest already on schema 2 returns already_current.",
+      "request": "manifest_upgradeRequest",
+      "result": "manifestUpgradeResult",
+      "valid": {
         "dry_run": true
       },
       "invalid": {
@@ -1392,7 +1600,7 @@
     {
       "code": -32002,
       "meaning": "Core/config operation failed; exit_code classifies the cause",
-      "exit_code": "1\u20135"
+      "exit_code": "1–5"
     },
     {
       "code": -32003,
