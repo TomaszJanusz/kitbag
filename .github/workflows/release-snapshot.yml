@@ -41,7 +41,7 @@ jobs:
           fetch-depth: 0
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
-          version: 2026.10.19
+          version: 2026.11.8
           cache: false
       - name: Package, validate and rebuild all four executables
         run: mise run release:snapshot
@@ -73,7 +73,7 @@ jobs:
       matrix:
         runner: [ubuntu-latest, ubuntu-24.04-arm]
     container:
-      image: ubuntu:24.04@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f579aaff33ac
+      image: ubuntu:24.04@sha256:2198e4c65076e9cb0b3d695219df667c0e3b0072da64ca3c2648aca17dcecaf5
     steps:
       - name: Install the installer's prerequisites
         run: |
@@ -98,7 +98,7 @@ jobs:
     permissions:
       contents: read
     container:
-      image: fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
+      image: fedora:44@sha256:15da97ed9aa94dd3d92c3925eb89520f6c80e07ea7ee24cba848d1f8b6912b3e
     steps:
       - name: Install checkout prerequisites
         run: dnf install -y tar gzip
@@ -119,7 +119,7 @@ jobs:
     permissions:
       contents: read
     container:
-      image: archlinux:base@sha256:52dfbd5afb23a220d5ee92dafcb4c788d96c026ed04179890c23adef4c897fa0
+      image: archlinux:base@sha256:d4594bb2300cba11f41c2f27923eb56f63d9988909c402f9c95517d1e362c899
     steps:
       - name: Install makepkg prerequisites
         run: pacman -Syu --noconfirm --needed base-devel
