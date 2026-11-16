@@ -1,5 +1,5 @@
 [tools]
-"core:go" = "1.27.3"
+"core:go" = "1.27.4"
 "aqua:golangci/golangci-lint" = "2.15.0"
 "aqua:mvdan/gofumpt" = "0.12.0"
 "aqua:goreleaser/goreleaser" = "2.19.0"
@@ -12,7 +12,7 @@
 "aqua:koalaman/shellcheck" = "0.11.0"
 "aqua:crate-ci/typos" = "1.51.1"
 "aqua:gitleaks/gitleaks" = "8.30.1"
-"aqua:google/osv-scanner" = "2.7.0"
+"aqua:google/osv-scanner" = "2.7.1"
 "aqua:rhysd/actionlint" = "1.7.12"
 "aqua:zizmorcore/zizmor" = "1.31.1"
 "go:github.com/daixiang0/gci" = "0.14.0"
