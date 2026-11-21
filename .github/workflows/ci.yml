@@ -34,7 +34,7 @@ jobs:
           persist-credentials: false
       - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
         with:
-          version: 2026.10.25
+          version: 2026.11.12
           cache: false
       - run: mise run check
       - name: Core coverage (85% once core has code)
@@ -52,7 +52,7 @@ jobs:
           persist-credentials: false
       - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
         with:
-          version: 2026.10.25
+          version: 2026.11.12
           cache: false
       - run: mise run check:windows
 
@@ -68,7 +68,7 @@ jobs:
           persist-credentials: false
       - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
         with:
-          version: 2026.10.25
+          version: 2026.11.12
           cache: false
       - run: mise run check:modules
 
@@ -86,7 +86,7 @@ jobs:
           fetch-depth: 0
       - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
         with:
-          version: 2026.10.25
+          version: 2026.11.12
           cache: false
       # Run on every PR so changes to tool pins and lint configuration are audited too.
       # The token enables zizmor's online audits (impostor commits, vulnerable actions).
