@@ -73,7 +73,7 @@ jobs:
       matrix:
         runner: [ubuntu-latest, ubuntu-24.04-arm]
     container:
-      image: ubuntu:24.04@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f579aaff33ac
+      image: ubuntu:26.04@sha256:d66b366dac61b575bee2aef07e9c26e8070096fbe84a3d4d3eb0da069b5d76db
     steps:
       - name: Install the installer's prerequisites
         run: |
@@ -98,7 +98,7 @@ jobs:
     permissions:
       contents: read
     container:
-      image: fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
+      image: fedora:46@sha256:78bb31de333664aa76c4bf54306791cd294c0bd4fbcfc4346e2286261de544c4
     steps:
       - name: Install checkout prerequisites
         run: dnf install -y tar gzip
