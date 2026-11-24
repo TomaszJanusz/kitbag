@@ -47,9 +47,9 @@ jobs:
           ref: ${{ inputs.sha || github.sha }}
           persist-credentials: false
           fetch-depth: 0
-      - uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
+      - uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
         with:
-          version: 2026.10.25
+          version: 2026.11.14
           cache: false
       - name: Validate source and build without publishing
         env:
@@ -136,9 +136,9 @@ jobs:
         with:
           ref: ${{ inputs.sha || github.sha }}
           persist-credentials: false
-      - uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
+      - uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
         with:
-          version: 2026.10.25
+          version: 2026.11.14
           cache: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -175,9 +175,9 @@ jobs:
         with:
           ref: ${{ inputs.sha || github.sha }}
           persist-credentials: false
-      - uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
+      - uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
         with:
-          version: 2026.10.25
+          version: 2026.11.14
           cache: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -205,7 +205,7 @@ jobs:
     permissions:
       contents: read
     container:
-      image: ubuntu:24.04@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f579aaff33ac
+      image: ubuntu:24.04@sha256:562111b88caa79c71391c0c4d3c2114a7d5c35915c20561fd893cb1e07929e6b
     steps:
       - name: Install the installer's prerequisites
         run: |
@@ -234,7 +234,7 @@ jobs:
     permissions:
       contents: read
     container:
-      image: fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
+      image: fedora:44@sha256:15da97ed9aa94dd3d92c3925eb89520f6c80e07ea7ee24cba848d1f8b6912b3e
     steps:
       - name: Install checkout prerequisites
         run: dnf install -y tar gzip
@@ -261,9 +261,9 @@ jobs:
         with:
           ref: ${{ inputs.sha || github.sha }}
           persist-credentials: false
-      - uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
+      - uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
         with:
-          version: 2026.10.25
+          version: 2026.11.14
           cache: false
       - name: Install the published release with install.sh and the pinned cosign
         env:
